@@ -35,7 +35,7 @@ export function AppShell() {
         Skip to content
       </a>
 
-      <header className="glass-subtle safe-top sticky top-0 z-(--z-header) rounded-none border-x-0 border-t-0">
+      <header className="glass-header safe-top sticky top-0 z-(--z-header)">
         <div className="mx-auto flex h-(--header-height) max-w-(--content-max) items-center justify-between px-4">
           <Link to="/roster" aria-label="MLF home" className="pressable flex min-h-(--tap-min) items-center">
             <BrandMark />

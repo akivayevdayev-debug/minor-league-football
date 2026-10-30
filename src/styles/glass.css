@@ -80,6 +80,23 @@
     .glass-bar { background-color: var(--glass-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
   }
 
+  /* Top bar: full-width, so no lens warp (it smears content into blobs). A light tint and
+     medium blur keep the logo and season label calm while content scrolls under. */
+  .glass-header {
+    background-color: var(--glass-fallback);
+    border-bottom: var(--border-width) solid var(--glass-rim-dim);
+  }
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .glass-header {
+      background-color: var(--glass-header-fill);
+      -webkit-backdrop-filter: blur(var(--glass-header-blur)) saturate(var(--glass-bar-saturate));
+      backdrop-filter: blur(var(--glass-header-blur)) saturate(var(--glass-bar-saturate));
+    }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .glass-header { background-color: var(--glass-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  }
+
   /* Glass that sits over a photo: a touch darker so white text always reads. */
   .glass-on-photo {
     background-color: color-mix(in srgb, var(--bg) 30%, transparent);

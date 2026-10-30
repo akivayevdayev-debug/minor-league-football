@@ -82,6 +82,8 @@
   --key-edge: rgb(0 0 0 / 0.22);
   --key-sheen: rgb(255 255 255 / 0.14);
   --glass-bar-fill: rgb(14 15 18 / 0.5);
+  --glass-header-fill: rgb(14 15 18 / 0.38);
+  --glass-header-blur: 12px;
   --glass-bar-saturate: 1.2;
   --lens-fill: rgb(255 255 255 / 0.14);
   --glass-fallback: rgb(17 18 21 / 0.97); /* no blur support or reduced transparency */

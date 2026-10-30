@@ -1,6 +1,6 @@
 # Minor League Football (MLF): project rules
 
-Private friend-group football league app. Mobile-first installable PWA. TypeScript + React + Vite + Tailwind v4 + HashRouter, Supabase (database, login, live updates), hosted free on Cloudflare Pages from GitHub.
+Private friend-group football league app. Mobile-first installable PWA. TypeScript + React + Vite + Tailwind v4 + HashRouter, Supabase (database, login, live updates), hosted free on Cloudflare Workers (static assets, `wrangler.jsonc`) from GitHub. Switched from Pages, which Cloudflare now calls legacy (Akiva, 2026-10-30).
 
 ## Working with Akiva
 - Akiva does not code. Use plain language, give exact click-and-paste steps, stop at checkpoints.

@@ -72,7 +72,7 @@ I read your question as: "Which language do I write it in (JavaScript or TypeScr
 |---|---|
 | **TypeScript** (not plain JavaScript) | Same language as JavaScript, plus a spell-checker for data. If a stat event is missing its player ID, the build fails instead of a wrong number showing up on game night. You don't code, so this is the safety net that lets me change things later without breaking old screens. |
 | **React** (not Vue) | Every library you asked for (Phosphor, Motion, vaul, Radix, Ant Design, React Bits) is built for React first. Vue is a fine framework, but we would lose React Bits entirely and fight the rest. |
-| **Vite** (not Next.js) | Next.js is built for sites that need a server and search-engine visibility. We have neither: everything is behind login, so Google can't see it anyway, and the database is Supabase. Vite builds plain static files, which Cloudflare Pages hosts for free with no server to keep running. Next.js on Cloudflare runs through an adapter on Workers instead of plain static hosting, which is more moving parts for no gain here. |
+| **Vite** (not Next.js) | Next.js is built for sites that need a server and search-engine visibility. We have neither: everything is behind login, so Google can't see it anyway, and the database is Supabase. Vite builds plain static files, which Cloudflare Workers (static assets; Pages until 2026-10-30) hosts for free with no server to keep running. Next.js on Cloudflare runs through an adapter on Workers instead of plain static hosting, which is more moving parts for no gain here. |
 | **HashRouter** | Links look like `/#/games/12`. Works on any static host, nothing to configure, refresh never 404s. Every screen and tab still has its own link. |
 
 ### 1.2 What about writing a server in Python or Rust?
@@ -423,7 +423,7 @@ Checked again with the OWASP Top 10, security-best-practices and slopsec skills 
 2. No passwords in code, config, git or chat (see Checkpoint 0, section 3). Passwords are typed straight into Supabase.
 3. Every table has Row Level Security; the frontend is treated as untrusted. Tested with a logged-out request and with a normal member trying Eddie-only actions.
 4. User-written text (news, comments, guest names, notes) is rendered as plain text. No `dangerouslySetInnerHTML`. Links in comments are not auto-trusted.
-5. Cloudflare Pages `_headers` file sets a strict **Content-Security-Policy** (scripts from our own site only, connections only to our Supabase project, no framing), plus HSTS, `X-Content-Type-Options`, a locked-down `Referrer-Policy`. Trade-off to confirm: animation libraries write inline styles, so `style-src` needs `'unsafe-inline'`; scripts stay strict.
+5. Cloudflare `_headers` file sets a strict **Content-Security-Policy** (scripts from our own site only, connections only to our Supabase project, no framing), plus HSTS, `X-Content-Type-Options`, a locked-down `Referrer-Policy`. Trade-off to confirm: animation libraries write inline styles, so `style-src` needs `'unsafe-inline'`; scripts stay strict.
 6. Photo uploads: allow-listed types and a size cap, checked in the browser and again by Supabase Storage rules; files renamed on upload.
 7. Fonts self-hosted; no third-party scripts or CDNs, so nobody else can change what runs in the app.
 8. Dependencies: exact versions in a lockfile, `npm audit` before each deploy, no packages added without a reason, every copied React Bits file read first.
@@ -488,7 +488,7 @@ Once Phase 1a code exists I run `graphify update .` to build the map in `graphif
 **Not used now, and why:**
 - `improve-codebase-architecture`, `pick-ui-library`, `before-building`: not installed on this computer. I covered the same ground with `codebase-design` and by choosing libraries by hand.
 - `animate-expo`: for React Native phone apps. This is a web app.
-- `cloudflare:agents-sdk`, `k2`, `nextjs-on-cloudflare`, `cf-cli`: for Cloudflare Workers, AI agents and Next.js. This project is static files on Pages. The Cloudflare plugin stays installed for deployment.
+- `cloudflare:agents-sdk`, `k2`, `nextjs-on-cloudflare`, `cf-cli`: for Cloudflare Workers, AI agents and Next.js. This project is static files on Workers static assets (no Worker code). The Cloudflare plugin stays installed for deployment.
 - `owasp-top-10`, `security-best-practices`, `slopsec`, `security-review`: they audit real code. Section 11 is the plan; they run on the finished login and database rules.
 - `ask-then-build`: used when I write the long-run build prompt.
 - **impeccable** (a design-review toolkit): installed globally on 2026-10-29 at your OK. Skills and three review helpers only, with its automatic edit hook left off (that hook runs on its own whenever a UI file is edited and can download a program). During the build its `detect` scan and its audit, critique and polish commands run on real screens. Its `init` interview would write a design-context file into the project, so ask Akiva first.

@@ -18,3 +18,7 @@ dev-dist
 graphify-out/
 .claude/
 *.tsbuildinfo
+
+# Supabase CLI local state
+supabase/.temp/
+.wrangler/

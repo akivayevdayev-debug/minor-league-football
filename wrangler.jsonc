@@ -1,0 +1,9 @@
+// Cloudflare Workers settings: the site is a static app, built by `npm run build` into dist/.
+// public/_headers (security headers) is copied into dist/ and applied by Cloudflare.
+{
+  "name": "mlf",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./dist"
+  }
+}

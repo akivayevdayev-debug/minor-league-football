@@ -40,9 +40,9 @@
   --team-demons: #f04444;
   --team-demons-light: #ff8a8a;
   --team-demons-deep: #5c0d18;
-  --team-daybies: #5b7cff;
-  --team-daybies-light: #9db0ff;
-  --team-daybies-deep: #141d66;
+  --team-daybies: #2a86ff; /* clear azure: same brightness as before, less purple */
+  --team-daybies-light: #7db8ff;
+  --team-daybies-deep: #0a2a66;
   --team-tigers: #ff7a1a;
   --team-tigers-light: #ffaa66;
   --team-tigers-deep: #6b2604;

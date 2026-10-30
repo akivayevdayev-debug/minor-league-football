@@ -159,7 +159,10 @@
   --focus-ring: 2px;
   --focus-offset: 2px;
   --nav-height: 58px;
-  --nav-inset: 10px;
+  --nav-inset: 10px; /* tab bar: space at the sides, and under it on screens with no home indicator */
+  --nav-home-gap: 14px; /* tab bar: space under it on phones with a home indicator, just clearing it */
+  --safe-bottom: env(safe-area-inset-bottom, 0px); /* the home-indicator zone; 0 on screens without one */
+  --nav-gap: max(var(--nav-inset), min(var(--safe-bottom), var(--nav-home-gap))); /* the one space under the tab bar */
   --header-height: 48px;
   --content-max: 720px;
   --measure-narrow: 34ch;

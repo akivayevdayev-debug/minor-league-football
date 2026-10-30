@@ -47,7 +47,7 @@ export function AppShell() {
       <main
         id="main"
         tabIndex={-1}
-        className="mx-auto w-full max-w-(--content-max) flex-1 overflow-x-clip px-4 pt-4 pb-[calc(var(--nav-height)+var(--nav-inset)*2+env(safe-area-inset-bottom)+var(--space-unit)*5)] outline-none"
+        className="mx-auto w-full max-w-(--content-max) flex-1 overflow-x-clip px-4 pt-4 pb-[calc(var(--nav-height)+var(--nav-gap)+var(--nav-inset)+var(--space-unit)*5)] outline-none"
       >
         {/* Keyed on the path so each screen plays its entrance once. */}
         <motion.div

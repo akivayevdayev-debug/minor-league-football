@@ -5,7 +5,7 @@ Private friend-group football league app. Mobile-first installable PWA. TypeScri
 ## Working with Akiva
 - Akiva does not code. Use plain language, give exact click-and-paste steps, stop at checkpoints.
 - Akiva dictates by voice, so odd words are probably transcription errors. Confirm before building on them.
-- Ask before building anything ambiguous. The plan docs below are DRAFTS until Akiva says OK; do not start Phase 1a before that.
+- Ask before building anything ambiguous. Both plan docs below are approved (Akiva, 2026-10-29), so Phase 1a is cleared. Anything the docs do not cover: ask first.
 
 ## Source of truth
 - `docs/checkpoint-0-database-plan.md`: what is stored, who can do what, the rules of the league.

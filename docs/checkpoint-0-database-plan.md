@@ -1,6 +1,6 @@
 # Minor League Football (MLF): Checkpoint 0, the database plan
 
-**Status:** DRAFT for your OK. No app code has been written yet.
+**Status:** APPROVED by Akiva on 2026-10-29 ("I approve"), with his later answers folded in. Phase 1a is cleared to start. No app code has been written yet.
 **Companion:** `docs/frontend-design-plan.md` covers how it looks and which tools build it (TypeScript + React + Vite).
 This is written in plain language. A "list" is a table (like one tab of a spreadsheet). A "calculation" is a view (the database works it out for you, nothing is stored). An "action" is a function (one button press that does several things safely at once).
 
@@ -23,7 +23,7 @@ This is written in plain language. A "list" is a table (like one tab of a spread
 | Not logged in | **Nothing.** The database returns nothing. The website shows only the login screen. |
 | Logged in but not matched to a player | **Nothing.** Shows "ask the owner to link your login". |
 | **Member** (every friend) | See everything. Add, change and void stats, scores, games, schedule, rosters, trades, injuries, news, comments, guests and settings. Claim the clock. Cannot permanently delete anything, cannot edit history, cannot touch the MVP controls, cannot give anyone a role. |
-| **League manager** (Eddie) | Everything a member can, **plus** full control of the MVP race (order, formula weights, manual override) and the order stats appear on profiles. |
+| **League manager** (Eddie) | Everything a member can, **plus** full control of the MVP race (order, formula weights, manual override) and the order stats appear on profiles. You also said Eddie has **general admin powers** (2026-10-29). Until you list what that adds, the extras stay as written here, because every member can already change everything else. The role check is one rule, so adding a power later is a small change. |
 | **Owner** (you) | Works in the Supabase dashboard: create or remove logins, reset passwords, give the league-manager role, fix or restore anything. No special powers inside the app, which matches "anyone can change anything". |
 
 ---
@@ -66,6 +66,7 @@ Tell friends to pick a password they don't use anywhere else, because you will k
 - **Score events:** game, team, scoring type, points, who scored (optional), who entered it, when, voided or not. Current score = total of the non-voided lines.
 - **Attendance and subs:** for each game, which player is out and which sub or guest replaces them. Stats are credited to the sub. The original player's roster spot never changes.
 - **Stat events:** the heart of the system. Each line has a unique ID, the game, the team, the player, the stat type, a number, the half, who entered it, when, and voided or not. One tap on a button adds a line with the value 1. Typing a game total adds a line for the difference. Totals are always worked out from these lines.
+- **Record adjustments:** a team's extra wins, losses and ties for a season, entered by hand with a note. Used only to bring in the league's older results that were never written down game by game. Voidable and logged like everything else.
 
 ### Community
 - **News posts and comments:** anyone can post and comment.
@@ -82,7 +83,7 @@ Tell friends to pick a password they don't use anywhere else, because you will k
 ## 5. The automatic calculations (views)
 
 - **Game score and result:** sum of non-voided score lines per team, then win, loss or tie.
-- **Standings:** wins, losses, ties, win % (a tie counts half), points for, points against, difference. Tiebreakers in order: head-to-head, point difference, points scored. Win % keeps it fair if teams play different numbers of games.
+- **Standings:** (recorded games plus any record adjustments) wins, losses, ties, win % (a tie counts half), points for, points against, difference. Tiebreakers in order: head-to-head, point difference, points scored. Win % keeps it fair if teams play different numbers of games.
 - **Player stats:** per game, per season and career, all from the stat lines.
 - **Team power rankings:** a simple, visible formula: win %, point difference per game and form over the last 3 games. The weights are settings.
 - **Weekly awards:** worked out automatically, by stat (since QBs have no stats): top receiver (receptions), top scorer (touchdowns), top defender (interceptions, pick-6, blocks).
@@ -132,8 +133,11 @@ Weak signal: stat taps wait on the phone with a visible "pending" badge and send
 8. Imperial units and the New York time zone.
 9. A new league starts as a new season, nothing is lost.
 10. **Birthdays:** only the birth year is stored (the app shows age). Full birth dates aren't needed to run a league and most of the players are teenagers. Your real data file stays on this Mac in a folder git ignores, so it never goes to GitHub.
-11. **Bringing in your history (new):** games already played are imported with their final scores only (one "final score" line per team). The old spreadsheet's stat totals go into an **"Earlier totals" season** that counts toward career stats but **never** toward standings. Nothing has to be re-entered by hand.
-12. **Eddie:** has a login and a profile, no team, no stats. Whether he quarterbacks for whichever team has the ball is still to be confirmed.
+11. **Bringing in your history (new):** games already played are imported with their final scores only (one "final score" line per team). The old spreadsheet's stat totals go into an **"Earlier totals" season** that counts toward career stats but **never** toward standings. Nothing has to be re-entered by hand. You confirmed (2026-10-29) that not every earlier game or score was written down, so the league's own records are bigger than the 5 saved scores. **Record adjustments** (section 4) top each team up to the records you confirmed (Tigers 5-1, Speed Demons 4-2, Daybies 0-6; 9 wins and 9 losses, so they balance) without inventing games. The adjustments are the confirmed record minus the 5 saved games: Tigers +2-1, Speed Demons +2-1, Daybies +0-2. That is 4 unrecorded games, so 9 games have been played in total. With 14 in the season, **5 are left** (not 9); Akiva has not confirmed that yet, nor given their dates or pairings.
+12. **Eddie:** has a login and a profile, no team, no stats. He is the quarterback for **everyone**, so he never belongs to one team. Confirmed by you.
+13. **Team colours** (your picks): Speed Demons red, Daybies blue, Tigers orange. Stored on each team.
+14. **Login names:** each friend's first name in lowercase (`akiva`, `mair`, `david`, `lawrence`, `ariel`, `chaimy`, `max`, `morris`, `eddie`), except Leon, whose login is `leo`. Confirmed by you.
+15. **Old stat sheet:** the single "Conv" column stays as the old-sheet conversion stat, because the 1-point and 2-point split is not known. Leon's receptions are 48 and drops 24 (your correction).
 
 ---
 

@@ -1,6 +1,6 @@
 # Minor League Football (MLF): frontend design plan
 
-**Status:** DRAFT for your OK. No app code has been written yet.
+**Status:** APPROVED by Akiva on 2026-10-29 ("I approve"), with his later answers folded in. Phase 1a is cleared to start. No app code has been written yet.
 **Goes with:** `docs/checkpoint-0-database-plan.md` (the database plan). That plan decides what is stored; this one decides how it looks, feels and is built.
 **Checked on:** 2026-10-29. Library versions below were read from npm that day, not from memory.
 
@@ -103,7 +103,9 @@ All of these live in **one file**, `src/styles/tokens.css`. No colour, size or t
 | `--danger` | `#FF6B7A` | Out, errors, NOT SYNCED |
 | `--warn` | `#FFB347` | Questionable, caution |
 | `--ok` | `#3DDC97` | Back, success |
-| Team colours | set per team | A 4 px stripe or dot only. Never a button or panel fill, so the single-accent rule holds. |
+| `--team-demons` | `#F04444` (red) | Speed Demons. A 4 px stripe or dot only. Never a button or panel fill, so the single-accent rule holds. |
+| `--team-daybies` | `#5B7CFF` (blue) | Daybies. Same rule. |
+| `--team-tigers` | `#FF7A1A` (orange) | Tigers. Same rule. |
 
 Contrast I calculated (WCAG AA needs 4.5:1 for normal text):
 
@@ -120,6 +122,8 @@ Contrast I calculated (WCAG AA needs 4.5:1 for normal text):
 | danger / warn / ok on panel | 6.6 / 10.2 / 10.3 |
 
 So secondary text on sheets uses `--text-2-strong` (about 6:1 by my estimate, re-check when built). The check repeats on real screens at the end.
+
+Team colours (your picks, 2026-10-29: red, blue, orange) measured on panel / strong glass: red 4.9 / 4.1, blue 5.0 / 4.2, orange 7.0 / 5.9. Stripes and dots need 3:1, so all three pass. They are never used for small text; team names are written in `--text`. Two look-alikes to guard against: red is almost the same hue as `--danger`, and orange is close to `--warn`. So a team colour always sits next to the team's written name, and danger and warn chips always carry an icon and a word. Colour is never the only signal.
 
 ### 2.2 Type
 
@@ -444,7 +448,7 @@ Once Phase 1a code exists I run `graphify update .` to build the map in `graphif
 - `cloudflare:agents-sdk`, `k2`, `nextjs-on-cloudflare`, `cf-cli`: for Cloudflare Workers, AI agents and Next.js. This project is static files on Pages. The Cloudflare plugin stays installed for deployment.
 - `owasp-top-10`, `security-best-practices`, `slopsec`, `security-review`: they audit real code. Section 11 is the plan; they run on the finished login and database rules.
 - `ask-then-build`: used when I write the long-run build prompt.
-- Not installed yet: **impeccable** (a design-review toolkit). It would add commands to this project, so I'll only do it with your OK.
+- **impeccable** (a design-review toolkit): installed globally on 2026-10-29 at your OK. Skills and three review helpers only, with its automatic edit hook left off (that hook runs on its own whenever a UI file is edited and can download a program). During the build its `detect` scan and its audit, critique and polish commands run on real screens. Its `init` interview would write a design-context file into the project, so ask Akiva first.
 
 ---
 
@@ -452,5 +456,5 @@ Once Phase 1a code exists I run `graphify update .` to build the map in `graphif
 
 1. Your OK on this plan (or changes), especially: TypeScript + React + Vite (section 1.1), the fenced use of React Bits and Ant Design (1.4), and the "no animation on live screens" rule (5.1).
 2. Photos in `public/images/`: a hero (stadium) and friend-group shots.
-3. Team names and colours, and whether the "MLF" lettermark is fine as the app icon.
-4. Yes or no to installing impeccable.
+3. Answered 2026-10-29: Speed Demons red, Daybies blue, Tigers orange; the "MLF" lettermark is fine as the app icon.
+4. Answered 2026-10-29: yes, impeccable installed globally (hook off).

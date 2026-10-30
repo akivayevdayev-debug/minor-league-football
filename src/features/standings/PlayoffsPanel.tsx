@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useGameScores, type SeasonSnapshot } from "../league";
 import { formatGameTime, ZONE_LABEL } from "../../lib/time";
-import type { Team } from "../../types/db";
+import type { Game, Team } from "../../types/db";
 import { Badge } from "@/components/ui/badge";
 import { Icon } from "../../ui/Icon";
 import { StadiumBackdrop } from "../../ui/StadiumBackdrop";
@@ -14,18 +14,41 @@ import { teamStyle } from "../../ui/team";
  */
 export function PlayoffsPanel({ snap }: { snap: SeasonSnapshot }) {
   const scores = useGameScores(snap.season?.id);
-  const final = snap.games.filter((g) => g.kind === "playoff").at(-1);
-  const seed = (rank: number) =>
-    snap.teamById.get(
-      snap.standings.find((r) => r.rank === rank)?.team_id ?? "",
-    );
+  const final = snap.games.filter((g) => g.kind === "playoff").at(-1) as
+    | (Game & { home_slot?: string | null; away_slot?: string | null })
+    | undefined;
 
+  // Seeds come from table order: rank, then point difference, then points for. A tie for 1st still gives seed 2.
+  const ordered = [...snap.standings].sort(
+    (a, b) =>
+      a.rank - b.rank ||
+      b.point_diff - a.point_diff ||
+      b.points_for - a.points_for,
+  );
+  const slotSeed = (slot: string | null | undefined, fallback: number) => {
+    const m = /^rank:(\d+)$/.exec(slot ?? "");
+    return m ? Number(m[1]) : fallback;
+  };
+  const homeSeedSlot = slotSeed(final?.home_slot, 1);
+  const awaySeedSlot = slotSeed(final?.away_slot, 2);
+  const seedTeamId = (seed: number) => ordered[seed - 1]?.team_id ?? "";
+  const seedOf = (teamId: string | null | undefined, fallback: number) => {
+    const pos = teamId ? ordered.findIndex((r) => r.team_id === teamId) : -1;
+    return pos >= 0 ? pos + 1 : fallback;
+  };
+
+  const homeSeed = final?.home_team_id
+    ? seedOf(final.home_team_id, homeSeedSlot)
+    : homeSeedSlot;
+  const awaySeed = final?.away_team_id
+    ? seedOf(final.away_team_id, awaySeedSlot)
+    : awaySeedSlot;
   const home = final?.home_team_id
     ? snap.teamById.get(final.home_team_id)
-    : seed(1);
+    : snap.teamById.get(seedTeamId(homeSeedSlot));
   const away = final?.away_team_id
     ? snap.teamById.get(final.away_team_id)
-    : seed(2);
+    : snap.teamById.get(seedTeamId(awaySeedSlot));
   const score = final ? scores.data?.get(final.id) : undefined;
   const done = final?.status === "final" && !!score;
   const live = final?.status === "live" || final?.status === "halftime";
@@ -87,7 +110,7 @@ export function PlayoffsPanel({ snap }: { snap: SeasonSnapshot }) {
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
           <Finalist
             team={home}
-            seed={1}
+            seed={homeSeed}
             points={done || live ? score?.home_points : undefined}
             crowned={!!champion && champion === home}
             lost={!!champion && champion !== home}
@@ -95,7 +118,7 @@ export function PlayoffsPanel({ snap }: { snap: SeasonSnapshot }) {
           <span className="brand-type text-small text-text-3">VS</span>
           <Finalist
             team={away}
-            seed={2}
+            seed={awaySeed}
             points={done || live ? score?.away_points : undefined}
             crowned={!!champion && champion === away}
             lost={!!champion && champion !== away}

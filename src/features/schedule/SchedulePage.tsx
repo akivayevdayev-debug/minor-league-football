@@ -15,6 +15,7 @@ import { StadiumBackdrop } from '../../ui/StadiumBackdrop'
 import { TeamBadge } from '../../ui/TeamBadge'
 import { teamStyle } from '../../ui/team'
 import { EnterScoreSheet } from '../game/EnterScoreSheet'
+import { GameStatSheet } from '../game/GameStatSheet'
 import { AddGameSheet } from './AddGameSheet'
 import { TimeSheet } from './TimeSheet'
 
@@ -34,6 +35,8 @@ export default function SchedulePage() {
   const [editing, setEditing] = useState<Game | null>(null)
   const [scoring, setScoring] = useState<Game | null>(null)
   const [scoreOpen, setScoreOpen] = useState(false)
+  const [statsFor, setStatsFor] = useState<Game | null>(null)
+  const [statsOpen, setStatsOpen] = useState(false)
 
   const teamById = useMemo(() => new Map((teams.data ?? []).map((t) => [t.id, t])), [teams.data])
   const next = useMemo(() => (games.data ?? []).find((g) => g.status !== 'final' && g.home_team_id && g.away_team_id), [games.data])
@@ -58,10 +61,15 @@ export default function SchedulePage() {
       setScoring(g)
       setScoreOpen(true)
     },
+    onStats: () => {
+      setStatsFor(g)
+      setStatsOpen(true)
+    },
   })
 
   const scoringTeams = scoring ? teamsOf(scoring, teamById) : null
   const scoringScore = scoring ? scores.data?.get(scoring.id) : undefined
+  const statsTeams = statsFor ? teamsOf(statsFor, teamById) : null
 
   return (
     <section className="flex flex-col gap-6">
@@ -110,6 +118,9 @@ export default function SchedulePage() {
           current={scoringScore ? { home: scoringScore.home_points, away: scoringScore.away_points } : undefined}
         />
       )}
+      {statsFor && statsTeams?.home && statsTeams.away && (
+        <GameStatSheet key={statsFor.id} game={statsFor} home={statsTeams.home} away={statsTeams.away} open={statsOpen} onOpenChange={setStatsOpen} />
+      )}
     </section>
   )
 }
@@ -121,6 +132,8 @@ interface GameProps {
   projection: GameProjection | undefined
   onEditTime(): void
   onScore(): void
+  /** Opens the game's stat sheet (finished games). */
+  onStats(): void
 }
 
 function teamsOf(game: Game, teamById: Map<string, Team>) {
@@ -188,7 +201,7 @@ function HeroSide({ team }: { team: Team | undefined }) {
  * One scoreboard line, ESPN style: home crest, name and score on the left, away on the right,
  * the status in the middle. Upcoming games add the estimate and the score actions underneath.
  */
-function GameRow({ game, teamById, score, projection, onEditTime, onScore }: GameProps) {
+function GameRow({ game, teamById, score, projection, onEditTime, onScore, onStats }: GameProps) {
   const { home, away } = teamsOf(game, teamById)
   const final = game.status === 'final'
   const live = game.status === 'live' || game.status === 'halftime'
@@ -221,6 +234,14 @@ function GameRow({ game, teamById, score, projection, onEditTime, onScore }: Gam
         <Side team={away} points={showScore ? ap : undefined} loser={final && ap < hp} away />
       </div>
       {!final && <Projection projection={projection} home={home} away={away} />}
+      {final && home && away && (
+        <div className="flex justify-center">
+          <Button size="sm" variant="ghost" onClick={onStats}>
+            <Icon name="edit" size="xs" />
+            Stats
+          </Button>
+        </div>
+      )}
       {canScore && (
         <div className="flex items-center justify-center gap-2">
           <GameActions game={game} live={live} onScore={onScore} />

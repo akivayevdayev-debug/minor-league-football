@@ -88,7 +88,8 @@ export function LiveStatsPanel({
   function record(team: Team, player: Player | null, type: StatType, value = 1) {
     const id = crypto.randomUUID()
     const who = player ? displayName(player) : team.short_name
-    const scoring = SCORING.has(type.id) && value === 1 && !!player
+    // A final game's score is typed by hand, so its TD/conversion taps are plain stat lines.
+    const scoring = SCORING.has(type.id) && value === 1 && !!player && game.status !== 'final'
     if (scoring) {
       addScore.mutate({ id, teamId: team.id, type: type.id as 'td' | 'conv1' | 'conv2', playerId: player.id, half }, { onError: fail })
     } else {
@@ -199,6 +200,7 @@ export function LiveStatsPanel({
         last={last}
         onRecord={(type, value) => padFor && record(padFor.team, padFor.player, type, value)}
         onUndo={undo}
+        final={game.status === 'final'}
       />
 
       <AddSubSheet
@@ -221,9 +223,11 @@ export function LiveStatsPanel({
 
 /** The stat pad: stays open while you tap. Tap a count to type a new total instead. */
 function StatPad({
-  target, onClose, types, totals, last, onRecord, onUndo,
+  target, onClose, types, totals, last, onRecord, onUndo, final,
 }: {
   target: { player: Player; team: Team } | null
+  /** The game is over: stat taps never change its typed final score. */
+  final: boolean
   onClose(): void
   types: StatType[]
   totals: Partial<Record<StatTypeId, number>>
@@ -238,8 +242,12 @@ function StatPad({
     e.preventDefault()
     if (!typing) return
     const want = Number(draft)
+    if (draft === '' || !Number.isInteger(want) || want < 0 || want > 999) {
+      toast.error('Type a whole number from 0 to 999.')
+      return
+    }
     const diff = want - (totals[typing.id] ?? 0)
-    if (Number.isInteger(want) && want >= 0 && diff !== 0 && Math.abs(diff) <= 999) onRecord(typing, diff)
+    if (diff !== 0) onRecord(typing, diff)
     setTyping(null)
   }
 
@@ -321,7 +329,9 @@ function StatPad({
             })}
           </div>
         )}
-        <p className="text-small text-text-2">TD, 1-point and 2-point also add the points to the score.</p>
+        <p className="text-small text-text-2">
+          {final ? 'This game is final, so stats here never change the score.' : 'TD, 1-point and 2-point also add the points to the score.'}
+        </p>
       </div>
     </Sheet>
   )

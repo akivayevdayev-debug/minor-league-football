@@ -74,18 +74,23 @@ export function useLiveGame(gameId: string | undefined) {
     if (!gameId) return
     const channel = supabase
       .channel(`game-${gameId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'score_events', filter: `game_id=eq.${gameId}` }, () =>
-        qc.invalidateQueries({ queryKey: gameKeys.scoreEvents(gameId) }),
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'score_events', filter: `game_id=eq.${gameId}` }, () => {
+        void qc.invalidateQueries({ queryKey: gameKeys.scoreEvents(gameId) })
+        // League prefixes: scores and standings for the season (the keys take a season id).
+        void qc.invalidateQueries({ queryKey: ['scores'] })
+        void qc.invalidateQueries({ queryKey: ['standings'] })
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stat_events', filter: `game_id=eq.${gameId}` }, () =>
         qc.invalidateQueries({ queryKey: gameKeys.stats(gameId) }),
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_clocks', filter: `game_id=eq.${gameId}` }, () =>
         qc.invalidateQueries({ queryKey: gameKeys.clock(gameId) }),
       )
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` }, () =>
-        qc.invalidateQueries({ queryKey: gameKeys.game(gameId) }),
-      )
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` }, () => {
+        void qc.invalidateQueries({ queryKey: gameKeys.game(gameId) })
+        // League prefix: the games list for the season.
+        void qc.invalidateQueries({ queryKey: ['games'] })
+      })
       .subscribe()
     return () => {
       void supabase.removeChannel(channel)

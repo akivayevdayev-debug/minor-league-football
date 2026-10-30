@@ -268,9 +268,10 @@ export function useAddStats() {
             .map((s) => ({ id: crypto.randomUUID(), season_id: seasonId, game_id: gameId, team_id: teamId, player_id: playerId, stat_type_id: s.stat_type_id, value: s.value })),
         ),
       ),
-    onSuccess: () => {
+    onSuccess: (_d, v) => {
       void qc.invalidateQueries({ queryKey: keys.statTotals })
       void qc.invalidateQueries({ queryKey: keys.playerProjections })
+      if (v.gameId) void qc.invalidateQueries({ queryKey: ['game', v.gameId] })
     },
   })
 }

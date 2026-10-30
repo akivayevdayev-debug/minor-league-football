@@ -12,14 +12,26 @@ import { Icon } from '../../ui/Icon'
 import { Skeleton } from '../../ui/Skeleton'
 import { GameScreen } from './LiveGamePage'
 
+/** Ascending comparison with nulls last. */
+function nullsLast<T>(a: T | null, b: T | null, cmp: (x: T, y: T) => number): number {
+  if (a === null || b === null) return a === b ? 0 : a === null ? 1 : -1
+  return cmp(a, b)
+}
+
+/**
+ * Live game first (highest week, then latest start). Otherwise the next scheduled game: lowest week
+ * still open, then earliest start. Otherwise the last final game.
+ */
 function pickGame(games: Game[]): Game | undefined {
   const withTeams = games.filter((g) => g.home_team_id && g.away_team_id)
-  const live = withTeams.find((g) => g.status === 'live' || g.status === 'halftime')
-  if (live) return live
-  const upcoming = withTeams
+  const [liveGame] = withTeams
+    .filter((g) => g.status === 'live' || g.status === 'halftime')
+    .sort((a, b) => nullsLast(b.week, a.week, (x, y) => x - y) || nullsLast(b.starts_at, a.starts_at, (x, y) => x.localeCompare(y)))
+  if (liveGame) return liveGame
+  const [next] = withTeams
     .filter((g) => g.status === 'scheduled')
-    .sort((a, b) => (a.starts_at ?? '9').localeCompare(b.starts_at ?? '9') || (a.week ?? 99) - (b.week ?? 99))
-  if (upcoming[0]) return upcoming[0]
+    .sort((a, b) => nullsLast(a.week, b.week, (x, y) => x - y) || nullsLast(a.starts_at, b.starts_at, (x, y) => x.localeCompare(y)))
+  if (next) return next
   return withTeams.filter((g) => g.status === 'final').at(-1)
 }
 

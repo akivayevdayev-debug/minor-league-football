@@ -97,6 +97,8 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
   const [typing, setTyping] = useState(false)
 
   const c = clock.data
+  // If the clock could not load, show no time and no clock controls, so Resume can't overwrite the real time.
+  const clockDown = clock.isError
   const now = useNow(!!c?.running, offset)
   const halfSeconds = (settings.data?.half_minutes ?? 10) * 60
   const left = c ? remainingMs({ running: c.running, secondsLeft: c.seconds_left, startedAt: c.started_at ? Date.parse(c.started_at) : null }, now) : halfSeconds * 1000
@@ -192,8 +194,8 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
             ) : (
               <div key={i} className="flex flex-col items-center gap-1 pt-6">
                 <span className="caps-label">{statusLabel}</span>
-                <span role="timer" aria-label={`${mmss(left)} left`} className={`numeral text-headline ${left === 0 ? 'text-danger' : 'text-text'}`}>
-                  {mmss(left)}
+                <span role="timer" aria-label={clockDown ? 'Clock unavailable' : `${mmss(left)} left`} className={`numeral text-headline ${left === 0 ? 'text-danger' : 'text-text'}`}>
+                  {clockDown ? '--:--' : mmss(left)}
                 </span>
               </div>
             ),
@@ -219,7 +221,7 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
 
       {tab === 'box' && (
         <BoxScorePanel
-          gameId={g.id}
+          game={g}
           home={home}
           away={away}
           stats={stats.data ?? []}
@@ -231,7 +233,8 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
 
       {tab === 'score' && <>
       {/* Clock controls */}
-      {status !== 'final' && (
+      {status !== 'final' && clockDown && <ErrorState what="the clock" onRetry={() => void clock.refetch()} />}
+      {status !== 'final' && !clockDown && (
         <div className="grid grid-cols-2 gap-2">
           {c?.running ? (
             <Button size="xl" variant="primary" onClick={pause} disabled={busy} className="col-span-2">

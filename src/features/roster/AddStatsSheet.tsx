@@ -40,8 +40,10 @@ export function AddStatsSheet({
   const player = (players.data ?? []).find((p) => p.id === playerId)
   const teamId = teamOf.get(playerId)?.id ?? null
   const teamGames = teamId ? games.filter((g) => g.home_team_id === teamId || g.away_team_id === teamId) : []
-  // A game picked for a previous player may not belong to this one, so fall back to the season total.
-  const gameId = teamGames.some((g) => g.id === game) ? game : ''
+  // Default to the team's latest game that has started; "No game" only when picked on purpose.
+  const started = teamGames.filter((g) => g.status !== 'scheduled')
+  const latest = (started.find((g) => g.status === 'live' || g.status === 'halftime') ?? [...started].sort((a, b) => (b.week ?? 0) - (a.week ?? 0))[0])?.id ?? ''
+  const gameId = game === 'none' ? '' : teamGames.some((g) => g.id === game) ? game : latest
 
   const stats = (statTypes.data ?? []).filter((s) => !s.team_level && s.id !== 'conv_old') // the old-sheet conversion is history only
   const entries: NewStat[] = stats
@@ -76,7 +78,7 @@ export function AddStatsSheet({
       open={open}
       onOpenChange={onOpenChange}
       title="Add stats"
-      description="Adds to the player's season. Nothing is overwritten; mistakes can be voided later."
+      description="Adds to the player's stats for the game you pick. To fill in a whole game at once, use Stats on the Schedule."
     >
       <form onSubmit={submit} className="flex flex-col gap-3">
         <Select label="Player" value={playerId} onChange={(e) => setPlayerId(e.target.value)} required>
@@ -87,8 +89,8 @@ export function AddStatsSheet({
             </option>
           ))}
         </Select>
-        <Select label="Game" value={gameId} onChange={(e) => setGame(e.target.value)}>
-          <option value="">No game (season total)</option>
+        <Select label="Game" value={gameId || 'none'} onChange={(e) => setGame(e.target.value)}>
+          <option value="none">No game (season total)</option>
           {teamGames.map((g) => (
             <option key={g.id} value={g.id}>
               {gameLabel(g)}

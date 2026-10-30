@@ -34,7 +34,11 @@ export default function StandingsPage() {
   if (snap.isPending) return <Skeleton rows={4} />;
   if (snap.isError)
     return <ErrorState what="the standings" onRetry={snap.refetch} />;
-  if (!snap.season || snap.standings.length === 0)
+  if (
+    !snap.season ||
+    snap.standings.length === 0 ||
+    snap.standings.every((r) => r.games_played === 0)
+  )
     return (
       <EmptyState
         icon="trophy"
@@ -94,7 +98,7 @@ export default function StandingsPage() {
                   </span>
                 </p>
                 <p className="text-small text-text-2-strong nums">
-                  {pctText(leader.win_pct)} win pct ·{" "}
+                  {leader.win_pct == null ? "–" : pctText(leader.win_pct)} win pct ·{" "}
                   {leader.point_diff > 0
                     ? `+${leader.point_diff}`
                     : leader.point_diff}{" "}

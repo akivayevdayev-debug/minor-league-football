@@ -45,8 +45,8 @@ export function useSeasonSnapshot(playerId: string): SeasonSnapshot {
       nextWeek: open.length ? Math.min(...open) : null,
       myTeam,
       myRow: myTeam ? table.find((r) => r.team_id === myTeam.id) : undefined,
-      isPending: season.isPending || teams.isPending || rosters.isPending || (!!season.data && standings.isPending),
-      isError: season.isError || teams.isError || rosters.isError || standings.isError,
+      isPending: season.isPending || teams.isPending || rosters.isPending || (!!season.data && (standings.isPending || games.isPending)),
+      isError: season.isError || teams.isError || rosters.isError || standings.isError || games.isError,
       refetch: () => void (season.refetch(), teams.refetch(), rosters.refetch(), standings.refetch(), games.refetch()),
     }
   }, [season, teams, rosters, standings, games, playerId])

@@ -1,15 +1,16 @@
 /*
  * Box score: one game's player stats per team, the scoring timeline, and (on request) the edit history.
- * Read-only. Stat and score lines come in from the game screen; nothing here writes data.
+ * The "Fill in the stat sheet" button opens GameStatSheet to type or fix a whole game's stats.
  */
 import { useMemo, useState, type JSX } from 'react'
 import { displayName } from '../league'
-import type { Player, ScoreEvent, ScoringTypeId, StatType, StatTypeId, Team } from '../../types/db'
+import type { Game, Player, ScoreEvent, ScoringTypeId, StatType, StatTypeId, Team } from '../../types/db'
 import { Icon } from '../../ui/Icon'
 import { Skeleton } from '../../ui/Skeleton'
 import { TeamBadge } from '../../ui/TeamBadge'
 import { teamStyle } from '../../ui/team'
 import { useGameHistory, type GameHistoryRow, type GameStat } from './api'
+import { GameStatSheet } from './GameStatSheet'
 
 const ABBR: Partial<Record<StatTypeId, string>> = {
   rec: 'REC',
@@ -260,7 +261,7 @@ function ChangeHistory({ gameId, playersById }: { gameId: string; playersById: M
 }
 
 export function BoxScorePanel({
-  gameId,
+  game,
   home,
   away,
   stats,
@@ -268,7 +269,7 @@ export function BoxScorePanel({
   players,
   statTypes,
 }: {
-  gameId: string
+  game: Game
   home: Team
   away: Team
   stats: GameStat[]
@@ -277,13 +278,22 @@ export function BoxScorePanel({
   statTypes: StatType[]
 }): JSX.Element {
   const playersById = useMemo(() => new Map(players.map((p) => [p.id, p])), [players])
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   return (
     <div className="flex flex-col gap-4">
+      <button
+        type="button"
+        onClick={() => setSheetOpen(true)}
+        className="pressable flex min-h-(--tap-game) items-center justify-center gap-2 rounded-panel surface-inset px-4 font-strong"
+      >
+        <Icon name="edit" size="sm" /> Fill in the stat sheet
+      </button>
+      <GameStatSheet game={game} home={home} away={away} open={sheetOpen} onOpenChange={setSheetOpen} />
       <TeamBox team={home} stats={stats} lines={lines} playersById={playersById} statTypes={statTypes} />
       <TeamBox team={away} stats={stats} lines={lines} playersById={playersById} statTypes={statTypes} />
       <ScoringTimeline lines={lines} home={home} away={away} playersById={playersById} />
-      <ChangeHistory gameId={gameId} playersById={playersById} />
+      <ChangeHistory gameId={game.id} playersById={playersById} />
     </div>
   )
 }

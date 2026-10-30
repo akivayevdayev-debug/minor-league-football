@@ -18,7 +18,12 @@ const pct = (n: number | null) => (n === null ? '–' : Number(n).toFixed(3).rep
 
 /** Compact ESPN-style table in one glass panel. Rank 1 gets a gold numeral, a crown and a team-tinted row. */
 export function StandingsTable({ rows, teamById, highlightTeamId, view = 'record', compact = false }: Props) {
-  const shown = compact ? rows.slice(0, 3) : rows
+  // Points view re-orders rows by point difference, then points scored. The rank column still shows the real standings rank.
+  const ordered =
+    view === 'points'
+      ? [...rows].sort((a, b) => b.point_diff - a.point_diff || b.points_for - a.points_for)
+      : rows
+  const shown = compact ? ordered.slice(0, 3) : ordered
   const cols = view === 'record' ? ['W-L', 'Pct', 'GP'] : ['PF', 'PA', 'Diff']
   return (
     <div className="glass-panel overflow-hidden rounded-panel">

@@ -62,6 +62,8 @@ export function App() {
         <Toaster
           theme="dark"
           position="top-center"
+          offset="calc(var(--header-top) + var(--header-height) + var(--toast-gap))"
+          mobileOffset="calc(var(--header-top) + var(--header-height) + var(--toast-gap))"
           closeButton
           toastOptions={{ classNames: { toast: 'glass-strong! rounded-panel! text-text! font-body!' } }}
         />

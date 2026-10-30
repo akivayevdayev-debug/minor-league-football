@@ -14,10 +14,13 @@ export function StadiumBackdrop({
   photo = 'lights',
   team,
   lightsOn = false,
+  src,
 }: {
   photo?: StadiumPhoto
   team?: TeamColor | null
   lightsOn?: boolean
+  /** A link to a real photo (e.g. the team photo) shown instead of the stock stadium. */
+  src?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const reduce = useReducedMotion()
@@ -48,7 +51,7 @@ export function StadiumBackdrop({
     }
   }, [reduce])
 
-  const style = { ...(team !== undefined ? teamStyle(team) : {}), '--photo': `var(--photo-${photo})` } as CSSProperties
+  const style = { ...(team !== undefined ? teamStyle(team) : {}), '--photo': src ? `url("${src}")` : `var(--photo-${photo})` } as CSSProperties
   return (
     <div aria-hidden="true" className="stadium" style={style}>
       <div ref={ref} className={`stadium-photo ${lightsOn ? 'lights-on' : ''}`} />

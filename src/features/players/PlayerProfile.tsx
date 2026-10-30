@@ -60,7 +60,7 @@ export default function PlayerProfile() {
         className="rise relative isolate flex items-center gap-4 overflow-hidden rounded-hero p-4 pt-8"
       >
         <StadiumBackdrop photo="sunset" team={currentTeam?.color_key} />
-        <PlayerBadge jersey={player.jersey} team={currentTeam?.color_key} size="lg" />
+        <PlayerBadge jersey={player.jersey} team={currentTeam?.color_key} photo={player.photo_path} size="xl" />
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <h1 className="text-headline leading-none break-words">{displayName(player)}</h1>
           <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-small text-text-2-strong">

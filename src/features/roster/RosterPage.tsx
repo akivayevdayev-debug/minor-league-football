@@ -1,4 +1,5 @@
 import { useMemo, useState, type CSSProperties } from 'react'
+import { usePhotoUrl } from '../../lib/photos'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMember } from '../auth'
 import {
@@ -33,9 +34,10 @@ import { AddGuestSheet } from '../players/AddGuestSheet'
 import { EditPlayerSheet } from '../players/EditPlayerSheet'
 import { MovePlayerSheet } from '../players/MovePlayerSheet'
 import { AddStatsSheet } from './AddStatsSheet'
+import { TeamPhotosSheet } from './TeamPhotosSheet'
 import { TradeSheet } from './TradeSheet'
 
-type Open = 'stats' | 'trade' | 'guest' | 'move' | 'score' | 'edit' | null
+type Open = 'stats' | 'trade' | 'guest' | 'move' | 'score' | 'edit' | 'photos' | null
 
 /**
  * Roster, fantasy style: pick a team (yours first), see its record, next game and lineup,
@@ -72,6 +74,7 @@ export default function RosterPage() {
   const teamGames = snap.games.filter((g) => g.home_team_id === teamId || g.away_team_id === teamId)
   const next = teamGames.find((g) => g.status !== 'final' && g.home_team_id && g.away_team_id)
   const recent = teamGames.filter((g) => g.status === 'final').slice(-3).reverse()
+  const teamPhoto = usePhotoUrl(team?.photo_path)
   const teamEstimate = lineup.reduce((n, p) => n + (projections.data?.get(p.id)?.points_per_game ?? 0), 0)
 
   if (snap.isPending || players.isPending) return <Skeleton rows={6} />
@@ -93,6 +96,7 @@ export default function RosterPage() {
     { id: 'trade', label: 'Make a trade', icon: 'trade' },
     { id: 'move', label: 'Move player', icon: 'players' },
     { id: 'guest', label: 'Add guest', icon: 'add-guest' },
+    { id: 'photos', label: 'Team photos', icon: 'camera' },
   ]
 
   return (
@@ -114,7 +118,7 @@ export default function RosterPage() {
 
       {/* Hero: crest, record and rank over the stadium, then the next game with its estimate. */}
       <section aria-label={`${team.name} summary`} className="rise relative isolate flex flex-col gap-3 overflow-hidden rounded-hero p-4" style={{ '--i': 1 } as CSSProperties}>
-        <StadiumBackdrop photo="lights" team={team.color_key} />
+        <StadiumBackdrop photo="lights" team={team.color_key} src={teamPhoto} />
         <div className="flex items-center gap-3">
           <TeamBadge team={team} size="lg" />
           <div className="flex min-w-0 flex-1 flex-col">
@@ -242,6 +246,7 @@ export default function RosterPage() {
       <TradeSheet key={`trade-${sheetKey}`} open={open === 'trade'} onOpenChange={(o) => !o && setOpen(null)} initialTeamId={teamId} />
       <MovePlayerSheet key={`move-${sheetKey}`} open={open === 'move'} onOpenChange={(o) => !o && setOpen(null)} initialPlayerId={focus?.id} />
       <AddGuestSheet open={open === 'guest'} onOpenChange={(o) => !o && setOpen(null)} />
+      <TeamPhotosSheet key={`photos-${team.id}`} team={team} open={open === 'photos'} onOpenChange={(o) => !o && setOpen(null)} />
       {focus && <EditPlayerSheet key={`edit-${sheetKey}`} player={focus} open={open === 'edit'} onOpenChange={(o) => !o && setOpen(null)} />}
       {next && nextTeams && (
         <EnterScoreSheet
@@ -267,7 +272,7 @@ function PlayerRow({ player, team, ppg, onOpen }: { player: Player; team: Team |
         className="pressable lit flex min-h-(--tap-min) w-full items-center gap-3 bg-transparent px-3 py-2 text-left hover-fine:bg-(--row-hover)"
       >
         <span className="w-10 shrink-0 rounded-chip bg-(--press-fill) py-0.5 text-center caps-label text-text">{slot.slice(0, 4)}</span>
-        <PlayerBadge jersey={player.jersey} team={team?.color_key} size="sm" />
+        <PlayerBadge jersey={player.jersey} team={team?.color_key} photo={player.photo_path} size="sm" />
         <span className="flex min-w-0 flex-1 flex-col leading-tight">
           <span className="truncate font-strong">{displayName(player)}</span>
           <span className="truncate caps-label">{player.positions.slice(1).join(' · ') || (player.is_guest ? 'Guest' : ' ')}</span>

@@ -22,6 +22,12 @@ const SUPABASE_STUB = `
   grant usage on schema public to anon, authenticated;
   alter default privileges in schema public grant all on tables to anon, authenticated;
   alter default privileges in schema public grant all on functions to anon, authenticated;
+  create schema storage;
+  create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
+  create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text, owner uuid);
+  alter table storage.objects enable row level security;
+  grant usage on schema storage to anon, authenticated;
+  grant select, insert, update, delete on storage.objects to anon, authenticated;
 `
 
 const AKIVA = '00000000-0000-0000-0000-00000000000a'
@@ -47,6 +53,7 @@ beforeAll(async () => {
   await db.exec(sql('001_initial_schema.sql'))
   await db.exec(sql('002_reference_data.sql'))
   await db.exec(sql('003_game_night_trades_projections.sql'))
+  await db.exec(sql('004_photos.sql'))
   // Owner setup (as in the SQL editor): players, teams, a season.
   await db.exec(`
     insert into public.players (full_name, login_name) values ('Akiva Test', 'akiva'), ('Eddie Test', 'eddie'), ('Leon Test', 'leo');
@@ -328,5 +335,47 @@ describe('playoffs', () => {
     const [score] = await as<{ kind: string; status: string }>(AKIVA, `select kind, status from public.game_scores where game_id = $1`, [game?.id])
     expect(score).toEqual({ kind: 'playoff', status: 'final' })
     expect(await table()).toEqual(before)
+  })
+})
+
+describe('photos (change 004)', () => {
+  const tig = '10000000-0000-0000-0000-000000000001'
+  const file = (folder: string) => `${folder}/${crypto.randomUUID()}.webp`
+
+  it('keeps the photos bucket private', async () => {
+    const [b] = (await db.query<{ public: boolean }>(`select public from storage.buckets where id = 'photos'`)).rows
+    expect(b?.public).toBe(false)
+  })
+
+  it('lets a member add and see a player photo, then point the player at it', async () => {
+    const [p] = await as<{ id: string }>(AKIVA, `select id from public.players where login_name = 'akiva'`)
+    const name = file(`players/${p?.id}`)
+    await as(AKIVA, `insert into storage.objects (bucket_id, name) values ('photos', $1)`, [name])
+    await expect(as(EDDIE, `select name from storage.objects where name = $1`, [name]).then((r) => r.length)).resolves.toBe(1)
+    await as(AKIVA, `update public.players set photo_path = $1 where id = $2`, [name, p?.id])
+    const [h] = await as<{ n: number }>(AKIVA, `select count(*)::int as n from public.edit_history where table_name = 'players' and row_id = $1`, [p?.id])
+    expect(h?.n).toBeGreaterThan(0)
+  })
+
+  it('accepts team logos and team photos', async () => {
+    const logo = `teams/${tig}/logo-${crypto.randomUUID()}.webp`
+    const photo = `teams/${tig}/photo-${crypto.randomUUID()}.jpg`
+    await as(AKIVA, `insert into storage.objects (bucket_id, name) values ('photos', $1), ('photos', $2)`, [logo, photo])
+    await as(AKIVA, `update public.teams set logo_path = $1, photo_path = $2 where id = $3`, [logo, photo, tig])
+    const [t] = await as<{ logo_path: string }>(AKIVA, `select logo_path from public.teams where id = $1`, [tig])
+    expect(t?.logo_path).toBe(logo)
+  })
+
+  it('keeps photos away from logged-out visitors and unlinked logins', async () => {
+    await expect(as('anon', `select name from storage.objects where bucket_id = 'photos'`).then((r) => r.length)).resolves.toBe(0)
+    await expect(as(STRANGER, `select name from storage.objects where bucket_id = 'photos'`).then((r) => r.length)).resolves.toBe(0)
+    await expect(as(STRANGER, `insert into storage.objects (bucket_id, name) values ('photos', $1)`, [file(`players/${tig}`)])).rejects.toThrow()
+  })
+
+  it('refuses odd file names, overwrites and deletes', async () => {
+    await expect(as(AKIVA, `insert into storage.objects (bucket_id, name) values ('photos', 'anything/evil.html')`)).rejects.toThrow()
+    await expect(as(AKIVA, `update public.players set photo_path = 'http://elsewhere/x.png' where login_name = 'akiva'`)).rejects.toThrow()
+    await expect(as(AKIVA, `update storage.objects set name = 'x' where bucket_id = 'photos'`).then((r) => r.length)).resolves.toBe(0)
+    await expect(as(AKIVA, `delete from storage.objects where bucket_id = 'photos'`).then((r) => r.length)).resolves.toBe(0)
   })
 })

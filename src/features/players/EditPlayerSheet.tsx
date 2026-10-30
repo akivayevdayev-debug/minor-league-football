@@ -2,9 +2,11 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useUpdatePlayer, type PlayerChanges } from '../league'
+import { uploadPhoto } from '../../lib/photos'
 import type { Player } from '../../types/db'
 import { Button } from '../../ui/Button'
 import { Field } from '../../ui/Field'
+import { PhotoField } from '../../ui/PhotoField'
 import { Sheet } from '../../ui/Sheet'
 
 interface Props {
@@ -63,6 +65,19 @@ export function EditPlayerSheet({ player, open, onOpenChange }: Props) {
       }
     >
       <form id="edit-player" onSubmit={submit} className="flex flex-col gap-3">
+        <PhotoField
+          label="Player photo"
+          hint="Saves as soon as you pick it. A face close-up works best."
+          shape="round"
+          path={player.photo_path}
+          placeholder={<span className="numeral text-score text-text-3">{player.jersey ?? '–'}</span>}
+          onPick={async (file) => {
+            const path = await uploadPhoto('player', player.id, file)
+            await update.mutateAsync({ id: player.id, changes: { photo_path: path } }).catch(() => {
+              throw new Error("Couldn't save the photo. Check your signal and try again.")
+            })
+          }}
+        />
         <Field label="Nickname" className="gap-1" hint="What the app shows. Leave blank to use the full name." maxLength={40} value={nickname} onChange={(e) => setNickname(e.target.value)} />
         <Field
           label="Jersey number"

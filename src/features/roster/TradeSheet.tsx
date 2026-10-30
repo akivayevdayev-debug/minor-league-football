@@ -56,7 +56,7 @@ function PickList({
                 on && 'surface-accent',
               )}
             >
-              <PlayerBadge jersey={p.jersey} team={team.color_key} size="sm" />
+              <PlayerBadge jersey={p.jersey} team={team.color_key} photo={p.photo_path} size="sm" />
               <span className="min-w-0 flex-1 truncate text-body">{displayName(p)}</span>
               {on && <Icon name="check" size="xs" />}
             </button>

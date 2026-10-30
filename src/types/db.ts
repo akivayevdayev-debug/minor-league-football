@@ -14,6 +14,7 @@ export interface Player {
   birth_year: number | null
   height_in: number | null
   weight_lb: number | null
+  photo_path: string | null
   achievements: string
   is_guest: boolean
   voided_at: string | null
@@ -24,6 +25,8 @@ export interface Team {
   name: string
   short_name: string
   color_key: TeamColor
+  logo_path: string | null
+  photo_path: string | null
   voided_at: string | null
 }
 

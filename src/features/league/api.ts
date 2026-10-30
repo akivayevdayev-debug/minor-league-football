@@ -139,7 +139,7 @@ export function useAddGuest() {
   })
 }
 
-export type PlayerChanges = Partial<Pick<Player, 'nickname' | 'jersey' | 'positions' | 'achievements' | 'voided_at'>>
+export type PlayerChanges = Partial<Pick<Player, 'nickname' | 'jersey' | 'positions' | 'achievements' | 'photo_path' | 'voided_at'>>
 
 export function useUpdatePlayer() {
   const qc = useQueryClient()
@@ -147,6 +147,18 @@ export function useUpdatePlayer() {
     mutationFn: ({ id, changes }: { id: string; changes: PlayerChanges }) =>
       rows<Player>(supabase.from('players').update(changes).eq('id', id).select().single()),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.players }),
+  })
+}
+
+export type TeamChanges = Partial<Pick<Team, 'logo_path' | 'photo_path'>>
+
+/** Points a team at a new logo or team photo. The old one stays in storage and in the edit history. */
+export function useUpdateTeam() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, changes }: { id: string; changes: TeamChanges }) =>
+      rows<Team>(supabase.from('teams').update(changes).eq('id', id).select().single()),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.teams }),
   })
 }
 

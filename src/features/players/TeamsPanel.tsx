@@ -71,7 +71,7 @@ export function TeamsPanel() {
                           to={`/players/${p.id}`}
                           className="pressable lit flex min-h-(--tap-min) items-center gap-3 rounded-control px-2 py-1 hover-fine:bg-(--row-hover)"
                         >
-                          <PlayerBadge jersey={p.jersey} team={team.color_key} size="sm" />
+                          <PlayerBadge jersey={p.jersey} team={team.color_key} photo={p.photo_path} size="sm" />
                           <span className="truncate font-medium">{displayName(p)}</span>
                         </Link>
                       </li>

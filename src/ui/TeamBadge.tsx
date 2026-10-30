@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import { usePhotoUrl } from '../lib/photos'
 import type { Team } from '../types/db'
 import { Icon } from './Icon'
 import { teamMotif, teamStyle } from './team'
@@ -13,9 +14,17 @@ const sizes = {
 /**
  * Team crest: a shield filled with the team gradient, the team's motif (lightning, sun, paw)
  * and its short name. A light sweep crosses it on hover. Decorative: the name is always written nearby.
+ * Once the team has a logo (teams.logo_path), the logo fills the shield instead of the motif.
  */
-export function TeamBadge({ team, size = 'md' }: { team: Pick<Team, 'short_name' | 'color_key'> | undefined; size?: keyof typeof sizes }) {
+export function TeamBadge({
+  team,
+  size = 'md',
+}: {
+  team: (Pick<Team, 'short_name' | 'color_key'> & { logo_path?: string | null }) | undefined
+  size?: keyof typeof sizes
+}) {
   const id = useId().replace(/:/g, '')
+  const logo = usePhotoUrl(team?.logo_path)
   const s = sizes[size]
   const small = size === 'sm'
   return (
@@ -37,6 +46,7 @@ export function TeamBadge({ team, size = 'md' }: { team: Pick<Team, 'short_name'
           </clipPath>
         </defs>
         <path d="M50 3 L94 16 V58 C94 86 74 106 50 117 C26 106 6 86 6 58 V16 Z" fill={`url(#f${id})`} />
+        {logo && <image href={logo} x="0" y="0" width="100" height="120" preserveAspectRatio="xMidYMid slice" clipPath={`url(#c${id})`} />}
         <g clipPath={`url(#c${id})`}>
           {/* inner bevel and a diagonal light band */}
           <path d="M50 12 L86 22 V58 C86 81 70 98 50 108 C30 98 14 81 14 58 V22 Z" fill="none" stroke="var(--glass-highlight)" strokeWidth="2" />
@@ -46,7 +56,7 @@ export function TeamBadge({ team, size = 'md' }: { team: Pick<Team, 'short_name'
         <path d="M50 3 L94 16 V58 C94 86 74 106 50 117 C26 106 6 86 6 58 V16 Z" fill="none" stroke={`url(#r${id})`} strokeWidth="2.5" />
       </svg>
       <span className="relative flex size-full flex-col items-center justify-center gap-0.5 pb-[12%] text-text">
-        {team ? (
+        {logo ? null : team ? (
           <>
             <Icon name={teamMotif[team.color_key]} size={s.icon} filled />
             {!small && <span className={`${s.text} display-caps leading-none font-bold tracking-label`}>{team.short_name.slice(0, 3)}</span>}

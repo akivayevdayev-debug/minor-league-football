@@ -84,7 +84,7 @@ export function PlayerList() {
                       to={`/players/${p.id}`}
                       className="pressable lit flex min-h-(--tap-min) items-center gap-3 px-3 py-2 hover-fine:bg-(--row-hover)"
                     >
-                      <PlayerBadge jersey={p.jersey} team={team?.color_key} size="sm" />
+                      <PlayerBadge jersey={p.jersey} team={team?.color_key} photo={p.photo_path} size="sm" />
                       <span className="flex min-w-0 flex-1 flex-col leading-tight">
                         <span className="truncate font-strong">{displayName(p)}</span>
                         <span className="truncate caps-label">{p.positions.length > 0 ? p.positions.join(' · ') : p.is_guest ? 'Guest' : 'No position yet'}</span>

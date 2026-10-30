@@ -44,7 +44,7 @@ export default function MePage() {
         style={teamStyle(team?.color_key)}
       >
         <StadiumBackdrop photo="sunset" team={team?.color_key} />
-        <PlayerBadge jersey={me?.jersey ?? null} team={team?.color_key} size="md" />
+        <PlayerBadge jersey={me?.jersey ?? null} team={team?.color_key} photo={me?.photo_path} size="md" />
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <h1 className="text-headline leading-none">{me ? displayName(me) : 'You'}</h1>
           <p className="flex flex-wrap items-center gap-2 text-small text-text-2-strong">

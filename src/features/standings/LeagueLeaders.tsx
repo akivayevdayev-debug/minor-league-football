@@ -55,7 +55,7 @@ export function LeagueLeaders() {
               <span className="caps-label">{stat.label}</span>
               {player ? (
                 <span className="flex items-center gap-2">
-                  <PlayerBadge jersey={player.jersey} team={team?.color_key} size="sm" />
+                  <PlayerBadge jersey={player.jersey} team={team?.color_key} photo={player.photo_path} size="sm" />
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="truncate text-small font-strong">{displayName(player)}</span>
                     <span className="truncate text-label text-text-2">{team?.name ?? (player.is_guest ? 'Guest' : 'No team')}</span>

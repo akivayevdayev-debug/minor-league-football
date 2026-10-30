@@ -18,12 +18,12 @@ function DrawerContent({ className, children, ...props }: React.ComponentProps<t
       <DrawerPrimitive.Content
         data-slot="drawer-content"
         className={cn(
-          'glass-strong safe-bottom fixed inset-x-0 bottom-0 z-(--z-sheet) mx-auto flex max-h-(--sheet-max) max-w-(--content-max) flex-col rounded-t-hero border-b-0 outline-none md:bottom-(--nav-inset) md:rounded-hero md:border-b',
+          'glass-strong sheet-glass safe-bottom fixed inset-x-0 bottom-0 z-(--z-sheet) mx-auto flex max-h-(--sheet-max) max-w-(--content-max) flex-col rounded-t-hero border-b-0 outline-none md:bottom-(--nav-inset) md:rounded-hero md:border-b',
           className,
         )}
         {...props}
       >
-        <div aria-hidden="true" className="mx-auto mt-2 h-1 w-9 shrink-0 rounded-pill bg-text-3" />
+        <div aria-hidden="true" className="mx-auto mt-2.5 h-1.5 w-10 shrink-0 rounded-pill bg-(--glass-edge)" />
         {children}
       </DrawerPrimitive.Content>
     </DrawerPortal>

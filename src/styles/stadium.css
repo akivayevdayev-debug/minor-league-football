@@ -31,9 +31,15 @@
     mix-blend-mode: normal;
   }
 
-  /* Soft team-colour glow behind a box (team tiles, your-team rows). */
+  /* Team-colour glow around a box (team tiles, your-team rows): the box keeps its own glass edge,
+     with a close team-colour halo and a faint wide spill around it, like light on glass. */
   .team-glow {
-    box-shadow: 0 0 var(--glow-radius) color-mix(in srgb, var(--team, transparent) 35%, transparent);
+    box-shadow:
+      var(--glass-specular),
+      var(--glass-depth),
+      0 0 var(--glow-radius-sm) color-mix(in srgb, var(--team, transparent) 26%, transparent),
+      0 0 var(--glow-radius) color-mix(in srgb, var(--team, transparent) 16%, transparent),
+      var(--glass-shadow);
   }
 
   /* One even darkening so white text reads. No vignettes, no colour blobs. */
@@ -62,10 +68,58 @@
     }
   }
 
+  /* Game tab scoreboard: each team's colour lights its own half of the glass from the top,
+     with a bright team-colour lip. Static light only; nothing here moves. */
+  .score-light {
+    position: absolute;
+    inset-block: 0;
+    width: 50%;
+    pointer-events: none;
+    background: radial-gradient(95% 80% at var(--light-x, 30%) 0%, color-mix(in srgb, var(--team, transparent) 40%, transparent), transparent 72%);
+  }
+  .score-light::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    inset-inline: 14%;
+    height: var(--stripe);
+    border-radius: var(--stripe);
+    background: linear-gradient(90deg, transparent, var(--team-light, transparent), transparent);
+    box-shadow: 0 0 var(--glow-radius-sm) var(--team, transparent);
+  }
+  /* The leading score glows in its team's colour; the trailing one steps back. */
+  .score-lead {
+    text-shadow: 0 0 2px color-mix(in srgb, var(--team, white) 60%, white), 0 0 22px color-mix(in srgb, var(--team, transparent) 55%, transparent);
+  }
+
+  /* Score keys: the team fill with a lit lip on top and a shaded edge below, like a real button cap. */
+  .score-key {
+    background-image: linear-gradient(180deg, var(--key-sheen), transparent 55%);
+    box-shadow:
+      inset 0 var(--border-width) 0 var(--key-lip),
+      inset 0 calc(-2 * var(--border-width)) 0 var(--key-edge),
+      0 var(--glow-radius-sm) var(--glow-radius) calc(-1 * var(--glow-radius-sm)) color-mix(in srgb, var(--team, transparent) 55%, transparent);
+  }
+
+  /* Player cards: a team-colour stripe down the left edge. */
+  .team-stripe {
+    position: relative;
+    overflow: hidden;
+  }
+  .team-stripe::before {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    width: var(--stripe);
+    background: var(--team, transparent);
+    box-shadow: 0 0 var(--glow-radius-sm) var(--team, transparent);
+  }
+
   /* The champions: a gold rim and a warm gold glow (Standings → Playoffs). */
   .champion {
     border: var(--border-width) solid var(--gold);
-    box-shadow: 0 0 var(--glow-radius) var(--gold-soft), inset 0 0 0 var(--border-width) var(--gold-soft);
+    box-shadow: inset 0 var(--border-width) 0 var(--gold-halo), 0 0 var(--glow-radius-sm) var(--gold-halo), 0 0 var(--glow-radius) var(--gold-soft);
   }
   .champion-crest {
     filter: drop-shadow(0 0 var(--glow-radius-sm) var(--gold));

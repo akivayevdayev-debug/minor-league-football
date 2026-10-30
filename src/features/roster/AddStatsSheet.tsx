@@ -109,7 +109,7 @@ export function AddStatsSheet({
                 min={0}
                 max={99}
                 value={values[s.id] ?? 0}
-                hint={s.fantasy_points ? `${s.fantasy_points > 0 ? '+' : ''}${s.fantasy_points} pts each` : undefined}
+                hint={s.fantasy_points ? `${s.fantasy_points > 0 ? '+' : ''}${s.fantasy_points} ${Math.abs(s.fantasy_points) === 1 ? 'pt' : 'pts'} each` : undefined}
                 onChange={(n) => setValues((v) => ({ ...v, [s.id]: n }))}
               />
             ))}

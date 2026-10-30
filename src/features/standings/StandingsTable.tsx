@@ -51,7 +51,7 @@ export function StandingsTable({ rows, teamById, highlightTeamId, view = 'record
               <tr
                 key={r.team_id}
                 style={{ ...teamStyle(team?.color_key), '--i': Math.min(idx, 8) } as CSSProperties}
-                className={`rise border-t border-divider ${first ? 'surface-accent' : mine ? 'bg-(--row-hover)' : ''}`}
+                className={`rise border-t border-divider ${first || mine ? 'surface-accent' : ''}`}
               >
                 <td className="w-6 py-2.5 pl-3 pr-3 text-center">
                   {first ? (
@@ -67,7 +67,7 @@ export function StandingsTable({ rows, teamById, highlightTeamId, view = 'record
                   <span className="flex min-w-0 items-center gap-3">
                     <TeamBadge team={team} size="sm" />
                     <span className="flex min-w-0 flex-col">
-                      <span className="truncate font-strong text-(--team-light)">{team?.name ?? 'Unknown team'}</span>
+                      <span className="truncate font-strong text-text">{team?.name ?? 'Unknown team'}</span>
                       {mine && <span className="caps-label text-accent">Your team</span>}
                     </span>
                   </span>

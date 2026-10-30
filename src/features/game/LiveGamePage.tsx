@@ -3,7 +3,7 @@
  * Hard rules: clock and score buttons get a press scale only (no ripple, no other motion),
  * every button here is at least 56 px tall. The .still wrapper switches off ripple, lean and sheen. The clock stores only state changes.
  */
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { currentTeams, displayName, usePlayers, useRosters, useSettings, useStatTypes, useTeams } from '../league'
@@ -212,16 +212,18 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
       {/* Scoreboard */}
       <section aria-label="Score" className="relative isolate overflow-hidden rounded-hero glass-panel px-4 pt-6 pb-5">
         <StadiumBackdrop photo="lights" />
-        <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2">
+        <div aria-hidden="true" style={teamStyle(home.color_key)} className="score-light left-0" />
+        <div aria-hidden="true" style={{ ...teamStyle(away.color_key), '--light-x': '70%' } as CSSProperties} className="score-light right-0" />
+        <div className="relative grid grid-cols-[1fr_auto_1fr] items-start gap-2">
           {[{ t: home, pts: score.home }, null, { t: away, pts: score.away }].map((side, i) =>
             side ? (
               <div key={i} style={teamStyle(side.t.color_key)} className="flex flex-col items-center gap-2 text-center">
                 <TeamBadge team={side.t} size="lg" />
                 <span className="display-caps text-body-lg text-(--team-light)">{side.t.name}</span>
-                <span className="numeral text-score text-text" aria-live="polite">{side.pts}</span>
+                <span className={`numeral text-score ${side.pts >= Math.max(score.home, score.away) ? `text-text ${side.pts > Math.min(score.home, score.away) ? 'score-lead' : ''}` : 'text-text-2'}`} aria-live="polite">{side.pts}</span>
               </div>
             ) : (
-              <div key={i} className="flex flex-col items-center gap-1 pt-6">
+              <div key={i} className="mt-6 flex flex-col items-center gap-1 rounded-control surface-inset px-3 py-2">
                 <span className="caps-label">{statusLabel}</span>
                 <span role="timer" aria-label={clockDown ? 'Clock unavailable' : `${mmss(left)} left`} className={`numeral text-headline ${left === 0 ? 'text-danger' : 'text-text'}`}>
                   {clockDown ? '--:--' : mmss(left)}
@@ -300,7 +302,7 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
                   key={s.type}
                   type="button"
                   onClick={() => add(t, s.type)}
-                  className="pressable flex min-h-(--tap-score) items-center justify-between rounded-panel bg-(--team) px-4 text-primary-ink"
+                  className="pressable score-key flex min-h-(--tap-score) items-center justify-between rounded-panel bg-(--team) px-4 text-primary-ink"
                 >
                   <span className="display-caps text-title">{s.label}</span>
                   <span className="numeral text-stat">+{s.points}</span>

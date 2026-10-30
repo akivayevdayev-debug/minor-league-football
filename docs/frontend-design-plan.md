@@ -50,7 +50,7 @@ Akiva found the first build "way too basic / too generic" and asked for a comple
 - **Motion everywhere (Akiva, later on 2026-10-30: "animations should be everywhere… hovering, following mouse or button presses").** Every card, row, button and chip responds:
   - *Pointer light:* glass cards and buttons carry a soft light that follows the mouse (desktop) or blooms from the touch point (phone).
   - *Tilt:* the Next game hero and profile hero tilt a few degrees toward the pointer on spring physics (desktop only, off for reduced motion).
-  - *Magnetic primary buttons:* they lean a few pixels toward the cursor and spring back.
+  - *Gold sheen on the white button* (replaces the magnetic lean and tap ripple, removed 2026-10-30): a warm floodlight streak crosses on hover, or once on press on phones. Glows are layered (bright core, soft halo). Game tab: each team's colour lights its half of the scoreboard, the leading score glows, score keys have a lit top lip, player cards carry a team stripe.
   - *Hover lift:* cards rise 2 px and brighten their rim on hover (mouse only); every press scales to 0.97.
   - *Entrances:* screens and lists rise in with a stagger; sheets and toasts use springs.
   - Hover effects only run on devices with a real mouse; phones get the touch bloom and press instead. Reduced motion turns movement into simple fades.

@@ -8,6 +8,7 @@ import { Button } from '../../ui/Button'
 import { Field } from '../../ui/Field'
 import { PhotoField } from '../../ui/PhotoField'
 import { Sheet } from '../../ui/Sheet'
+import { splitPositions } from './positions'
 
 interface Props {
   player: Player
@@ -55,7 +56,7 @@ export function EditPlayerSheet({ player, open, onOpenChange }: Props) {
       {
         nickname: nickname.trim() || null,
         jersey: jerseyNumber,
-        positions: positions.split(',').map((s) => s.trim()).filter(Boolean),
+        positions: splitPositions([positions]),
         height_in: height ?? null,
         weight_lb: weightLb ?? null,
         birth_year: born ?? null,
@@ -100,7 +101,7 @@ export function EditPlayerSheet({ player, open, onOpenChange }: Props) {
           value={jersey}
           onChange={(e) => setJersey(e.target.value)}
         />
-        <Field label="Positions" className="gap-1" hint="Separate with commas, e.g. Corner, WR." value={positions} onChange={(e) => setPositions(e.target.value)} />
+        <Field label="Positions" className="gap-1" hint="Commas or spaces, e.g. WR, CB, Right guard." value={positions} onChange={(e) => setPositions(e.target.value)} />
         <fieldset className="flex flex-col gap-1">
           <legend className="caps-label pb-1">Height</legend>
           <div className="grid grid-cols-2 gap-2">

@@ -60,3 +60,12 @@ describe('minutes across games', () => {
     expect(m.gameIds.sort()).toEqual(['g1', 'g2'])
   })
 })
+
+describe('minutes only from kickoff', () => {
+  it('counts a lineup saved at kickoff, not one first saved late in the game', async () => {
+    const { trackedFromKickoff } = await import('./lineup')
+    expect(trackedFromKickoff([row('t', ['a', 'b'], 1, 600)], 't', H)).toBe(true)
+    expect(trackedFromKickoff([row('t', ['a', 'b'], 2, 49)], 't', H)).toBe(false)
+    expect(trackedFromKickoff([row('t', ['a', 'b'], 1, 600)], 'other', H)).toBe(false)
+  })
+})

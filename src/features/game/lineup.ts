@@ -30,6 +30,19 @@ const order = (halfSeconds: number) => (a: Lineup, b: Lineup) =>
   elapsedAt(a.half, a.clock_seconds, halfSeconds) - elapsedAt(b.half, b.clock_seconds, halfSeconds) ||
   a.created_at.localeCompare(b.created_at)
 
+/** Lineups saved within this many seconds of kickoff still count as "from kickoff". */
+export const KICKOFF_GRACE = 60
+
+/**
+ * True when this team's lineup was saved from the start of the game. Minutes from a lineup first
+ * saved mid-game (say with 0:49 left) would be misleading, so they are not shown or counted.
+ */
+export function trackedFromKickoff(lineups: Lineup[], teamId: string, halfSeconds: number): boolean {
+  const mine = lineups.filter((l) => l.team_id === teamId)
+  if (!mine.length) return false
+  return Math.min(...mine.map((l) => elapsedAt(l.half, l.clock_seconds, halfSeconds))) <= KICKOFF_GRACE
+}
+
 /** The team's players on the field right now, or null before kickoff. */
 export function currentLineup(lineups: Lineup[], teamId: string, halfSeconds: number): string[] | null {
   const mine = lineups.filter((l) => l.team_id === teamId).sort(order(halfSeconds))
@@ -147,7 +160,8 @@ export function playerMinutes(
   let seconds = 0
   const gameIds: string[] = []
   for (const [gameId, list] of byGame) {
-    if (!list.some((l) => l.on_field.includes(playerId))) continue
+    const teamId = list.find((l) => l.on_field.includes(playerId))?.team_id
+    if (!teamId || !trackedFromKickoff(list, teamId, halfSeconds)) continue
     gameIds.push(gameId)
     seconds += playingTime(list, halfSeconds, gameElapsed(clockOf.get(gameId), halfSeconds, now)).get(playerId) ?? 0
   }

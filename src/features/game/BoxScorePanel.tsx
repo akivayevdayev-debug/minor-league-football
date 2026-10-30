@@ -10,7 +10,7 @@ import { Skeleton } from '../../ui/Skeleton'
 import { TeamBadge } from '../../ui/TeamBadge'
 import { teamStyle } from '../../ui/team'
 import { useGameClock, useGameHistory, type GameHistoryRow, type GameStat } from './api'
-import { gameElapsed, minutesText, playingTime, useGameLineups } from './lineup'
+import { gameElapsed, minutesText, playingTime, trackedFromKickoff, useGameLineups } from './lineup'
 import { GameStatSheet } from './GameStatSheet'
 
 const ABBR: Partial<Record<StatTypeId, string>> = {
@@ -77,7 +77,8 @@ function TeamBox({
   minutes: Map<string, number> | null
 }) {
   const points = lines.filter((l) => l.team_id === team.id).reduce((n, l) => n + l.points, 0)
-  const playerCols = statTypes.filter((s) => s.id !== HIDDEN_STAT && !s.team_level)
+  const used = useMemo(() => new Set(stats.filter((s) => s.value !== 0).map((s) => s.stat_type_id)), [stats])
+  const playerCols = statTypes.filter((s) => s.id !== HIDDEN_STAT && !s.team_level && used.has(s.id))
   const teamCols = statTypes.filter((s) => s.id !== HIDDEN_STAT && s.team_level)
   const t = useMemo(() => tally(team.id, stats), [team.id, stats])
 
@@ -112,7 +113,7 @@ function TeamBox({
           <table className="nums w-full min-w-max border-collapse text-small">
             <thead>
               <tr className="text-text-2">
-                <th scope="col" className="sticky left-0 bg-panel px-4 py-2 text-left caps-label">
+                <th scope="col" className="px-4 py-2 text-left caps-label">
                   Player
                 </th>
                 {minutes && (
@@ -130,7 +131,7 @@ function TeamBox({
             <tbody className="divide-y divide-divider">
               {rows.map((r) => (
                 <tr key={r.playerId}>
-                  <th scope="row" className="sticky left-0 bg-panel px-4 py-2.5 text-left font-normal">
+                  <th scope="row" className="whitespace-nowrap px-4 py-2.5 text-left font-normal">
                     {r.player?.jersey != null && <span className="text-(--team-light)">#{r.player.jersey} </span>}
                     <span className="font-strong">{r.player ? displayName(r.player) : 'Unknown player'}</span>
                     {r.player?.is_guest && <span className="ml-2 caps-label">Sub</span>}
@@ -148,7 +149,7 @@ function TeamBox({
               ))}
               {teamTotals.length > 0 && (
                 <tr>
-                  <th scope="row" className="sticky left-0 bg-panel px-4 py-2.5 text-left font-strong">
+                  <th scope="row" className="px-4 py-2.5 text-left font-strong">
                     Team
                   </th>
                   <td colSpan={Math.max(playerCols.length, 1)} className="px-2 py-2.5 text-left">
@@ -195,7 +196,7 @@ function ScoringTimeline({
       {rows.length === 0 ? (
         <p className="text-small text-text-2">No scores yet.</p>
       ) : (
-        <ol className="flex flex-col divide-y divide-divider rounded-panel surface-solid">
+        <ol className="flex flex-col divide-y divide-divider rounded-panel glass-list overflow-hidden">
           {rows.map(({ line, homeScore, awayScore }) => {
             const team = line.team_id === home.id ? home : away
             const who = line.player_id ? playersById.get(line.player_id) : undefined
@@ -206,9 +207,13 @@ function ScoringTimeline({
                   <span className="font-strong">{team.short_name}</span> {TYPE_LABEL[line.scoring_type_id]}
                   {who && <span className="text-text-2"> · {displayName(who)}</span>}
                 </span>
-                <span className="nums shrink-0 text-small text-text-2">
-                  {home.short_name} {homeScore} – {away.short_name} {awayScore}
-                </span>
+                {line.scoring_type_id === 'final_manual' ? (
+                  <span className="numeral shrink-0 text-body-lg text-text">+{line.points}</span>
+                ) : (
+                  <span className="nums shrink-0 text-small text-text-2">
+                    {home.short_name} {homeScore} – {away.short_name} {awayScore}
+                  </span>
+                )}
               </li>
             )
           })}
@@ -250,7 +255,7 @@ function ChangeHistory({ gameId, playersById }: { gameId: string; playersById: M
       ) : (history.data ?? []).length === 0 ? (
         <p className="text-small text-text-2">No changes yet.</p>
       ) : (
-        <ol className="flex flex-col divide-y divide-divider rounded-panel surface-solid">
+        <ol className="flex flex-col divide-y divide-divider rounded-panel glass-list overflow-hidden">
           {(history.data ?? []).map((row) => {
             const pid = typeof row.after?.player_id === 'string' ? row.after.player_id : typeof row.before?.player_id === 'string' ? row.before.player_id : null
             const who = pid ? playersById.get(pid) : undefined
@@ -297,8 +302,9 @@ export function BoxScorePanel({
   const [now] = useState(() => Date.now())
   const halfSeconds = (settings.data?.half_minutes ?? 10) * 60
   const minutesFor = (teamId: string) => {
-    const mine = (lineups.data ?? []).filter((l) => l.team_id === teamId)
-    return mine.length ? playingTime(mine, halfSeconds, gameElapsed(clock.data, halfSeconds, now)) : null
+    const all = lineups.data ?? []
+    if (!trackedFromKickoff(all, teamId, halfSeconds)) return null
+    return playingTime(all.filter((l) => l.team_id === teamId), halfSeconds, gameElapsed(clock.data, halfSeconds, now))
   }
 
   return (

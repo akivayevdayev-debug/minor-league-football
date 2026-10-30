@@ -16,7 +16,7 @@ export function Sheet({ open, onOpenChange, title, description, children, footer
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent>
-        <div className="flex flex-col gap-1 px-4 pt-3">
+        <div className="flex flex-col gap-1 border-b border-divider px-4 pt-3 pb-3">
           <DrawerTitle>{title}</DrawerTitle>
           <DrawerDescription className={description ? undefined : 'sr-only'}>{description ?? title}</DrawerDescription>
         </div>

@@ -78,7 +78,8 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: linear-gradient(105deg, transparent 35%, var(--floodlight-core) 50%, transparent 65%);
+    background: linear-gradient(105deg, transparent 30%, color-mix(in srgb, var(--sheen-gold) 40%, transparent) 44%, var(--sheen-gold) 50%, color-mix(in srgb, var(--sheen-gold) 40%, transparent) 56%, transparent 70%);
+    mix-blend-mode: multiply;
     translate: -110% 0;
   }
 
@@ -92,6 +93,14 @@
       box-shadow: var(--glass-shadow), 0 0 0 var(--border-width) var(--glass-border-strong);
     }
     .sheen:hover::after {
+      translate: 110% 0;
+      transition: translate var(--dur-rise) var(--ease-out);
+    }
+  }
+
+  /* Phones have no hover: the gold streak crosses once on press instead. */
+  @media (hover: none) {
+    .sheen:active::after {
       translate: 110% 0;
       transition: translate var(--dur-rise) var(--ease-out);
     }

@@ -96,7 +96,7 @@ export default function RosterPage() {
     { id: 'trade', label: 'Make a trade', icon: 'trade' },
     { id: 'move', label: 'Move player', icon: 'players' },
     { id: 'guest', label: 'Add guest', icon: 'add-guest' },
-    { id: 'photos', label: 'Team photos', icon: 'camera' },
+    { id: 'photos', label: 'Edit team', icon: 'edit' },
   ]
 
   return (
@@ -162,7 +162,7 @@ export default function RosterPage() {
       </nav>
 
       {/* Lineup */}
-      <section aria-labelledby="lineup-title" className="rise glass-list team-glow overflow-hidden rounded-panel" style={{ '--i': 3 } as CSSProperties}>
+      <section aria-labelledby="lineup-title" className="rise glass-panel team-glow overflow-hidden rounded-panel" style={{ '--i': 3 } as CSSProperties}>
         <header className="surface-accent flex items-center gap-2 px-3 py-2">
           <h2 id="lineup-title" className="flex-1 text-body font-strong">
             Lineup <span className="text-text-2 nums">· {lineup.length}</span>
@@ -178,7 +178,7 @@ export default function RosterPage() {
         {lineup.length === 0 ? (
           <p className="px-3 py-4 text-small text-text-2">No one on this team yet. Use Move player to add someone.</p>
         ) : (
-          <ul className="divide-y divide-divider">
+          <ul className="divide-y divide-(--glass-groove)">
             {lineup.map((p) => (
               <PlayerRow key={p.id} player={p} team={team} ppg={projections.data?.get(p.id)?.points_per_game} onOpen={() => setActionsFor(p)} />
             ))}
@@ -187,14 +187,14 @@ export default function RosterPage() {
       </section>
 
       {freeAgents.length > 0 && (
-        <section aria-labelledby="league-title" className="rise glass-list overflow-hidden rounded-panel" style={{ '--i': 4 } as CSSProperties}>
+        <section aria-labelledby="league-title" className="rise glass-panel overflow-hidden rounded-panel" style={{ '--i': 4 } as CSSProperties}>
           <header className="flex items-center gap-2 px-3 py-2">
             <h2 id="league-title" className="flex-1 text-body font-strong">
-              No team
+              QB official
             </h2>
             <span className="caps-label">Plays for any team</span>
           </header>
-          <ul className="divide-y divide-divider border-t border-divider">
+          <ul className="divide-y divide-(--glass-groove) border-t border-(--glass-groove)">
             {freeAgents.map((p) => (
               <PlayerRow key={p.id} player={p} team={undefined} ppg={projections.data?.get(p.id)?.points_per_game} onOpen={() => setActionsFor(p)} />
             ))}
@@ -212,7 +212,7 @@ export default function RosterPage() {
               Schedule
             </Link>
           </div>
-          <ul className="glass-list divide-y divide-divider overflow-hidden rounded-panel">
+          <ul className="glass-panel divide-y divide-(--glass-groove) overflow-hidden rounded-panel">
             {recent.map((g) => (
               <ResultRow key={g.id} game={g} teamId={teamId} teamById={snap.teamById} score={scores.data?.get(g.id)} />
             ))}
@@ -223,7 +223,7 @@ export default function RosterPage() {
       {/* Player actions */}
       <Sheet open={!!actionsFor} onOpenChange={(o) => !o && setActionsFor(null)} title={actionsFor ? displayName(actionsFor) : 'Player'}>
         {actionsFor && (
-          <ul className="glass-list divide-y divide-divider overflow-hidden rounded-panel">
+          <ul className="surface-inset divide-y divide-divider overflow-hidden rounded-panel">
             <ActionRow icon="me" label="View profile" onClick={() => navigate(`/players/${actionsFor.id}`)} />
             <ActionRow icon="stats" label="Add stats" onClick={() => show('stats', actionsFor)} />
             <ActionRow icon="edit" label="Edit details" onClick={() => show('edit', actionsFor)} />
@@ -275,7 +275,7 @@ function PlayerRow({ player, team, ppg, onOpen }: { player: Player; team: Team |
         <PlayerBadge jersey={player.jersey} team={team?.color_key} photo={player.photo_path} size="sm" />
         <span className="flex min-w-0 flex-1 flex-col leading-tight">
           <span className="truncate font-strong">{displayName(player)}</span>
-          <span className="truncate caps-label">{player.positions.slice(1).join(' · ') || (player.is_guest ? 'Guest' : ' ')}</span>
+          <span className="truncate caps-label">{player.positions.slice(1).map(shortPosition).join(' · ') || (player.is_guest ? 'Guest' : ' ')}</span>
         </span>
         {ppg !== undefined && (
           <span className="flex shrink-0 flex-col items-end leading-tight">
@@ -357,10 +357,17 @@ function ActionRow({ icon, label, onClick }: { icon: IconName; label: string; on
   return (
     <li>
       <button type="button" onClick={onClick} className="pressable flex min-h-(--tap-min) w-full items-center gap-3 bg-transparent px-3 py-2 text-left hover-fine:bg-(--row-hover)">
-        <Icon name={icon} size="sm" className="text-accent" />
+        <span className="flex size-(--badge-sm) shrink-0 items-center justify-center rounded-control bg-accent-soft text-accent">
+          <Icon name={icon} size="sm" />
+        </span>
         <span className="flex-1 font-strong">{label}</span>
         <Icon name="chevron" size="xs" className="text-text-3" />
       </button>
     </li>
   )
+}
+
+/** "Right guard" → "RG": long position names shortened so a row never cuts off. */
+function shortPosition(p: string): string {
+  return p.trim().includes(' ') ? p.trim().split(/\s+/).map((w) => w[0]).join('').toUpperCase() : p
 }

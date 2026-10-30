@@ -5,23 +5,27 @@
  * real stadium photos (Liquid Glass). Team colours lead; white is the main button; floodlight gold is a
  * small highlight only (focus, live, links).
  * Exceptions that cannot read CSS: the theme-color meta tag in index.html and the PWA manifest
- * both repeat --bg (#050B14) by hand.
+ * both repeat --bg (#08090B) by hand.
  */
 :root {
   /* ── Colour ─────────────────────────────────────────── */
-  --bg: #050b14;
-  --panel: #0b1624; /* deep midnight */
-  --panel-2: #12233a; /* a step lighter, for raised rows */
+  --bg: #08090b;
+  --panel: #111215; /* night graphite (neutral, no blue cast) */
+  --panel-2: #1b1d21; /* a step lighter, for raised rows */
   --primary: #f5f7fa; /* the main button: white capsule */
   --primary-ink: #050b14; /* text on the white button */
   --accent: #ffd36e; /* floodlight gold highlight: focus ring, eyebrows, small links. Never a big fill. */
   --accent-ink: #1a1203; /* text on a gold fill */
   --accent-soft: rgb(255 211 110 / 0.14);
   --accent-line: rgb(255 211 110 / 0.5);
-  --accent-glow: 0 0 24px rgb(255 211 110 / 0.4), 0 0 2px rgb(255 211 110 / 0.9);
-  --accent-glow-soft: 0 0 16px rgb(255 211 110 / 0.25);
+  /* Glows are layered like real light: a bright tight core, a warm mid halo, a faint wide spill. */
+  --accent-glow: 0 0 1px rgb(255 226 160 / 0.9), 0 0 8px rgb(255 211 110 / 0.45), 0 0 28px rgb(255 190 80 / 0.2);
+  --accent-glow-soft: 0 0 4px rgb(255 211 110 / 0.6), 0 0 14px rgb(255 190 80 / 0.25);
+  --accent-text-glow: 0 0 6px rgb(255 211 110 / 0.55), 0 0 20px rgb(255 190 80 / 0.25);
+  --sheen-gold: rgb(255 222 150 / 0.7); /* warm floodlight streak across the white button */
   --gold: #f5c451; /* first place, crowns, MVP. Small doses. */
   --gold-soft: rgb(245 196 81 / 0.14);
+  --gold-halo: rgb(245 196 81 / 0.28);
   --text: #f5f7fa;
   --text-2: #a3b1c4; /* secondary text: 9:1 on --bg, 6.6:1 on glass */
   --text-2-strong: #b9c5d5; /* secondary text on strong glass and photos */
@@ -51,7 +55,7 @@
      readable, a hairline edge, and (Chromium) a lens that bends the background near the edges. */
   --glass-subtle-fill: rgb(255 255 255 / 0.04);
   --glass-panel-fill: rgb(255 255 255 / 0.035);
-  --glass-strong-fill: rgb(12 22 38 / 0.55);
+  --glass-strong-fill: rgb(18 19 22 / 0.55);
   --glass-subtle-blur: 6px;
   --glass-panel-blur: 9px;
   --glass-strong-blur: 22px;
@@ -64,13 +68,27 @@
   --glass-rim-dim: rgb(255 255 255 / 0.04);
   --glass-edge: rgb(255 255 255 / 0.2);
   --glass-shadow: 0 10px 30px rgb(0 0 0 / 0.28);
+  /* Liquid look: light pools at the top of the glass and fades out; a faint shade sits on the bottom edge. */
+  --glass-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0.015) 42%, transparent 70%);
+  --glass-depth: inset 0 -1px 0 rgb(0 0 0 / 0.3);
+  /* Pop-up sheets: a lit top rim and a deep shadow cast upward onto the page. */
+  --sheet-shadow: inset 0 1px 0 var(--glass-rim-bright), inset 0 0 0 1px rgb(255 255 255 / 0.04), 0 -18px 48px rgb(0 0 0 / 0.5);
   --glass-specular:
     inset 0 1px 0 -0.5px var(--glass-rim-bright),
     inset 0 0 0 1px rgb(255 255 255 / 0.03);
-  --glass-fallback: rgb(11 22 36 / 0.97); /* no blur support or reduced transparency */
-  --scrim: rgb(3 8 15 / 0.7);
+  /* Glass bars (tab bar, switchers): darker and less colour-boosted, so labels always read over busy backgrounds. */
+  /* Game tab: glossy score keys (a lit top lip and a shaded bottom edge). */
+  --key-lip: rgb(255 255 255 / 0.38);
+  --key-edge: rgb(0 0 0 / 0.22);
+  --key-sheen: rgb(255 255 255 / 0.14);
+  --glass-bar-fill: rgb(14 15 18 / 0.5);
+  --glass-bar-saturate: 1.2;
+  --lens-fill: rgb(255 255 255 / 0.14);
+  --glass-fallback: rgb(17 18 21 / 0.97); /* no blur support or reduced transparency */
+  --scrim: rgb(5 6 8 / 0.7);
   --row-hover: rgb(255 255 255 / 0.05);
   --row-divider: rgb(255 255 255 / 0.07);
+  --glass-groove: rgb(0 0 0 / 0.38); /* row lines on see-through glass: dark, so they never pick up the colour behind */
   --press-fill: rgb(255 255 255 / 0.1);
 
   /* ── Photos and the night backdrop ──────────────────── */
@@ -78,18 +96,18 @@
   --photo-bowl: url('/images/stadium-bowl.webp');
   --photo-sunset: url('/images/stadium-sunset.webp');
   --photo-field: url('/images/field-aerial.webp');
-  --photo-dim: rgb(5 11 20 / 0.62);
+  --photo-dim: rgb(8 9 11 / 0.62);
   --floodlight: rgb(190 225 255 / 0.14);
   --floodlight-core: rgb(225 242 255 / 0.3);
   --haze: rgb(255 211 110 / 0.06);
-  --haze-deep: rgb(40 70 160 / 0.2);
-  --vignette: rgb(2 5 10 / 0.85);
+  --haze-deep: rgb(90 94 104 / 0.12);
+  --vignette: rgb(4 5 6 / 0.85);
   --glow-radius: 28px;
   --glow-radius-sm: 10px;
-  --ambient-strength: 30%; /* team colour in the moving background */
+  --ambient-strength: 22%; /* team colour in the moving background */
   --beam: rgb(255 255 255 / 0.05); /* floodlight beams sweeping the background */
-  --dur-beam: 26s;
-  --dur-ambient: 48s; /* one slow drift of the background lights */
+  --dur-beam: 60s;
+  --dur-ambient: 90s; /* one slow drift of the background lights */
   --team-tint-strength: 34%; /* how much team colour tints a glow */
   --parallax: 40; /* px a hero photo drifts while scrolling (plain number, read by JS) */
   --beam-blur: 18px;

@@ -9,13 +9,13 @@ import { cn } from '@/lib/utils'
  * secondary = glass. outline / ghost / danger for quieter actions.
  */
 const buttonVariants = cva(
-  'ripple inline-flex shrink-0 items-center justify-center gap-2 font-strong whitespace-nowrap select-none outline-none disabled:pointer-events-none disabled:opacity-45 [&_svg]:pointer-events-none [&_svg]:shrink-0',
+  'inline-flex shrink-0 items-center justify-center gap-2 font-strong whitespace-nowrap select-none outline-none disabled:pointer-events-none disabled:opacity-45 [&_svg]:pointer-events-none [&_svg]:shrink-0',
   {
     variants: {
       variant: {
         primary:
-          'magnetic sheen rounded-pill bg-primary text-primary-ink shadow-glass [--ripple-color:var(--ripple-dark)] hover-fine:brightness-95',
-        team: 'pressable rounded-pill bg-(--team,var(--primary)) text-primary-ink shadow-glass [--ripple-color:var(--ripple-dark)] hover-fine:brightness-110',
+          'pressable sheen rounded-pill bg-primary text-primary-ink shadow-glass hover-fine:brightness-95',
+        team: 'pressable rounded-pill bg-(--team,var(--primary)) text-primary-ink shadow-glass hover-fine:brightness-110',
         secondary: 'pressable lit glass-subtle rounded-control text-text hover-fine:border-border-strong',
         outline:
           'pressable rounded-control border border-border-strong bg-transparent text-text hover-fine:border-text-2 hover-fine:bg-(--row-hover)',

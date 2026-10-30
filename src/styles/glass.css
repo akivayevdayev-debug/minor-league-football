@@ -37,6 +37,17 @@
     }
   }
 
+  /* Pop-up sheets: the strongest glass, lit along the top edge. */
+  .sheet-glass {
+    box-shadow: var(--sheet-shadow);
+  }
+
+  /* Liquid look on the main glass cards: light pooling at the top. */
+  .glass-panel,
+  .glass-strong {
+    background-image: var(--glass-sheen);
+  }
+
   /* Lens refraction (Chromium only; html.lg-refract is set by src/ui/motion/glass.ts).
      The SVG filter #lg-lens lives in index.html. Safari keeps the plain blur above. */
   html.lg-refract .glass-panel {
@@ -47,9 +58,31 @@
     backdrop-filter: url(#lg-lens) blur(var(--glass-subtle-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-brightness));
   }
 
+  /* Glass bars: the tab bar and switchers. Same glass, a darker fill and gentler colour boost. */
+  .glass-bar {
+    background-color: var(--glass-fallback);
+    border: var(--border-width) solid var(--glass-border);
+    border-top-color: var(--glass-edge);
+    border-bottom-color: var(--glass-rim-dim);
+    box-shadow: var(--glass-specular), var(--glass-shadow);
+  }
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .glass-bar {
+      background-color: var(--glass-bar-fill);
+      -webkit-backdrop-filter: blur(var(--glass-panel-blur)) saturate(var(--glass-bar-saturate));
+      backdrop-filter: blur(var(--glass-panel-blur)) saturate(var(--glass-bar-saturate));
+    }
+  }
+  html.lg-refract .glass-bar {
+    backdrop-filter: url(#lg-lens) blur(var(--glass-panel-blur)) saturate(var(--glass-bar-saturate));
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .glass-bar { background-color: var(--glass-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  }
+
   /* Glass that sits over a photo: a touch darker so white text always reads. */
   .glass-on-photo {
-    background-color: rgb(5 11 20 / 0.3);
+    background-color: color-mix(in srgb, var(--bg) 30%, transparent);
   }
 
   /* Scroll edge: content fades softly under floating chrome instead of a hard line. */
@@ -87,11 +120,11 @@
   /* Long lists: the same clear fill, rim and highlight as glass, but no blur (cheap on long pages).
      The moving background lights are already soft, so they read as glass through it. */
   .glass-list {
-    background: var(--glass-panel-fill);
+    background: var(--glass-sheen), var(--glass-panel-fill);
     border: var(--border-width) solid var(--glass-border);
     border-top-color: var(--glass-edge);
     border-bottom-color: var(--glass-rim-dim);
-    box-shadow: var(--glass-specular), var(--glass-shadow);
+    box-shadow: var(--glass-specular), var(--glass-depth), var(--glass-shadow);
   }
   @media (prefers-reduced-transparency: reduce) {
     .glass-list { background: var(--glass-fallback); }

@@ -5,7 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 import pkg from './package.json' with { type: 'json' }
 
 // Repeats --bg from tokens.css: the manifest cannot read CSS.
-const BG = '#050B14'
+const BG = '#08090b'
 
 export default defineConfig({
   resolve: { alias: { '@': decodeURIComponent(new URL('./src', import.meta.url).pathname) } },

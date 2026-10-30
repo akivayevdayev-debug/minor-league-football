@@ -181,7 +181,7 @@ export function LiveStatsPanel({
                     <button
                       type="button"
                       onClick={() => setPadFor({ player: p, team })}
-                      className="pressable glass-list flex min-h-(--tap-score) w-full items-center gap-2 rounded-panel px-3 py-2 text-left"
+                      className="pressable team-stripe glass-list flex min-h-(--tap-score) w-full items-center gap-2 rounded-panel px-3 py-2 pl-4 text-left"
                     >
                       <span className="numeral w-(--badge-sm) shrink-0 text-center text-title text-(--team-light)">{p.jersey ?? '–'}</span>
                       <span className="flex min-w-0 flex-1 flex-col">

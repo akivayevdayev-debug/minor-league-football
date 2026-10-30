@@ -136,7 +136,7 @@
   }
 
   .text-glow {
-    text-shadow: 0 0 18px rgb(255 255 255 / 0.25);
+    text-shadow: var(--accent-text-glow);
   }
 
   /* Condensed caps for numbers-with-words: "WEEK 6", team names on scoreboards. */

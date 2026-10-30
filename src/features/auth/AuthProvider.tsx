@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
+import { toast } from 'sonner'
 import { loginEmail, supabase } from '../../lib/supabase'
+import { loginIsGone } from './loginGone'
 import { AuthContext, type Auth, type AuthState, type Member, type PasswordResult, type SignInResult } from './auth-context'
 
 /** Looks up the login's player link; asks the database to link it once if missing. */
@@ -14,6 +16,9 @@ async function findMember(session: Session): Promise<Member | null> {
   }
   return data ? { playerId: data.player_id as string, isLeagueManager: data.is_league_manager as boolean } : null
 }
+
+/** How often a signed-in device asks the server "does my login still exist?". Also checked on focus and reconnect. */
+const LOGIN_CHECK_MS = 2 * 60 * 1000
 
 /** Session that survives a reload (Supabase keeps it in local storage and refreshes it). */
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -43,6 +48,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sub.subscription.unsubscribe()
     }
   }, [])
+
+  // A deleted login: sign this device out. Player data stays; only the login is gone.
+  const signedIn = state.status === 'member' || state.status === 'unlinked'
+  useEffect(() => {
+    if (!signedIn) return
+    let checking = false
+    async function check() {
+      if (checking || !navigator.onLine || document.visibilityState === 'hidden') return
+      checking = true
+      const { error } = await supabase.auth.getUser()
+      checking = false
+      if (!loginIsGone(error)) return
+      await supabase.auth.signOut({ scope: 'local' })
+      toast('Signed out: this login no longer exists. Ask the owner if that is a mistake.')
+    }
+    const onVisible = () => void check()
+    const timer = setInterval(() => void check(), LOGIN_CHECK_MS)
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    window.addEventListener('online', onVisible)
+    void check()
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+      window.removeEventListener('online', onVisible)
+    }
+  }, [signedIn])
 
   const signIn = useCallback(async (loginName: string, password: string): Promise<SignInResult> => {
     if (!navigator.onLine) return 'offline'

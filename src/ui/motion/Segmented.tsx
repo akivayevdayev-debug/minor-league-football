@@ -26,7 +26,7 @@ export function Segmented<T extends string>({ label, value, onChange, options, c
     <TabsPrimitive.Root value={value} onValueChange={(v) => onChange(v as T)} className={cn('flex flex-col gap-4', className)}>
       <TabsPrimitive.List
         aria-label={label}
-        className="glass-subtle grid auto-cols-fr grid-flow-col gap-1 rounded-pill p-1"
+        className="glass-bar grid auto-cols-fr grid-flow-col gap-1 rounded-pill p-1"
       >
         {options.map((o) => (
           <TabsPrimitive.Trigger
@@ -42,7 +42,7 @@ export function Segmented<T extends string>({ label, value, onChange, options, c
                 layoutId={pillId}
                 transition={houseSpring()}
                 aria-hidden="true"
-                className="absolute inset-0 rounded-pill bg-(--press-fill) shadow-(--glass-specular) border border-(--glass-edge)"
+                className="absolute inset-0 rounded-pill bg-(--lens-fill) shadow-(--glass-specular) border border-(--glass-edge)"
               />
             )}
             <span className={cn('relative', o.value === value && 'text-text font-strong')}>{o.label}</span>

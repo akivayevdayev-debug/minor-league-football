@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase'
 import type {
   Game, GameProjection, GameScoreRow, Player, PlayerProjection, RosterMembership, Season, Settings, StandingRow, StatTotalRow, StatType, StatTypeId, Team,
 } from '../../types/db'
+import { splitPositions } from '../players/positions'
 
 /**
  * Errors shown to people never carry database details (security checklist, item 12).
@@ -49,6 +50,8 @@ export function usePlayers() {
     queryKey: keys.players,
     queryFn: () =>
       rows<Player[]>(supabase.from('players').select('*').is('voided_at', null).order('is_guest').order('full_name')),
+    // Positions typed as "WR CB HB" are shown as three positions.
+    select: (list) => list.map((p) => ({ ...p, positions: splitPositions(p.positions ?? []) })),
   })
 }
 
@@ -150,9 +153,9 @@ export function useUpdatePlayer() {
   })
 }
 
-export type TeamChanges = Partial<Pick<Team, 'logo_path' | 'photo_path'>>
+export type TeamChanges = Partial<Pick<Team, 'name' | 'short_name' | 'logo_path' | 'photo_path'>>
 
-/** Points a team at a new logo or team photo. The old one stays in storage and in the edit history. */
+/** Renames a team or points it at a new logo or team photo. Old values stay in the edit history. */
 export function useUpdateTeam() {
   const qc = useQueryClient()
   return useMutation({

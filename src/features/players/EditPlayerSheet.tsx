@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { useUpdatePlayer, type PlayerChanges } from '../league'
+import { joinHeight, readWholeNumber, splitHeight, useUpdatePlayer, type PlayerChanges } from '../league'
 import { uploadPhoto } from '../../lib/photos'
 import type { Player } from '../../types/db'
 import { Button } from '../../ui/Button'
@@ -23,9 +23,18 @@ export function EditPlayerSheet({ player, open, onOpenChange }: Props) {
   const [jersey, setJersey] = useState(player.jersey?.toString() ?? '')
   const [positions, setPositions] = useState(player.positions.join(', '))
   const [achievements, setAchievements] = useState(player.achievements)
+  const [feet, setFeet] = useState(() => splitHeight(player.height_in).feet)
+  const [inches, setInches] = useState(() => splitHeight(player.height_in).inches)
+  const [weight, setWeight] = useState(player.weight_lb?.toString() ?? '')
+  const [birthYear, setBirthYear] = useState(player.birth_year?.toString() ?? '')
 
   const jerseyNumber = jersey.trim() === '' ? null : Number(jersey)
   const jerseyBad = jerseyNumber !== null && (!Number.isInteger(jerseyNumber) || jerseyNumber < 0 || jerseyNumber > 99)
+  // Ranges match the database checks (supabase/changes/001_initial_schema.sql).
+  const height = joinHeight(feet, inches)
+  const weightLb = readWholeNumber(weight, 50, 400)
+  const born = readWholeNumber(birthYear, 1950, new Date().getFullYear())
+  const invalid = jerseyBad || height === undefined || weightLb === undefined || born === undefined
 
   async function save(changes: PlayerChanges, done: string) {
     try {
@@ -41,12 +50,15 @@ export function EditPlayerSheet({ player, open, onOpenChange }: Props) {
 
   function submit(e: FormEvent) {
     e.preventDefault()
-    if (jerseyBad) return
+    if (invalid) return
     void save(
       {
         nickname: nickname.trim() || null,
         jersey: jerseyNumber,
         positions: positions.split(',').map((s) => s.trim()).filter(Boolean),
+        height_in: height ?? null,
+        weight_lb: weightLb ?? null,
+        birth_year: born ?? null,
         achievements: achievements.trim(),
       },
       'Player saved',
@@ -59,7 +71,7 @@ export function EditPlayerSheet({ player, open, onOpenChange }: Props) {
       onOpenChange={onOpenChange}
       title="Edit player"
       footer={
-        <Button type="submit" form="edit-player" variant="primary" className="w-full" loading={update.isPending} disabled={jerseyBad}>
+        <Button type="submit" form="edit-player" variant="primary" className="w-full" loading={update.isPending} disabled={invalid}>
           Save player
         </Button>
       }
@@ -89,6 +101,39 @@ export function EditPlayerSheet({ player, open, onOpenChange }: Props) {
           onChange={(e) => setJersey(e.target.value)}
         />
         <Field label="Positions" className="gap-1" hint="Separate with commas, e.g. Corner, WR." value={positions} onChange={(e) => setPositions(e.target.value)} />
+        <fieldset className="flex flex-col gap-1">
+          <legend className="caps-label pb-1">Height</legend>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Feet" className="gap-1" inputMode="numeric" maxLength={1} value={feet} onChange={(e) => setFeet(e.target.value)} />
+            <Field label="Inches" className="gap-1" inputMode="decimal" maxLength={4} value={inches} onChange={(e) => setInches(e.target.value)} />
+          </div>
+          {height === undefined && (
+            <p role="alert" className="text-small text-danger">
+              Use feet 3 to 8 and inches 0 to 11.5, e.g. 5 and 6.
+            </p>
+          )}
+        </fieldset>
+        <div className="grid grid-cols-2 gap-2">
+          <Field
+            label="Weight (lb)"
+            className="gap-1"
+            inputMode="numeric"
+            maxLength={3}
+            error={weightLb === undefined ? '50 to 400.' : undefined}
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+          />
+          <Field
+            label="Birth year"
+            className="gap-1"
+            inputMode="numeric"
+            maxLength={4}
+            hint="Year only."
+            error={born === undefined ? 'A year like 2010.' : undefined}
+            value={birthYear}
+            onChange={(e) => setBirthYear(e.target.value)}
+          />
+        </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="achievements" className="caps-label">
             Achievements

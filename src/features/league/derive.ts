@@ -14,6 +14,37 @@ export function formatHeight(inches: number | null): string | null {
   return `${feet}′${rest}″`
 }
 
+/** 65.5 → { feet: '5', inches: '5.5' } for the edit boxes. */
+export function splitHeight(inches: number | null): { feet: string; inches: string } {
+  if (inches === null) return { feet: '', inches: '' }
+  const feet = Math.floor(inches / 12)
+  return { feet: String(feet), inches: String(Math.round((inches - feet * 12) * 10) / 10) }
+}
+
+/**
+ * Feet and inches boxes → total inches, as the database stores it (36 to 96, one decimal).
+ * Both blank → null (no height). undefined means "not a valid height".
+ */
+export function joinHeight(feet: string, inches: string): number | null | undefined {
+  const f = feet.trim()
+  const i = inches.trim()
+  if (f === '' && i === '') return null
+  const ft = Number(f || '0')
+  const inch = Number(i || '0')
+  if (!Number.isInteger(ft) || ft < 3 || ft > 8) return undefined
+  if (!Number.isFinite(inch) || inch < 0 || inch >= 12 || Math.round(inch * 10) !== inch * 10) return undefined
+  const total = ft * 12 + inch
+  return total >= 36 && total <= 96 ? total : undefined
+}
+
+/** A typed whole number in a range. Blank → null; undefined means "not valid". */
+export function readWholeNumber(text: string, min: number, max: number): number | null | undefined {
+  const t = text.trim()
+  if (t === '') return null
+  const n = Number(t)
+  return Number.isInteger(n) && n >= min && n <= max ? n : undefined
+}
+
 /** Age from birth year only (we never store full birth dates), so it can be a year off. */
 export function approxAge(birthYear: number | null, now = new Date()): number | null {
   return birthYear === null ? null : now.getFullYear() - birthYear

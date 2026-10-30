@@ -139,7 +139,7 @@ export function useAddGuest() {
   })
 }
 
-export type PlayerChanges = Partial<Pick<Player, 'nickname' | 'jersey' | 'positions' | 'achievements' | 'photo_path' | 'voided_at'>>
+export type PlayerChanges = Partial<Pick<Player, 'nickname' | 'jersey' | 'positions' | 'height_in' | 'weight_lb' | 'birth_year' | 'achievements' | 'photo_path' | 'voided_at'>>
 
 export function useUpdatePlayer() {
   const qc = useQueryClient()

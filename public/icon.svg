@@ -1,13 +1,34 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <title>MLF</title>
-  <!-- App icon: plain MLF lettermark. Colours repeat the bg, text and accent tokens (assets cannot read CSS). -->
+  <!-- App icon: a gold football under a floodlight, over the MLF lettermark.
+       Colours repeat the bg, text, accent and gold tokens (assets cannot read CSS).
+       All artwork sits inside the maskable safe circle (radius 205 around the centre). -->
+  <defs>
+    <radialGradient id="flood" cx="256" cy="40" r="330" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFD36E" stop-opacity="0.34"/>
+      <stop offset="0.55" stop-color="#FFD36E" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#FFD36E" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ball" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFE09A"/>
+      <stop offset="1" stop-color="#F5C451"/>
+    </linearGradient>
+  </defs>
   <rect width="512" height="512" fill="#050B14"/>
-  <g transform="translate(256 260) scale(0.88) translate(-256 -260)">
-  <g transform="translate(72 156)" fill="#F5F7FA">
+  <rect width="512" height="512" fill="url(#flood)"/>
+  <!-- football -->
+  <g transform="rotate(-32 256 196)">
+    <path d="M150 196C190 136 322 136 362 196C322 256 190 256 150 196Z" fill="url(#ball)"/>
+    <g stroke="#1A1203" stroke-linecap="round" fill="none">
+      <path d="M206 196H306" stroke-width="9"/>
+      <path d="M226 182V210M246 182V210M266 182V210M286 182V210" stroke-width="8"/>
+      <path d="M176 166C184 180 184 212 176 226M336 166C328 180 328 212 336 226" stroke-width="7"/>
+    </g>
+  </g>
+  <!-- MLF lettermark -->
+  <g transform="translate(149 296) scale(0.58)" fill="#F5F7FA">
     <path d="M0 180V0h40l28 80 28-80h40v180H96V70l-16 50H56L40 70v110z"/>
     <path d="M156 0h40v144h56v36h-96z"/>
     <path d="M272 0h96v36h-56v36h44v36h-44v72h-40z"/>
-  </g>
-  <rect x="72" y="354" width="368" height="10" rx="5" fill="#20CFFF"/>
   </g>
 </svg>

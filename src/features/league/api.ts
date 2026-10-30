@@ -1,0 +1,171 @@
+/*
+ * League data door: reading and changing players, teams, rosters, seasons and games.
+ * Screens call these hooks; none of them talk to Supabase directly. Voided rows are filtered here.
+ */
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { supabase } from '../../lib/supabase'
+import type { Game, GameScoreRow, Player, RosterMembership, Season, StandingRow, StatTotalRow, StatTypeId, Team } from '../../types/db'
+
+/** Errors shown to people never carry database details (security checklist, item 12). */
+async function rows<T>(query: PromiseLike<{ data: unknown; error: { message: string } | null }>): Promise<T> {
+  const { data, error } = await query
+  if (error) {
+    console.error(error)
+    throw new Error('Request failed')
+  }
+  return data as T
+}
+
+const keys = {
+  teams: ['teams'] as const,
+  players: ['players'] as const,
+  rosters: ['rosters'] as const,
+  seasons: ['seasons'] as const,
+  games: (seasonId: string) => ['games', seasonId] as const,
+  scores: (seasonId: string) => ['scores', seasonId] as const,
+  standings: (seasonId: string) => ['standings', seasonId] as const,
+  statTotals: ['stat-totals'] as const,
+}
+
+export function useTeams() {
+  return useQuery({
+    queryKey: keys.teams,
+    queryFn: () => rows<Team[]>(supabase.from('teams').select('*').is('voided_at', null).order('name')),
+  })
+}
+
+export function usePlayers() {
+  return useQuery({
+    queryKey: keys.players,
+    queryFn: () =>
+      rows<Player[]>(supabase.from('players').select('*').is('voided_at', null).order('is_guest').order('full_name')),
+  })
+}
+
+/** All roster lines, open and closed (closed = history). */
+export function useRosters() {
+  return useQuery({
+    queryKey: keys.rosters,
+    queryFn: () =>
+      rows<RosterMembership[]>(
+        supabase.from('roster_memberships').select('*').is('voided_at', null).order('starts_on', { ascending: false }),
+      ),
+  })
+}
+
+/** The season the schedule shows: newest one that counts for standings and isn't finished. */
+export function useCurrentSeason() {
+  return useQuery({
+    queryKey: keys.seasons,
+    queryFn: () =>
+      rows<Season[]>(supabase.from('seasons').select('*').is('voided_at', null).order('starts_on', { ascending: false })),
+    select: (seasons) =>
+      seasons.find((s) => s.counts_for_standings && s.status !== 'finished') ?? seasons.find((s) => s.counts_for_standings) ?? null,
+  })
+}
+
+export function useGames(seasonId: string | undefined) {
+  return useQuery({
+    queryKey: keys.games(seasonId ?? ''),
+    enabled: !!seasonId,
+    queryFn: () =>
+      rows<Game[]>(
+        supabase
+          .from('games')
+          .select('*')
+          .eq('season_id', seasonId!)
+          .is('voided_at', null)
+          .order('week', { ascending: true, nullsFirst: false })
+          .order('starts_at', { ascending: true, nullsFirst: false }),
+      ),
+  })
+}
+
+export function useGameScores(seasonId: string | undefined) {
+  return useQuery({
+    queryKey: keys.scores(seasonId ?? ''),
+    enabled: !!seasonId,
+    queryFn: () =>
+      rows<GameScoreRow[]>(supabase.from('game_scores').select('game_id, home_points, away_points').eq('season_id', seasonId!)),
+    select: (list) => new Map(list.map((s) => [s.game_id, s])),
+  })
+}
+
+/** Table for one season, best first (the database decides the order: win %, then point difference, then points for). */
+export function useStandings(seasonId: string | undefined) {
+  return useQuery({
+    queryKey: keys.standings(seasonId ?? ''),
+    enabled: !!seasonId,
+    queryFn: () =>
+      rows<StandingRow[]>(supabase.from('standings').select('*').eq('season_id', seasonId!).order('rank', { ascending: true })),
+  })
+}
+
+export type StatTotals = Map<string, Partial<Record<StatTypeId, number>>>
+
+/** Career totals per player (all seasons, including "Earlier totals"): player id → stat → total. */
+export function useStatTotals() {
+  return useQuery({
+    queryKey: keys.statTotals,
+    queryFn: () => rows<StatTotalRow[]>(supabase.from('player_stat_totals').select('player_id, stat_type_id, total')),
+    select: (list): StatTotals => {
+      const out: StatTotals = new Map()
+      for (const r of list) {
+        const p = out.get(r.player_id) ?? {}
+        p[r.stat_type_id] = (p[r.stat_type_id] ?? 0) + r.total
+        out.set(r.player_id, p)
+      }
+      return out
+    },
+  })
+}
+
+export function useAddGuest() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (fullName: string) =>
+      rows<Player>(supabase.from('players').insert({ full_name: fullName.trim(), is_guest: true }).select().single()),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.players }),
+  })
+}
+
+export type PlayerChanges = Partial<Pick<Player, 'nickname' | 'jersey' | 'positions' | 'achievements' | 'voided_at'>>
+
+export function useUpdatePlayer() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, changes }: { id: string; changes: PlayerChanges }) =>
+      rows<Player>(supabase.from('players').update(changes).eq('id', id).select().single()),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.players }),
+  })
+}
+
+/** Closes the player's current team line and opens a new one (or none) from a date. */
+export function useMovePlayer() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ playerId, teamId, on }: { playerId: string; teamId: string | null; on: string }) =>
+      rows<null>(supabase.rpc('move_player', { p_player_id: playerId, p_team_id: teamId, p_on: on })),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.rosters }),
+  })
+}
+
+export type NewGame = Pick<Game, 'season_id' | 'week' | 'starts_at' | 'home_team_id' | 'away_team_id'>
+
+export function useAddGame() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (game: NewGame) => rows<Game>(supabase.from('games').insert(game).select().single()),
+    onSuccess: (game) => qc.invalidateQueries({ queryKey: keys.games(game.season_id) }),
+  })
+}
+
+/** Change a game's time. Returns the old time so the toast can offer Undo. */
+export function useRescheduleGame() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ game, startsAt }: { game: Game; startsAt: string | null }) =>
+      rows<Game>(supabase.from('games').update({ starts_at: startsAt }).eq('id', game.id).select().single()),
+    onSuccess: (game) => qc.invalidateQueries({ queryKey: keys.games(game.season_id) }),
+  })
+}

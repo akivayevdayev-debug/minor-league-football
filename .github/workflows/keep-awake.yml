@@ -1,0 +1,27 @@
+# Free Supabase projects pause after a week with no activity.
+# This asks the database one harmless question twice a week so it stays awake.
+# Needs one repository secret: SUPABASE_PUBLISHABLE_KEY (the sb_publishable_... key, never the secret key).
+name: Keep Supabase awake
+
+on:
+  schedule:
+    - cron: '17 14 * * 1,4' # Mondays and Thursdays
+  workflow_dispatch: {}
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping the database
+        env:
+          KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "apikey: $KEY" \
+            'https://blequsqyvaatizfrjczp.supabase.co/rest/v1/settings?select=id&limit=1')
+          echo "Supabase answered $code"
+          # Logged out, the rules hide every row, so 200 (empty) or 401 both mean the database woke up.
+          case "$code" in 200|401) exit 0 ;; *) exit 1 ;; esac

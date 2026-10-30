@@ -25,7 +25,7 @@ If code and a doc disagree, or a doc says nothing, stop and ask. Do not redesign
 - **Stage 8, security:** `owasp-top-10`, `security-best-practices`, `slopsec`, `security-review`, on the login, the database rules and the frontend.
 - **Stage 9, deploy:** `cloudflare:cloudflare` and `cloudflare:web-perf`.
 - **When something breaks:** `diagnosing-bugs`. To see a screen in the app: `run`. For a long unattended stretch: `anti-sleep`.
-- **Do NOT load:** `frontend-design`, `redesign-skill`, `taste-skill`, `brutalist-skill`, `minimalist-skill`, `soft-skill`, `stitch-skill`, `gpt-tasteskill` (they push a new look and would fight the approved design), `animate-expo`, `shadcn` (we use daisyUI plus Radix), and do NOT switch on impeccable's automatic edit hook (it was left off on purpose).
+- **Do NOT load:** (frontend-design is allowed since 2026-10-30 at Akiva's request; see frontend plan 0.1) `redesign-skill`, `taste-skill`, `brutalist-skill`, `minimalist-skill`, `soft-skill`, `stitch-skill`, `gpt-tasteskill` (they push a new look and would fight the approved design), `animate-expo`, `shadcn` (we use daisyUI plus Radix), and do NOT switch on impeccable's automatic edit hook (it was left off on purpose).
 - **No `/impeccable init`** without asking Akiva first: it writes a design-context file into the project.
 
 ## 3. Facts already decided (do not re-ask)
@@ -43,14 +43,14 @@ If code and a doc disagree, or a doc says nothing, stop and ask. Do not redesign
 
 1. **The 5 games still to play (before the Schedule screen):** the standings are settled, and 9 played of 14 leaves 5. Ask him to confirm that number, then who plays whom and on which Friday or Sunday for each. Until he answers, leave the future schedule empty and do not invent fixtures.
 2. **Eddie's extra powers** (before writing the role rules).
-3. **Supabase Project URL and anon key** (Stage 1). Never the `service_role` key, never the database password.
+3. **Supabase Project URL and publishable key (replaced the anon key, 2026-10-29)** (Stage 1). Never the `service_role` key, never the database password.
 4. **Photos** for `public/images/` (a stadium hero, friend-group shots). HEIC is fine; convert them. Not blocking: use clean placeholders until they arrive.
 5. **Overtime format** for a tied final (needed in Phase 1b; just keep it in the open list).
 
 ## 5. What to build (stop and check in with Akiva after each stage)
 
 1. **Orientation.** Read the docs. Tell Akiva in 10 lines or fewer what you will build and in what order. Wait for "go".
-2. **Accounts and setup (Akiva clicks).** Give exact click-by-click steps, after checking the current Supabase dashboard wording in its docs: create the Supabase project, find the Project URL and anon key. Put them in `.env.local` (gitignored) and a placeholder-only `.env.example`. Use the GitHub repo that already exists (`akivayevdayev-debug/minor-league-football`, private, `main`).
+2. **Accounts and setup (Akiva clicks).** Give exact click-by-click steps, after checking the current Supabase dashboard wording in its docs: create the Supabase project, find the Project URL and publishable key. Put them in `.env.local` (gitignored) and a placeholder-only `.env.example`. Use the GitHub repo that already exists (`akivayevdayev-debug/minor-league-football`, private, `main`).
 3. **Scaffold and look.** Vite + React + TypeScript + Tailwind v4 + HashRouter, the folder layout in section 12 of the frontend plan. Then `src/styles/tokens.css` (every colour, size and timing, nothing typed anywhere else), the three glass tiers (`glass-subtle`, `glass-panel`, `glass-strong`), self-hosted fonts (Fontsource), the daisyUI `mlf` theme, the `ui/Icon` wrapper (Phosphor only), the app shell with bottom navigation, and the MLF lettermark app icon. Check contrast with the real colours.
 4. **Database.** `supabase/schema.sql` plus numbered change files (`supabase/changes/001_*.sql`). Every table has Row Level Security. Event rows, void instead of delete, automatic edit history, the views and "one-press actions" from the database plan that Phase 1a needs, and the login-to-player link. Tests for the pure logic first (`tdd`). Akiva pastes SQL into the Supabase SQL Editor: give exact steps. Prove that a logged-out request to every table returns nothing.
 5. **Login.** Login screen, "ask the owner to link your login" screen, sign out, change own password, session that survives a reload. Build it against the single test user first.

@@ -1,0 +1,127 @@
+/*
+ * Liquid glass: three tiers. Values come from tokens.css.
+ * Five layers each: translucent fill, backdrop blur, hairline rim, top highlight, soft lift.
+ * Rules: max 5 blurred surfaces per screen, never glass inside glass (use .surface-inset),
+ * never animate the blur, near-solid when blur is unsupported or transparency is reduced.
+ */
+@layer components {
+  .glass-subtle,
+  .glass-panel,
+  .glass-strong {
+    background: var(--glass-fallback);
+    border: var(--border-width) solid var(--glass-border);
+    box-shadow:
+      inset 0 var(--border-width) 0 var(--glass-highlight),
+      inset 0 0 0 var(--border-width) transparent,
+      var(--glass-shadow);
+  }
+
+  /* Faint cyan rim along the top edge: the "edge lighting" of the brief. */
+  .glass-panel,
+  .glass-strong {
+    background-image: linear-gradient(180deg, var(--glass-highlight), transparent 28%);
+    border-top-color: var(--glass-edge);
+  }
+
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass-subtle {
+      background-color: var(--glass-subtle-fill);
+      -webkit-backdrop-filter: blur(var(--glass-subtle-blur)) saturate(var(--glass-saturate));
+      backdrop-filter: blur(var(--glass-subtle-blur)) saturate(var(--glass-saturate));
+    }
+    .glass-panel {
+      background-color: var(--glass-panel-fill);
+      -webkit-backdrop-filter: blur(var(--glass-panel-blur)) saturate(var(--glass-saturate));
+      backdrop-filter: blur(var(--glass-panel-blur)) saturate(var(--glass-saturate));
+    }
+    .glass-strong {
+      background-color: var(--glass-strong-fill);
+      -webkit-backdrop-filter: blur(var(--glass-strong-blur)) saturate(var(--glass-saturate));
+      backdrop-filter: blur(var(--glass-strong-blur)) saturate(var(--glass-saturate));
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .glass-subtle,
+    .glass-panel,
+    .glass-strong {
+      background-color: var(--glass-fallback);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+
+  @media (prefers-contrast: more) {
+    .glass-subtle,
+    .glass-panel,
+    .glass-strong {
+      background-color: var(--glass-fallback);
+      border-color: var(--glass-border-strong);
+    }
+  }
+
+  /* A card that sits ON a glass surface: fill and border only, no second blur. */
+  .surface-inset {
+    background: var(--glass-subtle-fill);
+    border: var(--border-width) solid var(--glass-border);
+  }
+
+  /* Solid rows for long lists. */
+  .surface-solid {
+    background: var(--panel);
+    border: var(--border-width) solid var(--glass-border);
+  }
+
+  /* Cyan-tinted glass: the active row, rank 1, the "your team" highlight. */
+  .surface-accent {
+    background: linear-gradient(90deg, var(--accent-soft), transparent 85%);
+    box-shadow: inset var(--stripe) 0 0 var(--accent);
+  }
+
+  /* Text inputs, selects and text areas. */
+  .field-control {
+    width: 100%;
+    min-height: var(--tap-min);
+    padding: 0 calc(var(--space-unit) * 3.5);
+    border-radius: var(--radius-control);
+    background: var(--glass-subtle-fill);
+    border: var(--border-width) solid var(--glass-border-strong);
+    color: var(--text);
+    font: inherit;
+    font-size: var(--text-body);
+    outline: none;
+    transition:
+      border-color var(--dur-fast) var(--ease-hover),
+      box-shadow var(--dur-fast) var(--ease-hover),
+      background-color var(--dur-fast) var(--ease-hover);
+  }
+  .field-control::placeholder {
+    color: var(--text-2);
+  }
+  textarea.field-control {
+    padding-block: calc(var(--space-unit) * 3);
+    resize: vertical;
+  }
+  select.field-control {
+    appearance: none;
+    padding-right: var(--tap-min); /* room for the caret icon drawn by ui/Select */
+  }
+  select.field-control option {
+    background: var(--panel);
+    color: var(--text);
+  }
+  .field-control:hover {
+    border-color: var(--accent-line);
+  }
+  .field-control:focus-visible {
+    border-color: var(--accent);
+    box-shadow: var(--accent-glow-soft);
+    background-color: var(--accent-soft);
+  }
+  .field-control[aria-invalid='true'] {
+    border-color: var(--danger);
+  }
+  .field-control::-webkit-calendar-picker-indicator {
+    filter: invert(0.8);
+  }
+}

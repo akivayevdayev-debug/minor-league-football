@@ -1,0 +1,167 @@
+/*
+ * Motion helpers (frontend plan 0.1, "Motion everywhere"). Values come from tokens.css.
+ * Each helper uses its own transform property (scale, translate) so they stack without fighting.
+ * Pointer effects only run for a real mouse (hover: hover, pointer: fine); touch gets press feedback.
+ * Hard rule kept: the game clock, score buttons and stat pad use .pressable ONLY.
+ */
+@layer components {
+  .pressable,
+  .lift,
+  .magnetic {
+    transition:
+      scale var(--dur-press) var(--ease-out),
+      translate var(--dur-base) var(--ease-out),
+      box-shadow var(--dur-base) var(--ease-hover),
+      background-color var(--dur-fast) var(--ease-hover),
+      border-color var(--dur-fast) var(--ease-hover),
+      color var(--dur-fast) var(--ease-hover),
+      opacity var(--dur-fast) var(--ease-hover);
+  }
+
+  /* Press: a small scale on pointer-down. */
+  .pressable:active:not(:disabled),
+  .lift:active,
+  .magnetic:active:not(:disabled) {
+    scale: var(--press-scale);
+  }
+
+  /* Pointer light: a soft cyan spotlight and a brighter rim follow the mouse (src/ui/motion/pointer.ts sets --px/--py). */
+  .lit {
+    position: relative;
+    isolation: isolate;
+  }
+  .lit::before,
+  .lit::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--dur-base) var(--ease-hover);
+  }
+  .lit::after {
+    z-index: -1;
+    background: radial-gradient(
+      var(--spotlight-size) circle at var(--px, 50%) var(--py, 0%),
+      var(--spotlight),
+      transparent 70%
+    );
+  }
+  .lit::before {
+    z-index: var(--z-raised);
+    padding: var(--border-width);
+    background: radial-gradient(
+      var(--spotlight-size) circle at var(--px, 50%) var(--py, 0%),
+      var(--spotlight-rim),
+      transparent 60%
+    );
+    -webkit-mask:
+      linear-gradient(currentColor, currentColor) content-box,
+      linear-gradient(currentColor, currentColor);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(currentColor, currentColor) content-box exclude,
+      linear-gradient(currentColor, currentColor);
+  }
+  .lit:active::after {
+    opacity: 1;
+  }
+
+  /* Diagonal sheen across a hero button on hover. */
+  .sheen {
+    position: relative;
+    overflow: hidden;
+  }
+  .sheen::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(105deg, transparent 35%, var(--floodlight-core) 50%, transparent 65%);
+    translate: -110% 0;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .lit:hover::before,
+    .lit:hover::after {
+      opacity: 1;
+    }
+    .lift:hover {
+      translate: 0 var(--lift);
+      box-shadow: var(--glass-shadow), var(--accent-glow-soft);
+    }
+    .sheen:hover::after {
+      translate: 110% 0;
+      transition: translate var(--dur-rise) var(--ease-out);
+    }
+  }
+
+  /* Screen entrance: rise and fade, staggered by --i (set inline: style={{ '--i': n }}). Once per visit. */
+  .rise {
+    animation: rise var(--dur-rise) var(--ease-out) both;
+    animation-delay: calc(var(--i, 0) * var(--stagger));
+  }
+
+  /* Route change: shorter fade-rise for the whole screen. */
+  .drill-in {
+    animation: rise var(--dur-drill) var(--ease-out) both;
+  }
+
+  /* Floodlights switch on once (login and home hero). */
+  .lights-on {
+    animation: lights-on var(--dur-count) var(--ease-out) both;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--rise));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes lights-on {
+  0% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.7;
+  }
+  26% {
+    opacity: 0.25;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Reduced motion: keep fades that explain a change, drop movement, flicker and sheen. */
+@media (prefers-reduced-motion: reduce) {
+  .pressable:active:not(:disabled),
+  .lift:active,
+  .magnetic:active:not(:disabled) {
+    scale: none;
+  }
+  .lift:hover {
+    translate: none;
+  }
+  .sheen::after {
+    display: none;
+  }
+  .lights-on {
+    animation: none;
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}

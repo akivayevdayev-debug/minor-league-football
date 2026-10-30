@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>MLF</title>
+  <!-- App icon: plain MLF lettermark. Colours repeat the bg, text and accent tokens (assets cannot read CSS). -->
+  <rect width="512" height="512" fill="#050B14"/>
+  <g transform="translate(256 260) scale(0.88) translate(-256 -260)">
+  <g transform="translate(72 156)" fill="#F5F7FA">
+    <path d="M0 180V0h40l28 80 28-80h40v180H96V70l-16 50H56L40 70v110z"/>
+    <path d="M156 0h40v144h56v36h-96z"/>
+    <path d="M272 0h96v36h-56v36h44v36h-44v72h-40z"/>
+  </g>
+  <rect x="72" y="354" width="368" height="10" rx="5" fill="#20CFFF"/>
+  </g>
+</svg>

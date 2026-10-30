@@ -1,0 +1,108 @@
+/* Page-wide defaults. All values come from tokens.css. */
+@layer base {
+  html {
+    color-scheme: dark;
+    background: var(--bg);
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: var(--text-body);
+    line-height: var(--leading-body);
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* Night-sky ambient so glass always has colour behind it. Fixed, never animated. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(55% 38% at 18% -4%, var(--floodlight), transparent 70%),
+      radial-gradient(45% 32% at 92% 4%, var(--haze), transparent 70%),
+      radial-gradient(70% 50% at 100% 100%, var(--haze-deep), transparent 72%),
+      var(--bg);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: var(--weight-display);
+    letter-spacing: var(--tracking-display);
+    line-height: var(--leading-tight);
+    text-transform: uppercase;
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    outline: var(--focus-ring) solid var(--accent);
+    outline-offset: var(--focus-offset);
+  }
+
+  button,
+  [role='button'],
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  ::selection {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+}
+
+@layer utilities {
+  /* Scores, clocks and counts never jiggle sideways. */
+  .nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Small uppercase label with wide tracking. */
+  .caps-label {
+    font-size: var(--text-label);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    font-weight: var(--weight-strong);
+    line-height: var(--leading-tight);
+    color: var(--text-2);
+  }
+
+  /* Oversized condensed numerals: scores, PF/PA, ranks. */
+  .numeral {
+    font-family: var(--font-display);
+    font-weight: var(--weight-display);
+    font-variant-numeric: tabular-nums;
+    line-height: var(--leading-none);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  /* The letter-spaced wordmark style. */
+  .brand-type {
+    font-family: var(--font-display);
+    font-weight: var(--weight-display);
+    letter-spacing: var(--tracking-brand);
+    text-transform: uppercase;
+  }
+
+  .text-glow {
+    text-shadow: var(--accent-glow-soft);
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}

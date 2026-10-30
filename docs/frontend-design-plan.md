@@ -17,6 +17,49 @@
 
 ---
 
+## 0.1 Full visual overhaul: "Cinematic sports editorial + Liquid Glass" (Akiva, 2026-10-30)
+
+Akiva found the first build "way too basic / too generic" and asked for a complete overhaul. He sent a written brief and a reference board ("Gridiron Fantasy" phone screens) and said to take extreme inspiration from its styling, minus the chat, video and AI parts we don't have. Where this section and older sections disagree, **this section wins**.
+
+**The brief, in short:** Apple Liquid Glass meets ESPN editorial meets a luxury sports broadcast. Cinematic without clutter, futuristic without sci-fi, premium without losing simplicity. Avoid: generic dashboard looks, too much neon, cartoon graphics, too many gradients, bubbly over-rounded shapes.
+- **Colour:** unchanged tokens (#050B14 base, #0B1624 midnight, #20CFFF cyan, #F5F7FA text, #8795A8 secondary) plus subtle cool-blue gradients.
+- **Glass:** frosted panels, thin semi-transparent white borders, layered floating panels, soft shadows, a subtle cyan edge light. Corners refined (about 14 px on cards, 10 px on controls), never bubbly.
+- **Cinematic:** dark stadium photography with floodlights, haze and deep shadows behind the hero areas, under dark overlays. Until Akiva supplies photos (`public/images/`), a drawn stadium backdrop (floodlight beams, haze, field lines in perspective) stands in; dropping a photo in replaces it with no code change.
+- **Type:** bold condensed editorial headlines (Barlow Condensed), clean Inter body, oversized numerals, small uppercase labels with wide letter spacing.
+- **Layout:** asymmetric hero compositions, generous space, layered depth, precise alignment, minimal navigation.
+
+**Navigation (changed):** five tabs, icon over label, active tab cyan with a soft glow and a sliding glass pill: **Home · Schedule · Standings · Players · Me**. "Games" leaves the bar; a live game opens from Home and Schedule once Phase 1b exists. More (old menu) folds into Me.
+
+**Screens, in this pass**
+- **Home (new, the landing screen):** cinematic hero with the brand mark, "WEEK n" or "2026 SEASON" in huge condensed type and the date range. A floating **Your team** glass card: team badge, name, record, rank, oversized points for / against, and one glowing cyan primary button (**View schedule**, or **Set the time** when a game has no time). A row of four quick actions (Schedule, Standings, Players, Teams). **League leaders** (top touchdown scorers from the stat totals) and a three-row standings preview.
+- **Schedule:** matchup cards in the reference's "Week 10 Matchup" style: team badges facing each other, VS, oversized scores, winner bright and loser dimmed. Next game on top with a countdown. Set time and Add game unchanged in behaviour.
+- **Standings (built now, read-only):** League / Points switch, rank numerals, team badge and name, W-L, points for and against; first place lit with a cyan-tinted row. Uses the existing standings view; head-to-head tiebreak still Phase 2. (Was Phase 2 in section 13; the data already exists, so only the screen moves up.)
+- **Players:** search with icon, Players / Teams switch with a sliding pill, rows with a jersey-number badge, name, positions and team.
+- **Player profile:** hero card with a large jersey-number badge, name, team and positions, a three-box stat strip (receptions, touchdowns, interceptions), then career stat tiles, facts, achievements, team history.
+- **Me (new):** your profile header card with record, rank and team points, then settings rows with chevrons (Change password, Export everything, Install on your phone, App version), and an outlined **Sign out** button.
+- **Login:** full-bleed cinematic stadium backdrop, brand mark, glass sign-in panel.
+- **Team badges:** a team's monogram (TIG, DAY, SPD) in a circular badge ringed in its colour stands in for the reference's avatars and logos. Player badges show the jersey number. Photos replace them later.
+
+**UI library (changed):** **shadcn/ui** (Vite setup, Radix base) replaces **daisyUI** as the one component library, at Akiva's request. It is built on Radix, vaul and sonner, which we already use, so nothing doubles up. Its components live in `src/components/ui/`, are restyled to our tokens, and use Phosphor icons through `ui/Icon`, never lucide.
+
+**Motion changes**
+- Adds **Motion** (`motion/react`) as planned in 1.3: only for springs and shared-layout pills. Everything else stays CSS.
+- Bottom nav now gets an iOS-26-style **sliding glass pill** behind the active tab (critically damped spring, about 0.3 s, no bounce). This replaces the "no sliding indicator" rule in 5.1 and 5.2.
+- Final scores on result cards and records on the hero **count up once** when the screen first opens (rare, delight). The live score on the game screen still never animates.
+- Lists enter with a 40 ms stagger; cards press to 0.97.
+- **Motion everywhere (Akiva, later on 2026-10-30: "animations should be everywhere… hovering, following mouse or button presses").** Every card, row, button and chip responds:
+  - *Pointer light:* glass cards and buttons carry a soft light that follows the mouse (desktop) or blooms from the touch point (phone).
+  - *Tilt:* the Next game hero and profile hero tilt a few degrees toward the pointer on spring physics (desktop only, off for reduced motion).
+  - *Magnetic primary buttons:* they lean a few pixels toward the cursor and spring back.
+  - *Hover lift:* cards rise 2 px and brighten their rim on hover (mouse only); every press scales to 0.97.
+  - *Entrances:* screens and lists rise in with a stagger; sheets and toasts use springs.
+  - Hover effects only run on devices with a real mouse; phones get the touch bloom and press instead. Reduced motion turns movement into simple fades.
+- Unchanged (hard rule in CLAUDE.md): the clock, score buttons and stat pad (Phase 1b) never animate beyond a press scale, so live-game taps never lag. Akiva can overrule this explicitly.
+
+**Skills used for this pass:** design-excellence, emil-design-eng, apple-design, animate, frontend-design (Akiva asked for it, which overrides the old "do not load" note), liquid-glass-web, apex-craft, codebase-design, plus web-design-guidelines, find-animation-opportunities, design:design-system, impeccable, owasp-top-10, security-review and slopsec for the checks. Not used, because they are for other kinds of apps: animate-expo (React Native), cloudflare:nextjs-on-cloudflare (we use Vite), cloudflare:agents-sdk and k2 (AI agents), research-synthesis (no interview data yet). Not installed: pick-ui-library, before-building, improve-codebase-architecture.
+
+---
+
 ## 1. Technology decisions (and why)
 
 ### 1.1 Language and framework
@@ -58,7 +101,7 @@ Rule: **one library per job.** Three UI kits fighting over the same button is ho
 | Overlays + behaviour (sheets, dialogs, menus, tooltips, selects) | Radix primitives + **vaul** 1.1.2 (bottom sheets) | Keyboard, focus and screen-reader behaviour done properly. daisyUI's own modal/dropdown are not used. |
 | Toasts | **sonner** 2.0.8 | |
 | Icons | **Phosphor** (`@phosphor-icons/react` 2.1.10) | Hugeicons was the other option you named. Phosphor has football, football-helmet, flag, timer, first-aid-kit, swap, crown and all the others we need (checked one by one). One set only. |
-| Animation | **Motion** (`motion/react`, 14.8.0) + plain CSS | CSS for press, hover, fades. Motion only for springs, sheet drags, layout reorders and exits. |
+| Animation | **Motion** (`motion/react`, 14.3.0, pinned two weeks old) + plain CSS | CSS for press, hover, fades. Motion only for springs, sheet drags, layout reorders and exits. |
 | Animated showpieces | **React Bits** (copy-in, no install) | See 1.4. |
 | Dense data tables (later) | **Ant Design** 6.6.8 | See 1.4. Phase 4 only. |
 | Data fetching + live updates | `@supabase/supabase-js` 2.118.0 + TanStack Query 5.105.0 | |
@@ -211,7 +254,7 @@ Every animation must pass four questions: **How often is it seen? What is it for
 | Clock digits | every second | **No animation.** |
 | Stat button taps | hundreds a night | Press feedback only: `scale(0.97)`, 120 ms. The count changes instantly. No ticker, no confetti. |
 | Score buttons (+6/+1/+2) | dozens a night | Press feedback only. The changed score gets one 200 ms highlight fade on its container. |
-| Bottom nav switching | tens a day | Colour and icon fill swap. No sliding indicator. No page-slide between top-level tabs. |
+| Bottom nav switching | tens a day | Colour and icon fill swap plus a sliding glass pill (critically damped spring, about 0.3 s; changed 2026-10-30, see 0.1). No page-slide between top-level tabs. |
 | Drilling into a game or player | many a day | 180 ms fade with 8 px rise, `--ease-out`. Back reverses it. |
 | Bottom sheets | occasional | vaul, 300 ms `--ease-drawer`, drag with velocity, rubber-band at the edges, can be interrupted. |
 | Toasts | occasional | Enter and leave the same edge. CSS transitions, not keyframes, so quick repeats retarget smoothly. |
@@ -223,7 +266,7 @@ Every animation must pass four questions: **How often is it seen? What is it for
 ### 5.2 Rejected ideas (and which question killed them)
 
 - Rolling-number ticker on the live score: it is data you read and act on, and it changes constantly.
-- Sliding pill under the active tab: core navigation, repeated all day.
+- ~~Sliding pill under the active tab~~: allowed since 2026-10-30 (section 0.1), as a quick no-bounce spring.
 - Confetti on every touchdown: too frequent to be special, and distracts the person logging stats. Final whistle only.
 - Parallax on the hero: decoration on a screen people hit every time they open the app.
 - Hold-to-confirm for End game: everything is undoable and editable anyway, so a normal confirm sheet is enough and faster on a thumb.
@@ -376,7 +419,7 @@ These are targets I'll measure against, not promises yet.
 
 Checked again with the OWASP Top 10, security-best-practices and slopsec skills when real code exists (those audit code, so they run after Phase 1a and 1b, not on a plan).
 
-1. Only the Supabase **URL and anon key** are ever in the frontend. The `service_role` key never touches the repo, the build, or this chat.
+1. Only the Supabase **URL and publishable key** (`sb_publishable_…`; it replaced the old anon key, which Supabase retires by the end of 2026. Changed 2026-10-29 at Akiva's OK) are ever in the frontend. The secret key (`sb_secret_…`) and the old `service_role` keys never touch the repo, the build, or this chat.
 2. No passwords in code, config, git or chat (see Checkpoint 0, section 3). Passwords are typed straight into Supabase.
 3. Every table has Row Level Security; the frontend is treated as untrusted. Tested with a logged-out request and with a normal member trying Eddie-only actions.
 4. User-written text (news, comments, guest names, notes) is rendered as plain text. No `dangerouslySetInnerHTML`. Links in comments are not auto-trusted.

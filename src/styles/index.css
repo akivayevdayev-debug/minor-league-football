@@ -1,0 +1,106 @@
+/*
+ * Entry stylesheet. Wires Tailwind to tokens.css. No raw values here:
+ * Tailwind's default palette, radii, fonts and text sizes are switched off so only tokens exist.
+ * shadcn/ui parts (src/components/ui) use the same utilities; the shadcn colour names
+ * (primary, muted, ring...) are aliases of our tokens so future `shadcn add` output still fits.
+ */
+@import 'tailwindcss';
+@import './tokens.css';
+@import './base.css';
+@import './glass.css';
+@import './motion.css';
+@import './stadium.css';
+
+@custom-variant hover-fine (@media (hover: hover) and (pointer: fine));
+
+@theme inline {
+  --color-*: initial;
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-text-2-strong: var(--text-2-strong);
+  --color-text-3: var(--text-3);
+  --color-danger: var(--danger);
+  --color-warn: var(--warn);
+  --color-ok: var(--ok);
+  --color-team-demons: var(--team-demons);
+  --color-team-daybies: var(--team-daybies);
+  --color-team-tigers: var(--team-tigers);
+  --color-border: var(--glass-border);
+  --color-border-strong: var(--glass-border-strong);
+  --color-divider: var(--row-divider);
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  /* shadcn aliases */
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--accent-ink);
+  --color-secondary: var(--panel-2);
+  --color-secondary-foreground: var(--text);
+  --color-muted: var(--panel);
+  --color-muted-foreground: var(--text-2);
+  --color-card: var(--panel);
+  --color-card-foreground: var(--text);
+  --color-popover: var(--panel);
+  --color-popover-foreground: var(--text);
+  --color-destructive: var(--danger);
+  --color-input: var(--glass-border-strong);
+  --color-ring: var(--accent);
+
+  --font-*: initial;
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+
+  --font-weight-*: initial;
+  --font-weight-normal: var(--weight-body);
+  --font-weight-medium: var(--weight-medium);
+  --font-weight-strong: var(--weight-strong);
+  --font-weight-bold: var(--weight-display);
+
+  --tracking-*: initial;
+  --tracking-label: var(--tracking-label);
+  --tracking-brand: var(--tracking-brand);
+  --tracking-display: var(--tracking-display);
+  --tracking-tight: var(--tracking-tight);
+
+  --leading-*: initial;
+  --leading-none: var(--leading-none);
+  --leading-tight: var(--leading-tight);
+  --leading-body: var(--leading-body);
+
+  --text-*: initial;
+  --text-label: var(--text-label);
+  --text-small: var(--text-small);
+  --text-body: var(--text-body);
+  --text-body-lg: var(--text-body-lg);
+  --text-title: var(--text-title);
+  --text-stat: var(--text-stat);
+  --text-headline: var(--text-headline);
+  --text-score: var(--text-score);
+  --text-display: var(--text-display);
+
+  --radius-*: initial;
+  --radius-chip: var(--radius-chip);
+  --radius-control: var(--radius-control);
+  --radius-panel: var(--radius-panel);
+  --radius-hero: var(--radius-hero);
+  --radius-pill: var(--radius-pill);
+
+  --shadow-*: initial;
+  --shadow-glow: var(--accent-glow);
+  --shadow-glow-soft: var(--accent-glow-soft);
+  --shadow-glass: var(--glass-shadow);
+
+  --spacing: var(--space-unit);
+
+  --ease-*: initial;
+  --ease-out: var(--ease-out);
+  --ease-in-out: var(--ease-in-out);
+  --ease-drawer: var(--ease-drawer);
+}

@@ -14,7 +14,7 @@ Private friend-group football league app. Mobile-first installable PWA. TypeScri
 
 ## Hard rules
 - Real player data (birthdays, heights, weights, scores, old stats) lives in `data/private/`, which is gitignored. Never commit it, never paste it into docs or code. Most players are teenagers: keep personal data minimal.
-- Never put passwords in code, config, git or chat. Never use or commit the Supabase `service_role` key; the frontend gets only the URL and anon key.
+- Never put passwords in code, config, git or chat. Never use or commit the Supabase `service_role` key; the frontend gets only the URL and the publishable key (`sb_publishable_…`, which replaced the old anon key; Akiva, 2026-10-29). Never the secret key (`sb_secret_…`).
 - Every table has Row Level Security. Nothing is permanently deleted: use "void" and the edit history.
 - Stats are event rows, never running totals. The score is a separate counter. The clock stores only state changes.
 - All colours, sizes and timings come from `src/styles/tokens.css`. No one-off values in components.

@@ -1,0 +1,155 @@
+/*
+ * MLF design tokens: the ONLY place raw colours, sizes and timings live.
+ * Direction (Akiva, 2026-10-30): cinematic sports editorial + Apple Liquid Glass.
+ * Everything else (Tailwind utilities, shadcn parts, glass tiers, motion helpers) reads these.
+ * Exceptions that cannot read CSS: the theme-color meta tag in index.html and the PWA manifest
+ * both repeat --bg (#050B14) by hand.
+ */
+:root {
+  /* ── Colour ─────────────────────────────────────────── */
+  --bg: #050b14;
+  --panel: #0b1624; /* deep midnight */
+  --panel-2: #102035; /* a step lighter, for raised rows */
+  --accent: #20cfff; /* cyan: primary action, active tab, rank 1, live. Nothing decorative. */
+  --accent-ink: #03121c; /* text on a cyan fill */
+  --accent-soft: rgb(32 207 255 / 0.12); /* tinted row / chip fill */
+  --accent-line: rgb(32 207 255 / 0.45); /* cyan edge lighting */
+  --accent-glow: 0 0 28px rgb(32 207 255 / 0.45), 0 0 2px rgb(32 207 255 / 0.9);
+  --accent-glow-soft: 0 0 18px rgb(32 207 255 / 0.28);
+  --text: #f5f7fa;
+  --text-2: #8795a8;
+  --text-2-strong: #a6b2c3; /* secondary text on strong glass (sheets) */
+  --text-3: #5d6b7e; /* hairline numbers, never body text */
+  --danger: #ff6b7a;
+  --warn: #ffb347;
+  --ok: #3ddc97;
+
+  /* Team colours: badge ring, glow and a dot, always next to the written team name. */
+  --team-demons: #f04444;
+  --team-daybies: #5b7cff;
+  --team-tigers: #ff7a1a;
+
+  /* ── Glass (three tiers) ────────────────────────────── */
+  --glass-subtle-fill: rgb(255 255 255 / 0.04);
+  --glass-panel-fill: rgb(14 28 46 / 0.55);
+  --glass-strong-fill: rgb(16 32 53 / 0.72);
+  --glass-subtle-blur: 10px;
+  --glass-panel-blur: 18px;
+  --glass-strong-blur: 28px;
+  --glass-saturate: 1.6;
+  --glass-border: rgb(255 255 255 / 0.09);
+  --glass-border-strong: rgb(255 255 255 / 0.16);
+  --glass-highlight: rgb(255 255 255 / 0.1); /* light catching the top rim */
+  --glass-edge: rgb(32 207 255 / 0.22); /* faint cyan edge lighting */
+  --glass-shadow: 0 18px 48px rgb(0 0 0 / 0.45), 0 2px 6px rgb(0 0 0 / 0.3);
+  --glass-fallback: rgb(11 22 36 / 0.97); /* no blur support or reduced transparency */
+  --scrim: rgb(3 8 15 / 0.72); /* behind sheets and dialogs */
+  --row-hover: rgb(255 255 255 / 0.035);
+  --row-divider: rgb(255 255 255 / 0.06);
+
+  /* ── Cinematic backdrop (stadium at night) ──────────── */
+  --hero-photo: none; /* set to url('/images/stadium.webp') once Akiva adds photos */
+  --floodlight: rgb(190 225 255 / 0.16);
+  --floodlight-core: rgb(225 242 255 / 0.32);
+  --haze: rgb(32 207 255 / 0.07);
+  --haze-deep: rgb(40 70 160 / 0.22);
+  --turf-line: rgb(255 255 255 / 0.07);
+  --vignette: rgb(2 5 10 / 0.85);
+  --hero-fade: linear-gradient(180deg, transparent 35%, var(--bg) 100%);
+  --team-tint-strength: 30%; /* how much team colour tints a glow */
+  --beam-spread: 13deg; /* half-width of a floodlight beam */
+  --beam-tilt: 26deg; /* how far the corner beams lean in */
+  --beam-blur: 18px;
+  --field-tilt: 64deg; /* yard-line plane, seen from the stands */
+  --field-depth: 600px;
+  --yard-gap: 56px;
+  --lamp-size: 120px;
+
+  /* ── Type ───────────────────────────────────────────── */
+  --font-display: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
+  --font-body: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --weight-body: 400;
+  --weight-medium: 500;
+  --weight-strong: 600;
+  --weight-display: 700;
+  --text-label: 0.75rem;
+  --text-small: 0.875rem;
+  --text-body: 1rem;
+  --text-body-lg: 1.125rem;
+  --text-title: 1.5rem;
+  --text-stat: 2.25rem; /* numbers inside stat boxes */
+  --text-headline: clamp(2.25rem, 7vw + 1rem, 3.5rem);
+  --text-score: clamp(3.5rem, 18vw, 6rem);
+  --text-display: clamp(4.5rem, 24vw, 9rem); /* the WEEK / SEASON hero word */
+  --leading-none: 0.86;
+  --leading-tight: 1.05;
+  --leading-body: 1.5;
+  --tracking-label: 0.16em;
+  --tracking-brand: 0.34em;
+  --tracking-display: 0.005em;
+  --tracking-tight: -0.01em;
+
+  /* ── Space, shape, layers ───────────────────────────── */
+  --space-unit: 4px; /* steps: 4, 8, 12, 16, 24, 32, 48 */
+  --tap-min: 44px;
+  --tap-game: 56px;
+  --tap-gap: 8px;
+  --radius-chip: 6px;
+  --radius-control: 10px;
+  --radius-panel: 16px;
+  --radius-hero: 22px;
+  --radius-pill: 999px;
+  --stripe: 3px; /* team colour stripe width */
+  --dot: 8px; /* team colour dot */
+  --border-width: 1px;
+  --focus-ring: 2px;
+  --focus-offset: 2px;
+  --nav-height: 64px;
+  --nav-inset: 12px; /* floating nav sits this far from the screen edges */
+  --header-height: 60px;
+  --content-max: 720px;
+  --measure-narrow: 32ch;
+  --measure-form: 400px;
+  --sheet-max: 90dvh;
+  --icon-xs: 16px;
+  --icon-sm: 20px;
+  --icon-md: 24px;
+  --icon-lg: 32px;
+  --badge-sm: 36px;
+  --badge-md: 48px;
+  --badge-lg: 72px;
+  --badge-xl: 96px;
+  --hero-min: 300px;
+  --z-content: 0;
+  --z-raised: 1;
+  --z-header: 10;
+  --z-nav: 20;
+  --z-sheet: 30;
+  --z-toast: 40;
+
+  /* ── Motion ─────────────────────────────────────────── */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-hover: ease;
+  --dur-press: 120ms;
+  --dur-fast: 160ms;
+  --dur-drill: 200ms;
+  --dur-base: 240ms;
+  --dur-sheet: 300ms;
+  --dur-rise: 520ms; /* screen entrance, once per visit */
+  --dur-count: 900ms; /* number count-up, once per visit */
+  --press-scale: 0.97;
+  --rise: 14px; /* entrance rises this far */
+  --stagger: 40ms;
+  --lift: -2px; /* hover lift on cards (fine pointers only) */
+  --spotlight-size: 260px; /* pointer light on glass */
+  --spotlight: rgb(32 207 255 / 0.1);
+  --spotlight-rim: rgb(32 207 255 / 0.35);
+  /* Read by src/ui/motion (plain numbers, no units): */
+  --magnet-max: 6; /* px a primary button leans toward the pointer */
+  --tilt-max: 5; /* degrees a hero card tilts under the pointer */
+  --tilt-perspective: 900; /* px */
+  --spring-duration: 0.45; /* seconds, Motion springs */
+  --spring-bounce: 0.12;
+}

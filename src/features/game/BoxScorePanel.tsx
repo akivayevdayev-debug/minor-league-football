@@ -3,13 +3,14 @@
  * The "Fill in the stat sheet" button opens GameStatSheet to type or fix a whole game's stats.
  */
 import { useMemo, useState, type JSX } from 'react'
-import { displayName } from '../league'
+import { displayName, useSettings } from '../league'
 import type { Game, Player, ScoreEvent, ScoringTypeId, StatType, StatTypeId, Team } from '../../types/db'
 import { Icon } from '../../ui/Icon'
 import { Skeleton } from '../../ui/Skeleton'
 import { TeamBadge } from '../../ui/TeamBadge'
 import { teamStyle } from '../../ui/team'
-import { useGameHistory, type GameHistoryRow, type GameStat } from './api'
+import { useGameClock, useGameHistory, type GameHistoryRow, type GameStat } from './api'
+import { gameElapsed, minutesText, playingTime, useGameLineups } from './lineup'
 import { GameStatSheet } from './GameStatSheet'
 
 const ABBR: Partial<Record<StatTypeId, string>> = {
@@ -65,19 +66,24 @@ function TeamBox({
   lines,
   playersById,
   statTypes,
+  minutes,
 }: {
   team: Team
   stats: GameStat[]
   lines: ScoreEvent[]
   playersById: Map<string, Player>
   statTypes: StatType[]
+  /** Seconds on the field per player, when this game tracked who played. */
+  minutes: Map<string, number> | null
 }) {
   const points = lines.filter((l) => l.team_id === team.id).reduce((n, l) => n + l.points, 0)
   const playerCols = statTypes.filter((s) => s.id !== HIDDEN_STAT && !s.team_level)
   const teamCols = statTypes.filter((s) => s.id !== HIDDEN_STAT && s.team_level)
   const t = useMemo(() => tally(team.id, stats), [team.id, stats])
 
-  const rows = [...t.players.entries()]
+  const played = new Map(t.players)
+  for (const pid of minutes?.keys() ?? []) if (!played.has(pid)) played.set(pid, new Map())
+  const rows = [...played.entries()]
     .map(([playerId, counts]) => ({
       playerId,
       counts,
@@ -109,6 +115,11 @@ function TeamBox({
                 <th scope="col" className="sticky left-0 bg-panel px-4 py-2 text-left caps-label">
                   Player
                 </th>
+                {minutes && (
+                  <th scope="col" title="Minutes played" className="px-2 py-2 text-center caps-label">
+                    MIN
+                  </th>
+                )}
                 {playerCols.map((s) => (
                   <th key={s.id} scope="col" title={s.label} className="px-2 py-2 text-center caps-label">
                     {abbr(s)}
@@ -124,6 +135,7 @@ function TeamBox({
                     <span className="font-strong">{r.player ? displayName(r.player) : 'Unknown player'}</span>
                     {r.player?.is_guest && <span className="ml-2 caps-label">Sub</span>}
                   </th>
+                  {minutes && <td className="px-2 py-2.5 text-center">{minutes.has(r.playerId) ? minutesText(minutes.get(r.playerId)!) : '–'}</td>}
                   {playerCols.map((s) => {
                     const v = r.counts.get(s.id) ?? 0
                     return (
@@ -279,6 +291,15 @@ export function BoxScorePanel({
 }): JSX.Element {
   const playersById = useMemo(() => new Map(players.map((p) => [p.id, p])), [players])
   const [sheetOpen, setSheetOpen] = useState(false)
+  const lineups = useGameLineups(game.id)
+  const clock = useGameClock(game.id)
+  const settings = useSettings()
+  const [now] = useState(() => Date.now())
+  const halfSeconds = (settings.data?.half_minutes ?? 10) * 60
+  const minutesFor = (teamId: string) => {
+    const mine = (lineups.data ?? []).filter((l) => l.team_id === teamId)
+    return mine.length ? playingTime(mine, halfSeconds, gameElapsed(clock.data, halfSeconds, now)) : null
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -290,8 +311,8 @@ export function BoxScorePanel({
         <Icon name="edit" size="sm" /> Fill in the stat sheet
       </button>
       <GameStatSheet game={game} home={home} away={away} open={sheetOpen} onOpenChange={setSheetOpen} />
-      <TeamBox team={home} stats={stats} lines={lines} playersById={playersById} statTypes={statTypes} />
-      <TeamBox team={away} stats={stats} lines={lines} playersById={playersById} statTypes={statTypes} />
+      <TeamBox team={home} stats={stats} lines={lines} playersById={playersById} statTypes={statTypes} minutes={minutesFor(home.id)} />
+      <TeamBox team={away} stats={stats} lines={lines} playersById={playersById} statTypes={statTypes} minutes={minutesFor(away.id)} />
       <ScoringTimeline lines={lines} home={home} away={away} playersById={playersById} />
       <ChangeHistory gameId={game.id} playersById={playersById} />
     </div>

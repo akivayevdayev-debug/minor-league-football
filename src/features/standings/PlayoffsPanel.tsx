@@ -127,7 +127,7 @@ export function PlayoffsPanel({ snap }: { snap: SeasonSnapshot }) {
 
         {final && !done && (
           <Link
-            to={`/game/${final.id}`}
+            to={`/game?id=${final.id}`}
             className="pressable self-center text-small font-strong text-accent"
           >
             {live ? "Open the live game" : "Go to the game screen"}

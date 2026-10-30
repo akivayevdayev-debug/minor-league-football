@@ -55,6 +55,7 @@ beforeAll(async () => {
   await db.exec(sql('003_game_night_trades_projections.sql'))
   await db.exec(sql('004_photos.sql'))
   await db.exec(sql('005_stat_fixes.sql'))
+  await db.exec(sql('006_lineups.sql'))
   // Owner setup (as in the SQL editor): players, teams, a season.
   await db.exec(`
     insert into public.players (full_name, login_name) values ('Akiva Test', 'akiva'), ('Eddie Test', 'eddie'), ('Leon Test', 'leo');
@@ -123,7 +124,7 @@ describe('members', () => {
     await as(AKIVA, `update public.players set nickname = 'Subby' where id = $1`, [guest?.id])
   })
 
-  it.each(['players', 'score_events', 'edit_history', 'member_logins'])('cannot delete from %s', async (table) => {
+  it.each(['players', 'score_events', 'lineups', 'edit_history', 'member_logins'])('cannot delete from %s', async (table) => {
     await expect(as(AKIVA, `delete from public.${table}`)).rejects.toThrow(/permission denied/)
   })
 

@@ -303,7 +303,7 @@ function GameActions({ game, live, onScore }: { game: Game; live: boolean; onSco
   return (
     <>
       <LinkButton asChild variant="outline" size="sm" className="text-accent">
-        <Link to={`/game/${game.id}`}>
+        <Link to={`/game?id=${game.id}`}>
           <Icon name="live" size="xs" />
           {live ? 'Open game' : 'Live'}
         </Link>

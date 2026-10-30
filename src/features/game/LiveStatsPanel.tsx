@@ -14,6 +14,8 @@ import { Segmented } from '../../ui/motion'
 import { Sheet } from '../../ui/Sheet'
 import { teamStyle } from '../../ui/team'
 import { type GameStat, useAddScore, useLogStat, useVoidScore, useVoidStat } from './api'
+import { BenchPicker } from './KickoffSheet'
+import { ON_FIELD, currentLineup, type Lineup } from './lineup'
 
 const ICONS: Partial<Record<StatTypeId, IconName>> = {
   rec: 'check', target: 'target', drop: 'minus', td: 'games', fumble: 'error',
@@ -31,7 +33,7 @@ type Side = 'home' | 'away' | 'both'
 interface LastAction { id: string; who: string; label: string; scoring: boolean; teamId: string; playerId: string | null }
 
 export function LiveStatsPanel({
-  game, home, away, half, players, statTypes, stats, rosterOf, onTeam,
+  game, home, away, half, players, statTypes, stats, rosterOf, onTeam, lineups, halfSeconds, onLineup,
 }: {
   game: Game
   home: Team
@@ -42,7 +44,13 @@ export function LiveStatsPanel({
   stats: GameStat[]
   rosterOf(teamId: string): Player[]
   onTeam: Map<string, Team>
+  lineups: Lineup[]
+  halfSeconds: number
+  /** Save who is on the field for a team from now on. */
+  onLineup(teamId: string, onField: string[]): void
 }) {
+  const [subIn, setSubIn] = useState<{ team: Team; player: Player } | null>(null)
+  const [nowSits, setNowSits] = useState<Record<string, string>>({})
   const [side, setSide] = useState<Side>('both')
   const [padFor, setPadFor] = useState<{ player: Player; team: Team } | null>(null)
   const [subFor, setSubFor] = useState<Team | null>(null)
@@ -133,6 +141,10 @@ export function LiveStatsPanel({
 
       {teams.map((team) => {
         const list = lineup(team)
+        const on = currentLineup(lineups, team.id, halfSeconds)
+        const field = on ? list.filter(({ p }) => on.includes(p.id)) : list
+        const bench = on ? list.filter(({ p }) => !on.includes(p.id)) : []
+        const needsPick = (game.status === 'live' || game.status === 'halftime') && rosterOf(team.id).length > ON_FIELD
         const teamTotal = teamTypes.length ? totals.get(`team:${team.id}`) ?? {} : null
         return (
           <section key={team.id} aria-label={`${team.name} players`} style={teamStyle(team.color_key)} className="flex flex-col gap-2">
@@ -146,8 +158,22 @@ export function LiveStatsPanel({
                 <Icon name="add" size="xs" /> Add sub
               </button>
             </div>
+            {!on && needsPick && (
+              <div className="flex flex-col gap-2 rounded-panel surface-inset p-3">
+                <BenchPicker team={team} roster={rosterOf(team.id)} gameId={game.id} value={nowSits[team.id]} onChange={(pid) => setNowSits((m) => (m[team.id] === pid ? m : { ...m, [team.id]: pid }))} />
+                <Button
+                  variant="primary"
+                  size="xl"
+                  disabled={!nowSits[team.id]}
+                  onClick={() => onLineup(team.id, rosterOf(team.id).filter((p) => p.id !== nowSits[team.id]).map((p) => p.id))}
+                >
+                  Save who's on the field
+                </Button>
+              </div>
+            )}
+            {on && <span className="caps-label text-text-2">On the field</span>}
             <ul className="grid grid-cols-2 gap-2">
-              {list.map(({ p, sub }) => {
+              {field.map(({ p, sub }) => {
                 const t = totals.get(p.id) ?? {}
                 const n = Object.values(t).reduce((a, b) => a + (b ?? 0), 0)
                 return (
@@ -170,6 +196,58 @@ export function LiveStatsPanel({
                 )
               })}
             </ul>
+            {on && bench.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <span className="caps-label text-text-2">Bench</span>
+                {bench.map(({ p }) => (
+                  <div key={p.id} className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPadFor({ player: p, team })}
+                      className="pressable flex min-h-(--tap-game) min-w-0 flex-1 items-center gap-2 rounded-panel surface-inset px-3 text-left"
+                    >
+                      <span className="nums text-(--team-light)">{p.jersey ?? '–'}</span>
+                      <span className="truncate font-strong">{displayName(p)}</span>
+                    </button>
+                    {game.status !== 'final' && (
+                      <button
+                        type="button"
+                        onClick={() => setSubIn({ team, player: p })}
+                        className="pressable inline-flex min-h-(--tap-game) items-center gap-1 rounded-panel bg-(--team) px-4 font-strong text-primary-ink"
+                      >
+                        <Icon name="trade" size="xs" /> Sub in
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {subIn?.team.id === team.id && on && (
+              <div role="group" aria-label="Who comes off?" className="flex flex-col gap-2 rounded-panel surface-inset p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-body">{displayName(subIn.player)} comes in for…</span>
+                  <button type="button" onClick={() => setSubIn(null)} className="pressable min-h-(--tap-min) px-2 text-small text-text-2-strong">
+                    Cancel
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {on.map((pid) => playerById.get(pid)).filter((p): p is Player => !!p).map((out) => (
+                    <button
+                      key={out.id}
+                      type="button"
+                      onClick={() => {
+                        onLineup(team.id, [...on.filter((id) => id !== out.id), subIn.player.id])
+                        toast.success(`${displayName(subIn.player)} in, ${displayName(out)} out`)
+                        setSubIn(null)
+                      }}
+                      className="pressable min-h-(--tap-game) truncate rounded-panel bg-(--team) px-3 font-strong text-primary-ink"
+                    >
+                      {displayName(out)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {list.length === 0 && <p className="text-small text-text-2">No players on {team.short_name} yet. Tap Add sub to add one.</p>}
 
             {teamTotal && (
@@ -204,7 +282,7 @@ export function LiveStatsPanel({
       />
 
       <AddSubSheet
-        key={subFor?.id ?? 'none'}
+        key={subFor?.id ?? 'no-team'}
         team={subFor}
         onClose={() => setSubFor(null)}
         players={players}

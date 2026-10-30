@@ -83,6 +83,9 @@ export function useLiveGame(gameId: string | undefined) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stat_events', filter: `game_id=eq.${gameId}` }, () =>
         qc.invalidateQueries({ queryKey: gameKeys.stats(gameId) }),
       )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lineups', filter: `game_id=eq.${gameId}` }, () =>
+        qc.invalidateQueries({ queryKey: ['game', gameId, 'lineups'] }),
+      )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_clocks', filter: `game_id=eq.${gameId}` }, () =>
         qc.invalidateQueries({ queryKey: gameKeys.clock(gameId) }),
       )

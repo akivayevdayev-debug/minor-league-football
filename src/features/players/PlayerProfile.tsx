@@ -1,6 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { approxAge, displayName, formatHeight, STAT_LABELS, usePlayerProjections, usePlayers, useRosters, useStatTotals, useTeams } from '../league'
+import { approxAge, displayName, formatHeight, STAT_LABELS, usePlayerProjections, usePlayers, useRosters, useSettings, useStatTotals, useTeams } from '../league'
+import { minutesText, playerMinutes, useAllLineups, usePlayerStatsIn } from '../game/lineup'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '../../ui/Button'
 import { EmptyState } from '../../ui/EmptyState'
@@ -29,6 +30,15 @@ export default function PlayerProfile() {
   const projections = usePlayerProjections()
   const [editing, setEditing] = useState(false)
   const [moving, setMoving] = useState(false)
+  const allLineups = useAllLineups()
+  const settings = useSettings()
+  const [now] = useState(() => Date.now())
+  const halfSeconds = (settings.data?.half_minutes ?? 10) * 60
+  const played = useMemo(
+    () => (allLineups.data && id ? playerMinutes(allLineups.data.lineups, allLineups.data.clocks, id, halfSeconds, now) : { seconds: 0, gameIds: [] }),
+    [allLineups.data, id, halfSeconds, now],
+  )
+  const trackedStats = usePlayerStatsIn(id, played.gameIds)
 
   const player = players.data?.find((p) => p.id === id)
   const history = useMemo(() => (rosters.data ?? []).filter((r) => r.player_id === id), [rosters.data, id])
@@ -99,6 +109,26 @@ export default function PlayerProfile() {
               <StatBox key={key} label={short} value={stats[key] ?? 0} count title={long} />
             ))}
           </dl>
+        </section>
+      )}
+
+      {played.seconds > 0 && (
+        <section className="rise flex flex-col gap-2" style={rise(2)}>
+          <h2 className="text-body-lg">Playing time</h2>
+          <dl className="glass-panel grid grid-cols-4 gap-x-2 gap-y-3 rounded-panel p-3">
+            <StatBox label="MIN" value={Math.round(played.seconds / 60)} count title={`${minutesText(played.seconds)} on the field in ${played.gameIds.length} tracked ${played.gameIds.length === 1 ? 'game' : 'games'}`} />
+            {(['rec', 'td', 'int'] as const).map((k) => (
+              <StatBox
+                key={k}
+                label={`${k.toUpperCase()}/10`}
+                value={(((trackedStats.data?.[k] ?? 0) / played.seconds) * 600).toFixed(1)}
+                title={`${k === 'rec' ? 'Catches' : k === 'td' ? 'Touchdowns' : 'Interceptions'} per 10 minutes on the field`}
+              />
+            ))}
+          </dl>
+          <p className="text-small text-text-2">
+            {played.gameIds.length} tracked {played.gameIds.length === 1 ? 'game' : 'games'}. Games before subs were tracked are not counted here.
+          </p>
         </section>
       )}
 

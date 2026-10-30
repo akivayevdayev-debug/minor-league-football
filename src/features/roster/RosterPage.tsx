@@ -143,7 +143,7 @@ export default function RosterPage() {
             </div>
             <NextLine game={next} home={nextTeams.home} away={nextTeams.away} score={nextScore} />
             <WinChance game={next} home={nextTeams.home} away={nextTeams.away} proj={gameProj.data?.get(next.id)} />
-            <Button variant="primary" size="sm" className="self-start" onClick={() => navigate(`/game/${next.id}`)}>
+            <Button variant="primary" size="sm" className="self-start" onClick={() => navigate(`/game?id=${next.id}`)}>
               <Icon name="live" size="xs" />
               {next.status === 'scheduled' ? 'Start live game' : 'Open game'}
             </Button>

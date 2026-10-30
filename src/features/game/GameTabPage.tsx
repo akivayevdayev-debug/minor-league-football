@@ -3,7 +3,7 @@
  * It opens the game that is live; otherwise the next game to play; otherwise the last one played.
  * The picker at the top switches to any other game of the season.
  */
-import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useMember } from '../auth'
 import { useSeasonSnapshot } from '../league'
 import type { Game } from '../../types/db'
@@ -38,7 +38,9 @@ function pickGame(games: Game[]): Game | undefined {
 export default function GameTabPage() {
   const member = useMember()
   const snap = useSeasonSnapshot(member.playerId)
-  const [chosen, setChosen] = useState<string | null>(null)
+  const [params, setParams] = useSearchParams()
+  const chosen = params.get('id')
+  const setChosen = (id: string) => setParams({ id }, { replace: true })
 
   if (snap.isPending) return <div className="p-4"><Skeleton rows={5} /></div>
   const games = snap.games.filter((g) => g.home_team_id && g.away_team_id)

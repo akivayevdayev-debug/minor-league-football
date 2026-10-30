@@ -26,6 +26,8 @@ import {
 import { BoxScorePanel } from './BoxScorePanel'
 import { LiveStatsPanel } from './LiveStatsPanel'
 import { EnterScoreSheet } from './EnterScoreSheet'
+import { KickoffSheet } from './KickoffSheet'
+import { ON_FIELD, currentLineup, useGameLineups, useSetLineup } from './lineup'
 
 const SCORES = [
   { type: 'td', label: 'TD', points: 6 },
@@ -50,6 +52,9 @@ function useNow(running: boolean, offset: number) {
   }, [running])
   return now + offset
 }
+
+/** Now on the server's clock, as a timestamp. */
+const serverNowIso = (offset: number) => new Date(Date.now() + offset).toISOString()
 
 function mmss(ms: number) {
   const s = Math.ceil(ms / 1000)
@@ -84,6 +89,7 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
   const players = usePlayers()
   const rosters = useRosters()
   const offset = useServerOffset()
+  const lineups = useGameLineups(id)
   useLiveGame(id)
 
   const g = game.data
@@ -95,6 +101,9 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
   const [askScorer, setAskScorer] = useState<ScoreEvent | null>(null)
   const [confirmEnd, setConfirmEnd] = useState(false)
   const [typing, setTyping] = useState(false)
+  const setLineup = useSetLineup(g)
+  const [kickoff, setKickoff] = useState(false)
+  const [benchPicks, setBenchPicks] = useState<Record<string, string>>({})
 
   const c = clock.data
   // If the clock could not load, show no time and no clock controls, so Resume can't overwrite the real time.
@@ -123,14 +132,34 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
   const status = g.status
   const half = c?.half ?? 1
   const busy = setClock.isPending || finish.isPending
-  const serverNowIso = () => new Date(Date.now() + offset).toISOString()
   const fail = () => toast.error("Couldn't save that. Check your signal and try again.")
 
-  const start = () =>
+  const clockSecondsNow = c ? Math.ceil(left / 1000) : halfSeconds
+  /** Teams with a sub that have no lineup yet: they pick who sits first. */
+  const needLineup = [home, away]
+    .map((team) => ({ team, roster: rosterOf(team.id) }))
+    .filter(({ team, roster }) => roster.length > ON_FIELD && !currentLineup(lineups.data ?? [], team.id, halfSeconds))
+  /** Saves who is on the field for a team from this clock moment on (kickoff or a sub). */
+  const saveLineup = (teamId: string, onField: string[]) =>
+    setLineup.mutate({ id: crypto.randomUUID(), team_id: teamId, on_field: onField, half, clock_seconds: clockSecondsNow }, { onError: fail })
+
+  const start = () => {
+    if (status === 'scheduled' && needLineup.length > 0 && !kickoff) {
+      setKickoff(true)
+      return
+    }
+    if (kickoff) {
+      for (const { team, roster } of needLineup) {
+        const sits = benchPicks[team.id]
+        if (sits) saveLineup(team.id, roster.filter((p) => p.id !== sits).map((p) => p.id))
+      }
+      setKickoff(false)
+    }
     setClock.mutate(
-      { clock: { running: true, started_at: serverNowIso(), seconds_left: c ? Math.ceil(left / 1000) : halfSeconds, half }, status: 'live' },
+      { clock: { running: true, started_at: serverNowIso(offset), seconds_left: c ? Math.ceil(left / 1000) : halfSeconds, half }, status: 'live' },
       { onError: fail },
     )
+  }
   const pause = () => setClock.mutate({ clock: { running: false, started_at: null, seconds_left: Math.ceil(left / 1000), half } }, { onError: fail })
   const halftime = () => setClock.mutate({ clock: { running: false, started_at: null, seconds_left: halfSeconds, half: 2 }, status: 'halftime' }, { onError: fail })
   const end = () =>
@@ -216,6 +245,9 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
           stats={stats.data ?? []}
           rosterOf={rosterOf}
           onTeam={onTeam}
+          lineups={lineups.data ?? []}
+          halfSeconds={halfSeconds}
+          onLineup={saveLineup}
         />
       )}
 
@@ -372,6 +404,17 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
       >
         <span />
       </Sheet>
+
+      <KickoffSheet
+        open={kickoff}
+        onOpenChange={setKickoff}
+        gameId={g.id}
+        teams={needLineup}
+        picks={benchPicks}
+        onPick={(teamId, pid) => setBenchPicks((b) => (b[teamId] === pid ? b : { ...b, [teamId]: pid }))}
+        onStart={start}
+        busy={busy}
+      />
 
       <EnterScoreSheet open={typing} onOpenChange={setTyping} game={g} home={home} away={away} current={score} />
     </main>

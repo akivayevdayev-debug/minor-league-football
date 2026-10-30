@@ -14,12 +14,13 @@ const queryClient = new QueryClient({
 })
 
 // Each screen loads when first opened (only the shell and login are in the first download).
-const HomePage = lazy(() => import('../features/home/HomePage'))
+const RosterPage = lazy(() => import('../features/roster/RosterPage'))
 const SchedulePage = lazy(() => import('../features/schedule/SchedulePage'))
 const StandingsPage = lazy(() => import('../features/standings/StandingsPage'))
-const PlayersPage = lazy(() => import('../features/players/PlayersPage'))
+const GameTabPage = lazy(() => import('../features/game/GameTabPage'))
 const PlayerProfile = lazy(() => import('../features/players/PlayerProfile'))
 const MePage = lazy(() => import('../features/me/MePage'))
+const LiveGamePage = lazy(() => import('../features/game/LiveGamePage'))
 
 function Screen({ children }: { children: ReactNode }) {
   return <Suspense fallback={<Skeleton rows={4} />}>{children}</Suspense>
@@ -33,12 +34,16 @@ export function App() {
           <AuthGate>
             <HashRouter>
               <Routes>
+                {/* Game night is full screen, outside the menu. */}
+                <Route path="game/:id" element={<Screen><LiveGamePage /></Screen>} />
                 <Route element={<AppShell />}>
-                  <Route index element={<Navigate to="/home" replace />} />
-                  <Route path="home" element={<Screen><HomePage /></Screen>} />
+                  <Route index element={<Navigate to="/roster" replace />} />
+                  <Route path="roster" element={<Screen><RosterPage /></Screen>} />
+                  <Route path="home" element={<Navigate to="/roster" replace />} />
                   <Route path="schedule" element={<Screen><SchedulePage /></Screen>} />
                   <Route path="standings" element={<Screen><StandingsPage /></Screen>} />
-                  <Route path="players" element={<Screen><PlayersPage /></Screen>} />
+                  <Route path="game" element={<Screen><GameTabPage /></Screen>} />
+                  <Route path="players" element={<Navigate to="/roster" replace />} />
                   <Route path="players/:id" element={<Screen><PlayerProfile /></Screen>} />
                   <Route path="me" element={<Screen><MePage /></Screen>} />
                   {/* Old links keep working. */}

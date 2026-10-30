@@ -9,15 +9,15 @@ interface EmptyStateProps {
   action?: ReactNode
 }
 
-/** Says what is missing and what to do about it. */
+/** Says what is missing and what to do about it. Compact: small icon, short text. */
 export function EmptyState({ icon, title, body, action }: EmptyStateProps) {
   return (
-    <section className="drill-in flex flex-col items-center gap-3 px-6 py-12 text-center">
-      <span className="flex size-(--badge-md) items-center justify-center rounded-pill border border-accent-soft bg-accent-soft text-accent shadow-glow-soft">
-        <Icon name={icon} />
+    <section className="drill-in flex flex-col items-center gap-2 px-4 py-8 text-center">
+      <span className="flex size-(--badge-sm) items-center justify-center rounded-pill bg-accent-soft text-accent">
+        <Icon name={icon} size="sm" />
       </span>
-      <h2 className="text-title">{title}</h2>
-      <p className="max-w-(--measure-narrow) text-text-2">{body}</p>
+      <h2 className="text-body font-strong">{title}</h2>
+      <p className="max-w-(--measure-narrow) text-small text-text-2">{body}</p>
       {action}
     </section>
   )

@@ -57,29 +57,30 @@ export function EditPlayerSheet({ player, open, onOpenChange }: Props) {
       onOpenChange={onOpenChange}
       title="Edit player"
       footer={
-        <Button type="submit" form="edit-player" variant="primary" className="flex-1" loading={update.isPending} disabled={jerseyBad}>
+        <Button type="submit" form="edit-player" variant="primary" className="w-full" loading={update.isPending} disabled={jerseyBad}>
           Save player
         </Button>
       }
     >
-      <form id="edit-player" onSubmit={submit} className="flex flex-col gap-4">
-        <Field label="Nickname" hint="What the app shows. Leave blank to use the full name." maxLength={40} value={nickname} onChange={(e) => setNickname(e.target.value)} />
+      <form id="edit-player" onSubmit={submit} className="flex flex-col gap-3">
+        <Field label="Nickname" className="gap-1" hint="What the app shows. Leave blank to use the full name." maxLength={40} value={nickname} onChange={(e) => setNickname(e.target.value)} />
         <Field
           label="Jersey number"
+          className="gap-1"
           inputMode="numeric"
           hint="0 to 99, or blank."
           error={jerseyBad ? 'Use a whole number from 0 to 99.' : undefined}
           value={jersey}
           onChange={(e) => setJersey(e.target.value)}
         />
-        <Field label="Positions" hint="Separate with commas, e.g. Corner, WR." value={positions} onChange={(e) => setPositions(e.target.value)} />
-        <div className="flex flex-col gap-2">
+        <Field label="Positions" className="gap-1" hint="Separate with commas, e.g. Corner, WR." value={positions} onChange={(e) => setPositions(e.target.value)} />
+        <div className="flex flex-col gap-1">
           <label htmlFor="achievements" className="caps-label">
             Achievements
           </label>
           <textarea
             id="achievements"
-            rows={3}
+            rows={2}
             maxLength={2000}
             value={achievements}
             onChange={(e) => setAchievements(e.target.value)}
@@ -89,9 +90,10 @@ export function EditPlayerSheet({ player, open, onOpenChange }: Props) {
         {player.is_guest && (
           <Button
             variant="danger"
+            className="w-full"
             onClick={async () => {
               if (await save({ voided_at: new Date().toISOString() }, `${player.full_name} removed. The owner can restore them.`)) {
-                navigate('/players')
+                navigate('/roster')
               }
             }}
           >

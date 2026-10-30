@@ -4,14 +4,17 @@ import { cn } from '@/lib/utils'
 
 /* shadcn/ui Badge: small uppercase chips. */
 const badgeVariants = cva(
-  'inline-flex w-fit shrink-0 items-center gap-1 rounded-chip border px-2 py-1 text-label font-strong tracking-label uppercase whitespace-nowrap [&>svg]:size-(--icon-xs)',
+  'inline-flex w-fit shrink-0 items-center gap-1 rounded-pill border px-2.5 py-1 text-label font-strong tracking-label uppercase whitespace-nowrap [&>svg]:size-(--icon-xs)',
   {
     variants: {
       variant: {
         outline: 'border-border-strong text-text-2-strong',
         accent: 'border-transparent bg-accent-soft text-accent',
-        live: 'border-transparent bg-accent text-accent-ink shadow-glow-soft',
-        muted: 'border-transparent bg-(--row-hover) text-text-2',
+        live: 'border-transparent bg-live text-text',
+        gold: 'border-transparent bg-gold-soft text-gold',
+        estimate: 'border-dashed border-border-strong text-text-2-strong normal-case tracking-normal font-medium',
+        muted: 'border-transparent bg-(--row-hover) text-text-2-strong',
+        team: 'border-transparent bg-[color-mix(in_srgb,var(--team)_22%,transparent)] text-(--team-light)',
       },
     },
     defaultVariants: { variant: 'outline' },

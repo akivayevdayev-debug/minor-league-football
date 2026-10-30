@@ -57,7 +57,7 @@ export function TimeSheet({ game, onClose }: { game: Game; onClose(): void }) {
         {draft && (
           <div className="grid grid-cols-2 gap-2">
             {QUICK.map((q) => (
-              <Button key={q.label} onClick={() => setValue(toZonedInput(q.apply(draft)))}>
+              <Button key={q.label} size="sm" onClick={() => setValue(toZonedInput(q.apply(draft)))}>
                 {q.label}
               </Button>
             ))}

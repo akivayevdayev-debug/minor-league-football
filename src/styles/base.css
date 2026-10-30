@@ -10,7 +10,7 @@
   body {
     min-height: 100dvh;
     margin: 0;
-    background: var(--bg);
+    background: transparent; /* html paints --bg; the moving lights sit between them */
     color: var(--text);
     font-family: var(--font-body);
     font-size: var(--text-body);
@@ -20,28 +20,68 @@
     touch-action: manipulation;
   }
 
-  /* Night-sky ambient so glass always has colour behind it. Fixed, never animated. */
+  /* Living background: three team-coloured stadium lights drifting slowly behind the glass,
+     so the glass always has colour to bend and blur. Static when motion is reduced. */
   body::before {
     content: '';
     position: fixed;
-    inset: 0;
+    inset: -25%;
     z-index: -1;
     pointer-events: none;
     background:
-      radial-gradient(55% 38% at 18% -4%, var(--floodlight), transparent 70%),
-      radial-gradient(45% 32% at 92% 4%, var(--haze), transparent 70%),
-      radial-gradient(70% 50% at 100% 100%, var(--haze-deep), transparent 72%),
+      radial-gradient(circle at 20% 25%, color-mix(in srgb, var(--team-demons) var(--ambient-strength), transparent), transparent 30%),
+      radial-gradient(circle at 80% 35%, color-mix(in srgb, var(--team-daybies) var(--ambient-strength), transparent), transparent 32%),
+      radial-gradient(circle at 45% 80%, color-mix(in srgb, var(--team-tigers) var(--ambient-strength), transparent), transparent 30%),
       var(--bg);
+    animation: ambient-drift var(--dur-ambient) var(--ease-in-out) infinite alternate;
+    will-change: transform;
+  }
+  @keyframes ambient-drift {
+    from { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+    50% { transform: translate3d(6%, -4%, 0) rotate(8deg) scale(1.08); }
+    to { transform: translate3d(-5%, 5%, 0) rotate(-6deg) scale(1.02); }
+  }
+  /* Two floodlight beams from above the page, sweeping slowly like a stadium at night. */
+  body::after {
+    content: '';
+    position: fixed;
+    left: -50%;
+    right: -50%;
+    top: -10%;
+    height: 160%;
+    z-index: -1;
+    pointer-events: none;
+    transform-origin: 50% 0%;
+    background:
+      conic-gradient(from 180deg at 30% 0%, transparent 168deg, var(--beam) 176deg, transparent 184deg),
+      conic-gradient(from 180deg at 70% 0%, transparent 176deg, var(--beam) 184deg, transparent 192deg);
+    animation: beam-sweep var(--dur-beam) var(--ease-in-out) infinite alternate;
+    will-change: transform;
+  }
+  @keyframes beam-sweep {
+    from { transform: rotate(-9deg); }
+    to { transform: rotate(9deg); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    body::before,
+    body::after { animation: none; }
   }
 
-  h1,
+  /* Page titles: broadcast condensed caps. Section titles: calm sentence case (Apple). */
+  h1 {
+    font-family: var(--font-display);
+    font-weight: var(--weight-black);
+    letter-spacing: var(--tracking-display);
+    line-height: var(--leading-none);
+    text-transform: uppercase;
+    text-wrap: balance;
+  }
   h2,
   h3 {
-    font-family: var(--font-display);
-    font-weight: var(--weight-display);
-    letter-spacing: var(--tracking-display);
+    font-family: var(--font-body);
+    font-weight: var(--weight-strong);
+    letter-spacing: var(--tracking-tight);
     line-height: var(--leading-tight);
-    text-transform: uppercase;
     text-wrap: balance;
   }
 
@@ -57,8 +97,8 @@
   }
 
   ::selection {
-    background: var(--accent);
-    color: var(--accent-ink);
+    background: var(--primary);
+    color: var(--primary-ink);
   }
 }
 
@@ -96,7 +136,24 @@
   }
 
   .text-glow {
-    text-shadow: var(--accent-glow-soft);
+    text-shadow: 0 0 18px rgb(255 255 255 / 0.25);
+  }
+
+  /* Condensed caps for numbers-with-words: "WEEK 6", team names on scoreboards. */
+  .display-caps {
+    font-family: var(--font-display);
+    font-weight: var(--weight-display);
+    letter-spacing: var(--tracking-display);
+    text-transform: uppercase;
+    line-height: var(--leading-tight);
+  }
+
+  /* Hide scrollbars on horizontal chip rows (still scrollable). */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 
   .safe-bottom {

@@ -17,7 +17,7 @@ const OUT = new URL('../data/private/import.sql', import.meta.url)
 
 const TEAM_KEYS = {
   'Speed Demons': { color: 'demons', short: 'SD' },
-  Daybies: { color: 'daybies', short: 'DAY' },
+  Daybies: { color: 'daybies', short: 'DAY', name: 'Dumbo Daybies' }, // full name (DUMBO, Brooklyn)
   Tigers: { color: 'tigers', short: 'TIG' },
 }
 
@@ -29,7 +29,8 @@ const data = JSON.parse(readFileSync(SRC, 'utf8'))
 const q = (v) => (v === null || v === undefined ? 'null' : `'${String(v).replaceAll("'", "''")}'`)
 const n = (v) => (v === null || v === undefined ? 'null' : Number(v))
 const arr = (list) => `array[${list.map(q).join(', ')}]::text[]`
-const teamRef = (name) => `(select id from public.teams where name = ${q(name)})`
+// Look teams up by short name, so the full name (e.g. Dumbo Daybies) can differ from the sheet's.
+const teamRef = (name) => `(select id from public.teams where short_name = ${q(TEAM_KEYS[name].short)})`
 const playerRef = (login) => `(select id from public.players where login_name = ${q(login)})`
 
 function fail(msg) {
@@ -79,7 +80,7 @@ add(`do $$ begin if exists (select 1 from public.players) then raise exception '
 add('\n-- Teams')
 for (const t of data.teams) {
   const k = TEAM_KEYS[t.name]
-  add(`insert into public.teams (name, short_name, color_key) values (${q(t.name)}, ${q(k.short)}, ${q(k.color)});`)
+  add(`insert into public.teams (name, short_name, color_key) values (${q(k.name ?? t.name)}, ${q(k.short)}, ${q(k.color)});`)
 }
 
 add('\n-- Seasons')

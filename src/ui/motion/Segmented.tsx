@@ -19,22 +19,22 @@ interface SegmentedProps<T extends string> {
   className?: string
 }
 
-/** Segmented control (shadcn/Radix Tabs) with a glass pill that slides to the chosen option. */
+/** Segmented control (shadcn/Radix Tabs) with a white pill that slides to the chosen option. */
 export function Segmented<T extends string>({ label, value, onChange, options, children, className }: SegmentedProps<T>) {
   const pillId = useId()
   return (
     <TabsPrimitive.Root value={value} onValueChange={(v) => onChange(v as T)} className={cn('flex flex-col gap-4', className)}>
       <TabsPrimitive.List
         aria-label={label}
-        className="glass-subtle grid auto-cols-fr grid-flow-col gap-1 rounded-control p-1"
+        className="glass-subtle grid auto-cols-fr grid-flow-col gap-1 rounded-pill p-1"
       >
         {options.map((o) => (
           <TabsPrimitive.Trigger
             key={o.value}
             value={o.value}
             className={cn(
-              'pressable relative min-h-(--tap-min) rounded-chip px-2 caps-label whitespace-nowrap',
-              o.value === value ? 'text-accent-ink' : 'hover:text-text',
+              'pressable relative min-h-(--tap-min) rounded-pill px-3 text-small font-strong whitespace-nowrap text-text-2-strong',
+              o.value === value ? 'text-text' : 'hover-fine:text-text',
             )}
           >
             {o.value === value && (
@@ -42,10 +42,10 @@ export function Segmented<T extends string>({ label, value, onChange, options, c
                 layoutId={pillId}
                 transition={houseSpring()}
                 aria-hidden="true"
-                className="absolute inset-0 rounded-chip bg-accent shadow-glow-soft"
+                className="absolute inset-0 rounded-pill bg-(--press-fill) shadow-(--glass-specular) border border-(--glass-edge)"
               />
             )}
-            <span className={cn('relative', o.value === value && 'text-accent-ink')}>{o.label}</span>
+            <span className={cn('relative', o.value === value && 'text-text font-strong')}>{o.label}</span>
           </TabsPrimitive.Trigger>
         ))}
       </TabsPrimitive.List>

@@ -1,11 +1,27 @@
+import { useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
+import { motion, useReducedMotion } from 'motion/react'
 import { BottomNav } from './BottomNav'
+import { activeTabIndex } from './tabs'
+import { useCurrentSeason } from '../features/league'
 import { BrandMark } from '../ui/BrandMark'
-import { Icon } from '../ui/Icon'
+import { durationToken, easeToken, numberToken } from '../ui/motion/spring'
 
-/** Slim glass header, the screen, and the floating tab bar. Two blurred surfaces (header, nav). */
+/**
+ * Slim glass header, the screen, and the floating tab bar (two blurred surfaces).
+ * Switching tabs slides the new screen in from the side of the tab you came from.
+ */
 export function AppShell() {
   const { pathname } = useLocation()
+  const season = useCurrentSeason()
+  const reduce = useReducedMotion()
+  const index = activeTabIndex(pathname)
+  // Remember the last tab so the new screen slides in from the right side.
+  const [nav, setNav] = useState({ index, dir: 0 })
+  if (nav.index !== index) setNav({ index, dir: index < 0 || nav.index < 0 ? 0 : index > nav.index ? 1 : -1 })
+  const dir = nav.dir
+  const slide = reduce ? 0 : numberToken('--slide') * dir
+
   return (
     <div className="flex min-h-dvh flex-col">
       <a
@@ -19,30 +35,29 @@ export function AppShell() {
         Skip to content
       </a>
 
-      <header className="glass-subtle safe-top sticky top-0 z-(--z-header) rounded-none border-x-0 border-t-0 shadow-none">
+      <header className="glass-subtle safe-top sticky top-0 z-(--z-header) rounded-none border-x-0 border-t-0">
         <div className="mx-auto flex h-(--header-height) max-w-(--content-max) items-center justify-between px-4">
-          <Link to="/home" aria-label="MLF home" className="pressable flex min-h-(--tap-min) items-center">
+          <Link to="/roster" aria-label="MLF home" className="pressable flex min-h-(--tap-min) items-center">
             <BrandMark />
           </Link>
-          <Link
-            to="/me"
-            aria-label="Me"
-            className="pressable -mr-2 flex size-(--tap-min) items-center justify-center rounded-pill text-text-2 hover-fine:text-accent"
-          >
-            <Icon name="me" />
-          </Link>
+          {season.data && <span className="caps-label truncate">{season.data.name}</span>}
         </div>
       </header>
 
       <main
         id="main"
         tabIndex={-1}
-        className="mx-auto w-full max-w-(--content-max) flex-1 px-4 pt-5 pb-[calc(var(--nav-height)+var(--nav-inset)*2+env(safe-area-inset-bottom)+var(--space-unit)*6)] outline-none"
+        className="mx-auto w-full max-w-(--content-max) flex-1 overflow-x-clip px-4 pt-4 pb-[calc(var(--nav-height)+var(--nav-inset)*2+env(safe-area-inset-bottom)+var(--space-unit)*5)] outline-none"
       >
         {/* Keyed on the path so each screen plays its entrance once. */}
-        <div key={pathname} className="drill-in">
+        <motion.div
+          key={pathname}
+          initial={{ opacity: 0, transform: `translateX(${slide}px)` }}
+          animate={{ opacity: 1, transform: 'translateX(0px)' }}
+          transition={{ duration: durationToken('--dur-drill'), ease: easeToken('--ease-out') }}
+        >
           <Outlet />
-        </div>
+        </motion.div>
       </main>
 
       <BottomNav />

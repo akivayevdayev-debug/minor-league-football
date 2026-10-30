@@ -21,7 +21,7 @@ export interface SeasonSnapshot {
   refetch(): void
 }
 
-/** Everything the Home and Me screens show about the current season, in one place. */
+/** Everything the Roster, Standings and Me screens show about the current season, in one place. */
 export function useSeasonSnapshot(playerId: string): SeasonSnapshot {
   const season = useCurrentSeason()
   const teams = useTeams()

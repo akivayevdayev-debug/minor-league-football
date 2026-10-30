@@ -27,6 +27,9 @@ interface LeagueData {
   stats_as_sent: Record<string, number[]> & { columns: string[] }
 }
 
+// The league file says "Daybies"; change 003 renames them to the full name.
+const fullName = (team: string) => (team === 'Daybies' ? 'Dumbo Daybies' : team)
+
 describe.skipIf(!has)('import of the real league data', () => {
   let db: PGlite
   let data: LeagueData
@@ -38,9 +41,16 @@ describe.skipIf(!has)('import of the real league data', () => {
     await db.exec(change('001_initial_schema.sql'))
     await db.exec(change('002_reference_data.sql'))
     await db.exec(readFileSync(IMPORT, 'utf8'))
+    await db.exec(change('003_game_night_trades_projections.sql'))
   })
 
   const one = async (sql: string) => (await db.query<{ v: number }>(sql)).rows[0]?.v
+
+  it('uses the Daybies full name after change 003', async () => {
+    const names = (await db.query<{ name: string }>('select name from public.teams')).rows.map((r) => r.name)
+    expect(names).toContain('Dumbo Daybies')
+    expect(names).not.toContain('Daybies')
+  })
 
   it('brings in every person and team', async () => {
     expect(await one('select count(*)::int as v from public.players')).toBe(data.players.length)
@@ -61,7 +71,7 @@ describe.skipIf(!has)('import of the real league data', () => {
       from public.game_scores s join public.teams h on h.id = s.home_team_id join public.teams a on a.id = s.away_team_id`)
     expect(rows.rows).toHaveLength(data.games_played.length)
     for (const g of data.games_played) {
-      expect(rows.rows).toContainEqual({ home: g.teams[0], away: g.teams[1], hp: g.score[0], ap: g.score[1] })
+      expect(rows.rows).toContainEqual({ home: fullName(g.teams[0]), away: fullName(g.teams[1]), hp: g.score[0], ap: g.score[1] })
     }
   })
 
@@ -70,7 +80,7 @@ describe.skipIf(!has)('import of the real league data', () => {
       `select t.name, s.wins, s.losses from public.standings s join public.teams t on t.id = s.team_id`,
     )
     for (const s of data.standings_confirmed_by_akiva) {
-      expect(rows.rows).toContainEqual({ name: s.team, wins: s.w, losses: s.l })
+      expect(rows.rows).toContainEqual({ name: fullName(s.team), wins: s.w, losses: s.l })
     }
     expect(await one(`select sum(wins + losses)::int / 2 as v from public.standings`)).toBe(
       data.standings_confirmed_by_akiva.reduce((sum, s) => sum + s.w + s.l, 0) / 2,

@@ -39,7 +39,7 @@ export function ChangePasswordForm() {
   }
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+    <form onSubmit={submit} noValidate className="flex flex-col gap-3">
       {/* Hidden username helps password managers save the new password against the right login. */}
       <input type="text" name="username" autoComplete="username" hidden readOnly />
       <Field
@@ -60,7 +60,7 @@ export function ChangePasswordForm() {
         onChange={(e) => setConfirm(e.target.value)}
       />
       {error && (
-        <p role="alert" className="text-body text-danger">
+        <p role="alert" className="text-small text-danger">
           {error}
         </p>
       )}

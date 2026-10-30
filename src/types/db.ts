@@ -90,8 +90,77 @@ export interface StatTotalRow {
   total: number
 }
 
+export interface StatType {
+  id: StatTypeId
+  label: string
+  display_order: number
+  active: boolean
+  team_level: boolean
+  fantasy_points: number
+}
+
+export interface Settings {
+  half_minutes: number
+  halftime_minutes: number
+  default_field: string
+  time_zone: string
+}
+
+export type ScoringTypeId = 'td' | 'conv1' | 'conv2' | 'final_manual'
+
+export interface ScoreEvent {
+  id: string
+  game_id: string
+  team_id: string
+  scoring_type_id: ScoringTypeId
+  points: number
+  player_id: string | null
+  voided_at: string | null
+  created_at: string
+}
+
+export interface GameClock {
+  game_id: string
+  running: boolean
+  seconds_left: number
+  started_at: string | null
+  half: 1 | 2 | 3
+}
+
+export interface Trade {
+  id: string
+  traded_on: string
+  team_a_id: string
+  team_b_id: string
+  players_a: string[]
+  players_b: string[]
+  note: string | null
+  voided_at: string | null
+}
+
+/** Estimates (database view player_projections): per game, from career totals. */
+export interface PlayerProjection {
+  player_id: string
+  team_id: string
+  games: number
+  rec_per_game: number
+  td_per_game: number
+  int_per_game: number
+  points_total: number
+  points_per_game: number
+}
+
+/** Estimates (database view game_projections) for games not yet final. */
+export interface GameProjection {
+  game_id: string
+  season_id: string
+  home_points: number
+  away_points: number
+  home_win_chance: number
+}
+
 /** Every table "Export everything" saves, in a safe restore order. */
 export const EXPORT_TABLES = [
   'settings', 'seasons', 'scoring_types', 'stat_types', 'teams', 'players', 'roster_memberships',
-  'member_logins', 'games', 'score_events', 'stat_events', 'record_adjustments', 'edit_history',
+  'member_logins', 'games', 'game_clocks', 'score_events', 'stat_events', 'record_adjustments', 'trades', 'edit_history',
 ] as const

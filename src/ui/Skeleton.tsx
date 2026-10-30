@@ -5,7 +5,7 @@ export function Skeleton({ rows = 4 }: { rows?: number }) {
   return (
     <div role="status" aria-label="Loading" className="flex flex-col gap-2">
       {Array.from({ length: rows }, (_, i) => (
-        <Block key={i} className="h-(--tap-game)" />
+        <Block key={i} className="h-(--tap-game) rounded-panel" />
       ))}
     </div>
   )

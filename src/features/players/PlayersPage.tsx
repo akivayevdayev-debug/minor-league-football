@@ -16,7 +16,7 @@ export default function PlayersPage() {
   const tab: TabId = params.get('tab') === 'teams' ? 'teams' : 'players'
 
   return (
-    <section className="flex flex-col gap-6">
+    <section className="flex flex-col gap-5">
       <header className="rise flex flex-col gap-1">
         <p className="brand-type text-small text-accent">The league</p>
         <h1 className="text-headline">{tab === 'teams' ? 'Teams' : 'Players'}</h1>

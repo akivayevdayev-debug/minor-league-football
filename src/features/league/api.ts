@@ -4,19 +4,25 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
-import type { Game, GameScoreRow, Player, RosterMembership, Season, StandingRow, StatTotalRow, StatTypeId, Team } from '../../types/db'
+import type {
+  Game, GameProjection, GameScoreRow, Player, PlayerProjection, RosterMembership, Season, Settings, StandingRow, StatTotalRow, StatType, StatTypeId, Team,
+} from '../../types/db'
 
-/** Errors shown to people never carry database details (security checklist, item 12). */
-async function rows<T>(query: PromiseLike<{ data: unknown; error: { message: string } | null }>): Promise<T> {
+/**
+ * Errors shown to people never carry database details (security checklist, item 12).
+ * The one exception: messages our own database actions raise on purpose (code 22023, plain English,
+ * e.g. "Scores must be between 0 and 200.").
+ */
+export async function rows<T>(query: PromiseLike<{ data: unknown; error: { message: string; code?: string } | null }>): Promise<T> {
   const { data, error } = await query
   if (error) {
     console.error(error)
-    throw new Error('Request failed')
+    throw new Error(error.code === '22023' ? error.message : 'Request failed')
   }
   return data as T
 }
 
-const keys = {
+export const keys = {
   teams: ['teams'] as const,
   players: ['players'] as const,
   rosters: ['rosters'] as const,
@@ -25,6 +31,10 @@ const keys = {
   scores: (seasonId: string) => ['scores', seasonId] as const,
   standings: (seasonId: string) => ['standings', seasonId] as const,
   statTotals: ['stat-totals'] as const,
+  statTypes: ['stat-types'] as const,
+  settings: ['settings'] as const,
+  playerProjections: ['player-projections'] as const,
+  gameProjections: (seasonId: string) => ['game-projections', seasonId] as const,
 }
 
 export function useTeams() {
@@ -150,7 +160,7 @@ export function useMovePlayer() {
   })
 }
 
-export type NewGame = Pick<Game, 'season_id' | 'week' | 'starts_at' | 'home_team_id' | 'away_team_id'>
+export type NewGame = Pick<Game, 'season_id' | 'week' | 'starts_at' | 'home_team_id' | 'away_team_id'> & Partial<Pick<Game, 'kind'>>
 
 export function useAddGame() {
   const qc = useQueryClient()
@@ -167,5 +177,103 @@ export function useRescheduleGame() {
     mutationFn: ({ game, startsAt }: { game: Game; startsAt: string | null }) =>
       rows<Game>(supabase.from('games').update({ starts_at: startsAt }).eq('id', game.id).select().single()),
     onSuccess: (game) => qc.invalidateQueries({ queryKey: keys.games(game.season_id) }),
+  })
+}
+
+/** League settings (one row): half length, halftime length, default field. */
+export function useSettings() {
+  return useQuery({
+    queryKey: keys.settings,
+    staleTime: 5 * 60_000,
+    queryFn: () =>
+      rows<Settings>(supabase.from('settings').select('half_minutes, halftime_minutes, default_field, time_zone').eq('id', 1).single()),
+  })
+}
+
+/** Stat kinds in their set order, with how many fantasy points each is worth. */
+export function useStatTypes() {
+  return useQuery({
+    queryKey: keys.statTypes,
+    staleTime: 5 * 60_000,
+    queryFn: () => rows<StatType[]>(supabase.from('stat_types').select('*').eq('active', true).order('display_order')),
+  })
+}
+
+/** Estimates per player (per game). Empty until change 003 is in the database. */
+export function usePlayerProjections() {
+  return useQuery({
+    queryKey: keys.playerProjections,
+    retry: 0,
+    queryFn: () => rows<PlayerProjection[]>(supabase.from('player_projections').select('*')),
+    select: (list) => new Map(list.map((p) => [p.player_id, p])),
+  })
+}
+
+/** Estimated score and win chance for each game that isn't final yet. */
+export function useGameProjections(seasonId: string | undefined) {
+  return useQuery({
+    queryKey: keys.gameProjections(seasonId ?? ''),
+    enabled: !!seasonId,
+    retry: 0,
+    queryFn: () => rows<GameProjection[]>(supabase.from('game_projections').select('*').eq('season_id', seasonId!)),
+    select: (list) => new Map(list.map((p) => [p.game_id, p])),
+  })
+}
+
+function invalidateResults(qc: ReturnType<typeof useQueryClient>, seasonId: string) {
+  for (const key of [keys.games(seasonId), keys.scores(seasonId), keys.standings(seasonId), keys.gameProjections(seasonId), keys.playerProjections]) {
+    void qc.invalidateQueries({ queryKey: key })
+  }
+}
+
+/** Type in a final score in one step (older score lines are voided, never deleted). */
+export function useSetFinalScore() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ game, home, away }: { game: Game; home: number; away: number }) =>
+      rows<null>(supabase.rpc('set_final_score', { p_game_id: game.id, p_home: home, p_away: away })),
+    onSuccess: (_d, { game }) => {
+      invalidateResults(qc, game.season_id)
+      void qc.invalidateQueries({ queryKey: ['game', game.id] })
+    },
+  })
+}
+
+export interface NewStat {
+  stat_type_id: StatTypeId
+  value: number
+}
+
+/** Adds stat lines for one player (a game's stats, or season stats when no game is picked). */
+export function useAddStats() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ seasonId, gameId, teamId, playerId, stats }: { seasonId: string; gameId: string | null; teamId: string | null; playerId: string; stats: NewStat[] }) =>
+      rows<null>(
+        supabase.from('stat_events').insert(
+          stats
+            .filter((s) => s.value !== 0)
+            .map((s) => ({ id: crypto.randomUUID(), season_id: seasonId, game_id: gameId, team_id: teamId, player_id: playerId, stat_type_id: s.stat_type_id, value: s.value })),
+        ),
+      ),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: keys.statTotals })
+      void qc.invalidateQueries({ queryKey: keys.playerProjections })
+    },
+  })
+}
+
+/** Swap players between two teams from a date, and keep a record of the trade. */
+export function useMakeTrade() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (t: { teamA: string; playersA: string[]; teamB: string; playersB: string[]; on: string; note: string }) =>
+      rows<string>(
+        supabase.rpc('make_trade', { p_team_a: t.teamA, p_players_a: t.playersA, p_team_b: t.teamB, p_players_b: t.playersB, p_on: t.on, p_note: t.note || null }),
+      ),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: keys.rosters })
+      void qc.invalidateQueries({ queryKey: keys.playerProjections })
+    },
   })
 }

@@ -30,9 +30,9 @@ export function AddGuestSheet({ open, onOpenChange }: { open: boolean; onOpenCha
       title="Add guest"
       description="A sub who plays without a login. You only need a name."
     >
-      <form onSubmit={submit} className="flex flex-col gap-4">
-        <Field label="Name" autoComplete="off" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
-        <Button type="submit" variant="primary" loading={addGuest.isPending} disabled={!name.trim()}>
+      <form onSubmit={submit} className="flex flex-col gap-3">
+        <Field label="Name" className="gap-1" autoComplete="off" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        <Button type="submit" variant="primary" className="w-full" loading={addGuest.isPending} disabled={!name.trim()}>
           Add guest
         </Button>
       </form>

@@ -1,6 +1,6 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { approxAge, displayName, formatHeight, STAT_LABELS, usePlayers, useRosters, useStatTotals, useTeams } from '../league'
+import { approxAge, displayName, formatHeight, STAT_LABELS, usePlayerProjections, usePlayers, useRosters, useStatTotals, useTeams } from '../league'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '../../ui/Button'
 import { EmptyState } from '../../ui/EmptyState'
@@ -11,20 +11,24 @@ import { Skeleton } from '../../ui/Skeleton'
 import { StadiumBackdrop } from '../../ui/StadiumBackdrop'
 import { StatBox } from '../../ui/StatBox'
 import { TeamName } from '../../ui/TeamStripe'
+import { teamStyle } from '../../ui/team'
 import { EditPlayerSheet } from './EditPlayerSheet'
+import { MovePlayerSheet } from './MovePlayerSheet'
 
 const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 const formatDay = (d: string) => dateFmt.format(new Date(`${d}T00:00:00Z`))
 const rise = (i: number) => ({ '--i': i }) as CSSProperties
 
-/** Player profile: hero, headline numbers, every career stat, facts, achievements and team history. */
+/** Player profile: a compact photo hero, career stats, this season's projection, facts, achievements and team history. */
 export default function PlayerProfile() {
   const { id } = useParams()
   const players = usePlayers()
   const rosters = useRosters()
   const teams = useTeams()
   const totals = useStatTotals()
+  const projections = usePlayerProjections()
   const [editing, setEditing] = useState(false)
+  const [moving, setMoving] = useState(false)
 
   const player = players.data?.find((p) => p.id === id)
   const history = useMemo(() => (rosters.data ?? []).filter((r) => r.player_id === id), [rosters.data, id])
@@ -37,96 +41,106 @@ export default function PlayerProfile() {
   if (!player) return <EmptyState icon="players" title="Player not found" body="They may have been removed. Go back to the list." />
 
   const stats = totals.data?.get(player.id) ?? {}
-  const facts: [string, string | null][] = [
-    ['Age', approxAge(player.birth_year)?.toString() ?? null],
-    ['Height', formatHeight(player.height_in)],
-    ['Weight', player.weight_lb ? `${player.weight_lb} lb` : null],
-  ]
+  const proj = projections.data?.get(player.id)
   const tiles = STAT_LABELS.filter(([key]) => (stats[key] ?? 0) > 0)
+  const age = approxAge(player.birth_year)
+  const facts = [age != null && `Age ${age}`, formatHeight(player.height_in), player.weight_lb ? `${player.weight_lb} lb` : null]
+    .filter(Boolean)
+    .join(' · ')
 
   return (
-    <article className="flex flex-col gap-6">
-      <Link to="/players" className="pressable -ml-2 flex min-h-(--tap-min) w-fit items-center gap-1 px-2 caps-label hover-fine:text-accent">
+    <article className="flex flex-col gap-5">
+      <Link to="/roster" className="pressable -ml-2 flex min-h-(--tap-min) w-fit items-center gap-1 px-2 caps-label hover-fine:text-accent">
         <Icon name="back" size="xs" />
-        Players
+        Roster
       </Link>
 
-      <header className="rise relative isolate flex flex-col gap-5 overflow-hidden rounded-hero p-5 pt-8">
-        <StadiumBackdrop team={currentTeam?.color_key} />
-        <div className="flex items-end gap-4">
-          <PlayerBadge jersey={player.jersey} team={currentTeam?.color_key} size="xl" />
-          <div className="flex min-w-0 flex-1 flex-col gap-1 pb-1">
-            <p className="text-text-2-strong">
-              {currentTeam ? <TeamName name={currentTeam.name} color={currentTeam.color_key} /> : player.is_guest ? 'Guest' : 'No team'}
-            </p>
-            <h1 className="text-headline leading-none break-words">{displayName(player)}</h1>
-            {player.nickname && <p className="truncate text-small text-text-2">{player.full_name}</p>}
-          </div>
-          <Button variant="ghost" size="icon" aria-label="Edit player" onClick={() => setEditing(true)} className="self-start">
-            <Icon name="edit" size="sm" />
-          </Button>
+      <header
+        style={teamStyle(currentTeam?.color_key)}
+        className="rise relative isolate flex items-center gap-4 overflow-hidden rounded-hero p-4 pt-8"
+      >
+        <StadiumBackdrop photo="sunset" team={currentTeam?.color_key} />
+        <PlayerBadge jersey={player.jersey} team={currentTeam?.color_key} size="lg" />
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <h1 className="text-headline leading-none break-words">{displayName(player)}</h1>
+          <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-small text-text-2-strong">
+            {currentTeam ? (
+              <span className="font-strong text-(--team-light)">
+                <TeamName name={currentTeam.name} color={currentTeam.color_key} />
+              </span>
+            ) : (
+              <span>{player.is_guest ? 'Guest' : 'No team'}</span>
+            )}
+            {player.positions.length > 0 && <span className="caps-label">{player.positions.join(' · ')}</span>}
+          </p>
+          {player.nickname && <p className="truncate text-small text-text-2">{player.full_name}</p>}
+          {facts && <p className="nums text-small text-text-2">{facts}</p>}
         </div>
-        {player.positions.length > 0 && (
-          <ul className="flex flex-wrap gap-2" aria-label="Positions">
-            {player.positions.map((pos) => (
-              <li key={pos}>
-                <Badge variant="accent">{pos}</Badge>
-              </li>
-            ))}
-          </ul>
-        )}
       </header>
 
-      <dl className="rise glass-panel grid grid-cols-3 gap-4 rounded-panel p-5" style={rise(1)}>
-        <StatBox label="Catches" value={stats.rec ?? 0} count accent />
-        <StatBox label="TDs" value={stats.td ?? 0} count />
-        <StatBox label="Picks" value={stats.int ?? 0} count />
-      </dl>
+      <div className="rise flex flex-wrap gap-2" style={rise(1)}>
+        <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
+          <Icon name="edit" size="xs" />
+          Edit
+        </Button>
+        {!player.is_guest && (
+          <Button variant="outline" size="sm" onClick={() => setMoving(true)}>
+            <Icon name="history" size="xs" />
+            Move
+          </Button>
+        )}
+      </div>
 
       {tiles.length > 0 && (
-        <section className="rise flex flex-col gap-3" style={rise(2)}>
-          <h2 className="text-title">Career stats</h2>
-          <dl className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+        <section className="rise flex flex-col gap-2" style={rise(2)}>
+          <h2 className="text-body-lg">Career stats</h2>
+          <dl className="glass-panel grid grid-cols-4 gap-x-2 gap-y-3 rounded-panel p-3 sm:grid-cols-6">
             {tiles.map(([key, short, long]) => (
-              <div key={key} className="lit surface-inset flex flex-col gap-1 rounded-control p-3" title={long}>
-                <dt className="caps-label">{short}</dt>
-                <dd className="numeral text-title">{stats[key]}</dd>
-              </div>
+              <StatBox key={key} label={short} value={stats[key] ?? 0} count title={long} />
             ))}
           </dl>
         </section>
       )}
 
-      <dl className="rise grid grid-cols-3 gap-2" style={rise(3)}>
-        {facts.map(([label, value]) => (
-          <div key={label} className="surface-inset flex flex-col gap-1 rounded-control p-3">
-            <dt className="caps-label">{label}</dt>
-            <dd className="nums text-body-lg">{value ?? '–'}</dd>
+      <section className="rise glass-panel flex items-center justify-between gap-3 rounded-panel p-3" style={rise(3)}>
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-body-lg">Projection</h2>
+            <Badge variant="estimate">Estimate</Badge>
           </div>
-        ))}
-      </dl>
+          <p className="nums text-small text-text-2">
+            {proj
+              ? `TD ${proj.td_per_game.toFixed(2)} · Rec ${proj.rec_per_game.toFixed(1)} · INT ${proj.int_per_game.toFixed(2)} per game`
+              : 'No projection yet.'}
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-0.5">
+          <span className="numeral text-stat">{proj ? proj.points_per_game.toFixed(1) : '–'}</span>
+          <span className="caps-label">proj/gm</span>
+        </div>
+      </section>
 
       {player.achievements && (
         <section className="rise flex flex-col gap-2" style={rise(4)}>
-          <h2 className="text-title">Achievements</h2>
+          <h2 className="text-body-lg">Achievements</h2>
           {/* Plain text only: user-written. */}
-          <p className="surface-inset rounded-panel p-4 whitespace-pre-line">{player.achievements}</p>
+          <p className="surface-inset rounded-control p-3 text-small whitespace-pre-line">{player.achievements}</p>
         </section>
       )}
 
-      <section className="rise flex flex-col gap-3" style={rise(5)}>
-        <h2 className="text-title">Team history</h2>
+      <section className="rise flex flex-col gap-2" style={rise(5)}>
+        <h2 className="text-body-lg">Team history</h2>
         {history.length === 0 ? (
-          <p className="text-text-2">No team yet.</p>
+          <p className="text-small text-text-2">No team yet.</p>
         ) : (
           <ol className="flex flex-col border-l border-divider pl-4">
             {history.map((r) => {
               const team = teamById.get(r.team_id)
               return (
-                <li key={r.id} className="relative flex items-center justify-between gap-3 py-2">
+                <li key={r.id} className="relative flex items-center justify-between gap-3 py-1.5 text-small">
                   <span aria-hidden="true" className={`absolute -left-4 size-(--dot) -translate-x-1/2 rounded-pill ${r.ends_on ? 'bg-text-3' : 'bg-accent shadow-glow-soft'}`} />
                   {team ? <TeamName name={team.name} color={team.color_key} /> : <span>Unknown team</span>}
-                  <span className="nums text-small text-text-2">
+                  <span className="nums text-text-2">
                     {formatDay(r.starts_on)} – {r.ends_on ? formatDay(r.ends_on) : 'now'}
                   </span>
                 </li>
@@ -137,6 +151,7 @@ export default function PlayerProfile() {
       </section>
 
       <EditPlayerSheet player={player} open={editing} onOpenChange={setEditing} />
+      <MovePlayerSheet key={player.id} open={moving} onOpenChange={setMoving} initialPlayerId={player.id} />
     </article>
   )
 }

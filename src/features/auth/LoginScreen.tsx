@@ -28,16 +28,16 @@ export function LoginScreen() {
   }
 
   return (
-    <main className="safe-top safe-bottom relative isolate flex min-h-dvh items-center justify-center overflow-hidden px-4">
-      <StadiumBackdrop lightsOn />
-      <div className="flex w-full max-w-(--measure-form) flex-col gap-8">
-        <header className="rise flex flex-col items-center gap-4 text-center">
+    <main className="safe-top safe-bottom relative isolate flex min-h-dvh items-center justify-center overflow-hidden px-4 py-6">
+      <StadiumBackdrop photo="lights" lightsOn />
+      <div className="flex w-full max-w-(--measure-form) flex-col items-center gap-5">
+        <header className="rise flex flex-col items-center gap-2 text-center">
           <h1 className="sr-only">MLF, Minor League Football</h1>
-          <BrandMark size="lg" subtitle />
+          <BrandMark />
           <p className="caps-label text-text-2-strong">Your league · Your friends · Your season</p>
         </header>
 
-        <form onSubmit={submit} noValidate className="rise glass-strong lit flex flex-col gap-5 rounded-hero p-6" style={{ '--i': 2 } as CSSProperties}>
+        <form onSubmit={submit} noValidate className="rise glass-strong lit flex w-full flex-col gap-4 rounded-hero p-5" style={{ '--i': 1 } as CSSProperties}>
           <Field
             label="Login name"
             name="username"
@@ -61,16 +61,16 @@ export function LoginScreen() {
             onChange={(e) => setPassword(e.target.value)}
           />
           {error && (
-            <p role="alert" className="text-body text-danger">
+            <p role="alert" className="text-small text-danger">
               {MESSAGES[error]}
             </p>
           )}
-          <Button type="submit" variant="primary" size="xl" loading={busy} disabled={!loginName.trim() || !password}>
+          <Button type="submit" variant="primary" loading={busy} disabled={!loginName.trim() || !password}>
             Sign in
           </Button>
         </form>
 
-        <p className="rise text-center text-small text-text-2" style={{ '--i': 4 } as CSSProperties}>Forgot your password? Ask Akiva to reset it.</p>
+        <p className="rise text-center text-small text-text-2" style={{ '--i': 2 } as CSSProperties}>Forgot your password? Ask Akiva to reset it.</p>
       </div>
     </main>
   )

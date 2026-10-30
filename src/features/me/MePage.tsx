@@ -5,14 +5,15 @@ import { ChangePasswordForm, useAuth, useMember } from '../auth'
 import { displayName, ordinal, recordText, usePlayers, useSeasonSnapshot } from '../league'
 import { exportEverything } from '../settings/export'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '../../ui/Button'
 import { Icon, type IconName } from '../../ui/Icon'
 import { PlayerBadge } from '../../ui/PlayerBadge'
 import { Sheet } from '../../ui/Sheet'
 import { StadiumBackdrop } from '../../ui/StadiumBackdrop'
 import { StatBox } from '../../ui/StatBox'
+import { TeamBadge } from '../../ui/TeamBadge'
+import { teamStyle } from '../../ui/team'
 
-/** You: profile card, your team's numbers, account and app settings. */
+/** You: a compact profile, your team's numbers, and a grouped settings list. */
 export default function MePage() {
   const member = useMember()
   const { signOut } = useAuth()
@@ -22,6 +23,7 @@ export default function MePage() {
   const [install, setInstall] = useState(false)
   const [exporting, setExporting] = useState(false)
   const me = players.data?.find((p) => p.id === member.playerId)
+  const team = snap.myTeam
 
   async function runExport() {
     setExporting(true)
@@ -36,23 +38,31 @@ export default function MePage() {
   }
 
   return (
-    <section className="flex flex-col gap-6">
-      <header className="rise relative isolate flex flex-col items-center gap-3 overflow-hidden rounded-hero px-5 pt-10 pb-6 text-center">
-        <StadiumBackdrop team={snap.myTeam?.color_key} />
-        <PlayerBadge jersey={me?.jersey ?? null} team={snap.myTeam?.color_key} size="xl" />
-        <div className="flex flex-col items-center gap-1">
+    <section className="flex flex-col gap-5">
+      <header
+        className="rise relative isolate flex items-center gap-4 overflow-hidden rounded-hero p-4"
+        style={teamStyle(team?.color_key)}
+      >
+        <StadiumBackdrop photo="sunset" team={team?.color_key} />
+        <PlayerBadge jersey={me?.jersey ?? null} team={team?.color_key} size="md" />
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <h1 className="text-headline leading-none">{me ? displayName(me) : 'You'}</h1>
-          <p className="text-text-2-strong">{snap.myTeam?.name ?? 'No team yet'}</p>
+          <p className="flex flex-wrap items-center gap-2 text-small text-text-2-strong">
+            {team && <TeamBadge team={team} size="sm" />}
+            <span>{team?.name ?? 'No team yet'}</span>
+          </p>
+          {member.isLeagueManager && (
+            <div>
+              <Badge variant="gold">
+                <Icon name="crown" size="xs" filled /> League manager
+              </Badge>
+            </div>
+          )}
         </div>
-        {member.isLeagueManager && (
-          <Badge variant="accent">
-            <Icon name="crown" size="xs" filled /> League manager
-          </Badge>
-        )}
       </header>
 
       {snap.myRow && (
-        <dl className="rise glass-panel grid grid-cols-3 gap-4 rounded-panel p-5" style={{ '--i': 1 } as CSSProperties}>
+        <dl className="rise glass-panel grid grid-cols-3 gap-3 rounded-panel p-4" style={{ '--i': 1 } as CSSProperties}>
           <StatBox label="Record" value={recordText(snap.myRow)} />
           <StatBox label="Rank" value={ordinal(snap.myRow.rank)} accent={snap.myRow.rank === 1} />
           <StatBox label="PF" value={snap.myRow.points_for} count />
@@ -64,17 +74,34 @@ export default function MePage() {
         <Row icon="lock" label="Change password" onClick={() => setPassword(true)} />
         <Row icon="export" label={exporting ? 'Saving backup…' : 'Export everything'} hint="Every list in one file" onClick={runExport} />
         <Row icon="device" label="Put MLF on your phone" onClick={() => setInstall(true)} />
-        <li className="flex min-h-(--tap-min) items-center gap-3 border-t border-divider px-4 py-3 text-text-2">
-          <Icon name="info" size="sm" />
-          <span className="flex-1">Version</span>
-          <span className="nums">{__APP_VERSION__}</span>
+      </ul>
+
+      <ul className="rise glass-panel overflow-hidden rounded-panel" style={{ '--i': 3 } as CSSProperties}>
+        <li>
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="pressable lit flex min-h-(--tap-min) w-full items-center justify-center gap-2 px-3 py-2.5 font-strong text-danger hover-fine:bg-(--row-hover)"
+          >
+            <Icon name="sign-out" size="sm" />
+            Sign out
+          </button>
         </li>
       </ul>
 
-      <Button variant="outline" size="xl" onClick={() => void signOut()}>
-        <Icon name="sign-out" size="sm" />
-        Sign out
-      </Button>
+      <section aria-labelledby="about-title" className="rise flex flex-col gap-2" style={{ '--i': 4 } as CSSProperties}>
+        <h2 id="about-title" className="caps-label px-3">About</h2>
+        <ul className="glass-subtle flex flex-col overflow-hidden rounded-panel">
+          <li className="flex min-h-(--tap-min) items-center gap-3 px-3 py-2.5">
+            <Icon name="info" size="sm" className="text-text-3" />
+            <span className="flex-1 text-body">Version</span>
+            <span className="nums text-small text-text-2">{__APP_VERSION__}</span>
+          </li>
+          <li className="border-t border-divider px-3 py-2.5 text-small text-text-2">
+            Stadium photos from Unsplash: @weirick, @s2killa, @andrewgearhart, @24ameer
+          </li>
+        </ul>
+      </section>
 
       <Sheet open={password} onOpenChange={setPassword} title="Change password">
         <ChangePasswordForm />
@@ -92,17 +119,17 @@ export default function MePage() {
 function Row({ icon, label, hint, to, onClick }: { icon: IconName; label: string; hint?: string; to?: string; onClick?: () => void }) {
   const body: ReactNode = (
     <>
-      <span className="flex size-(--badge-sm) items-center justify-center rounded-control bg-accent-soft text-accent">
+      <span className="flex size-(--badge-sm) shrink-0 items-center justify-center rounded-control bg-(--press-fill) text-text">
         <Icon name={icon} size="sm" />
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="font-strong">{label}</span>
+        <span className="text-body font-medium">{label}</span>
         {hint && <span className="text-small text-text-2">{hint}</span>}
       </span>
       <Icon name="chevron" size="xs" className="text-text-3" />
     </>
   )
-  const cls = 'lit flex min-h-(--tap-game) w-full items-center gap-3 px-4 py-2 text-left hover-fine:bg-(--row-hover)'
+  const cls = 'lit flex min-h-(--tap-min) w-full items-center gap-3 px-3 py-2.5 text-left hover-fine:bg-(--row-hover)'
   return (
     <li className="border-t border-divider first:border-t-0">
       {to ? (

@@ -1,5 +1,7 @@
 export { installPointerEffects } from './pointer'
+export { installGlassLens } from './glass'
 export { CountUp } from './CountUp'
 export { Tilt } from './Tilt'
 export { Segmented, SegmentedPanel } from './Segmented'
 export { houseSpring } from './spring'
+export { Reveal } from './Reveal'

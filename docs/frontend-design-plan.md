@@ -147,7 +147,7 @@ All of these live in **one file**, `src/styles/tokens.css`. No colour, size or t
 | `--warn` | `#FFB347` | Questionable, caution |
 | `--ok` | `#3DDC97` | Back, success |
 | `--team-demons` | `#F04444` (red) | Speed Demons. A 4 px stripe or dot only. Never a button or panel fill, so the single-accent rule holds. |
-| `--team-daybies` | `#5B7CFF` (blue) | Daybies. Same rule. |
+| `--team-daybies` | `#5B7CFF` (blue) | Dumbo Daybies. Same rule. |
 | `--team-tigers` | `#FF7A1A` (orange) | Tigers. Same rule. |
 
 Contrast I calculated (WCAG AA needs 4.5:1 for normal text):
@@ -499,5 +499,5 @@ Once Phase 1a code exists I run `graphify update .` to build the map in `graphif
 
 1. Your OK on this plan (or changes), especially: TypeScript + React + Vite (section 1.1), the fenced use of React Bits and Ant Design (1.4), and the "no animation on live screens" rule (5.1).
 2. Photos in `public/images/`: a hero (stadium) and friend-group shots.
-3. Answered 2026-10-29: Speed Demons red, Daybies blue, Tigers orange; the "MLF" lettermark is fine as the app icon.
+3. Answered 2026-10-29: Speed Demons red, Dumbo Daybies blue, Tigers orange; the "MLF" lettermark is fine as the app icon.
 4. Answered 2026-10-29: yes, impeccable installed globally (hook off).

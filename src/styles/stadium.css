@@ -1,8 +1,7 @@
 /*
- * The cinematic backdrop: a night stadium drawn in CSS (two floodlight beams, lamps, haze,
- * yard lines in perspective, vignette). A real photo replaces the drawing's base when
- * --hero-photo is set. Optional team tint via --team (set inline to var(--team-x)).
- * Static: only .lights-on fades it in once.
+ * Stadium photos behind heroes, login and the game screen. Darkened so white text always reads,
+ * faded into the page at the bottom, and optionally washed with a team colour (--team, set inline).
+ * The photo drifts a little while scrolling (ui/StadiumBackdrop sets its translate). Decorative only.
  */
 @layer components {
   .stadium {
@@ -12,99 +11,74 @@
     overflow: hidden;
     border-radius: inherit;
     pointer-events: none;
-    background:
-      var(--hero-photo) center / cover no-repeat,
-      radial-gradient(80% 60% at 50% 105%, var(--haze-deep), transparent 70%),
-      var(--panel);
+    background: var(--panel);
   }
 
-  .stadium-beam {
+  .stadium-photo {
     position: absolute;
-    top: 0;
-    width: 90%;
-    height: 140%;
-    transform-origin: 50% 0;
-    background: conic-gradient(
-      from calc(180deg - var(--beam-spread)) at 50% 0%,
-      transparent 0deg,
-      var(--floodlight) calc(var(--beam-spread) * 0.7),
-      var(--floodlight-core) var(--beam-spread),
-      var(--floodlight) calc(var(--beam-spread) * 1.3),
-      transparent calc(var(--beam-spread) * 2)
-    );
-    filter: blur(var(--beam-blur));
-    mix-blend-mode: screen;
-  }
-  .stadium-beam[data-side='left'] {
-    left: -40%;
-    rotate: calc(var(--beam-tilt) * -1);
-  }
-  .stadium-beam[data-side='right'] {
-    right: -40%;
-    rotate: var(--beam-tilt);
+    inset: calc(var(--parallax) * -1px) 0;
+    background: var(--photo) center / cover no-repeat;
+    will-change: translate;
   }
 
-  .stadium-lamp {
-    position: absolute;
-    top: calc(var(--lamp-size) / -2);
-    width: var(--lamp-size);
-    height: var(--lamp-size);
-    background: radial-gradient(circle, var(--floodlight-core), transparent 65%);
-    mix-blend-mode: screen;
-  }
-  .stadium-lamp[data-side='left'] {
-    left: calc(var(--lamp-size) / -3);
-  }
-  .stadium-lamp[data-side='right'] {
-    right: calc(var(--lamp-size) / -3);
-  }
-
-  .stadium-haze {
+  /* Team-coloured floodlight glowing from the top corner of the photo (set --team inline). */
+  .stadium-tint {
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(70% 45% at 50% 55%, color-mix(in srgb, var(--team, var(--accent)) var(--team-tint-strength), transparent), transparent 75%),
-      radial-gradient(90% 50% at 50% 100%, var(--haze), transparent 70%);
-    opacity: 0.6;
+      radial-gradient(ellipse at 0% 0%, color-mix(in srgb, var(--team, transparent) var(--team-tint-strength), transparent), transparent 65%),
+      linear-gradient(to top, var(--bg), transparent 45%);
+    mix-blend-mode: normal;
   }
 
-  .stadium-field {
-    position: absolute;
-    left: -50%;
-    right: -50%;
-    bottom: -20%;
-    height: 70%;
-    transform-origin: 50% 100%;
-    transform: perspective(var(--field-depth)) rotateX(var(--field-tilt));
-    background: repeating-linear-gradient(
-      90deg,
-      transparent 0 calc(var(--yard-gap) - var(--border-width)),
-      var(--turf-line) calc(var(--yard-gap) - var(--border-width)) var(--yard-gap)
-    );
-    -webkit-mask-image: linear-gradient(to top, currentColor, transparent);
-    mask-image: linear-gradient(to top, currentColor, transparent);
+  /* Soft team-colour glow behind a box (team tiles, your-team rows). */
+  .team-glow {
+    box-shadow: 0 0 var(--glow-radius) color-mix(in srgb, var(--team, transparent) 35%, transparent);
   }
 
+  /* One even darkening so white text reads. No vignettes, no colour blobs. */
   .stadium-shade {
     position: absolute;
     inset: 0;
-    background:
-      radial-gradient(120% 90% at 50% 15%, transparent 40%, var(--vignette)),
-      var(--hero-fade);
+    background: var(--photo-dim);
   }
 
-  /* Team monogram badge: ring and tint in the team colour (set --team inline). */
+  /* Team crest: the SVG shield in ui/TeamBadge. Shine sweeps once on hover (mouse only). */
+  .crest {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+    filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.35))
+      drop-shadow(0 0 var(--glow-radius-sm) color-mix(in srgb, var(--team, transparent) 55%, transparent));
+  }
+  .crest-shine {
+    transition: translate var(--dur-shine) var(--ease-out);
+    translate: -120% 0;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .crest:hover .crest-shine,
+    .lift:hover .crest-shine {
+      translate: 120% 0;
+    }
+  }
+
+  /* The champions: a gold rim and a warm gold glow (Standings → Playoffs). */
+  .champion {
+    border: var(--border-width) solid var(--gold);
+    box-shadow: 0 0 var(--glow-radius) var(--gold-soft), inset 0 0 0 var(--border-width) var(--gold-soft);
+  }
+  .champion-crest {
+    filter: drop-shadow(0 0 var(--glow-radius-sm) var(--gold));
+  }
+
+  /* Round jersey badge ringed in the team colour (players). */
   .team-badge {
-    background:
-      radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--team) var(--team-tint-strength), transparent), transparent 70%),
-      var(--panel-2);
-    box-shadow:
-      inset 0 0 0 calc(var(--border-width) * 2) var(--team),
-      0 0 var(--beam-blur) color-mix(in srgb, var(--team) var(--team-tint-strength), transparent);
+    background: var(--panel-2);
+    box-shadow: inset 0 0 0 calc(var(--border-width) * 2) var(--team);
   }
 
-  /* Card washed by its team's colour from one corner. */
-  .team-wash {
-    background-image: radial-gradient(90% 120% at 0% 0%, color-mix(in srgb, var(--team) var(--team-tint-strength), transparent), transparent 60%);
+  /* Team text colour (the lifted shade, readable on dark). */
+  .team-text {
+    color: var(--team-light, var(--text));
   }
 }

@@ -46,6 +46,7 @@ beforeAll(async () => {
   await db.exec(SUPABASE_STUB)
   await db.exec(sql('001_initial_schema.sql'))
   await db.exec(sql('002_reference_data.sql'))
+  await db.exec(sql('003_game_night_trades_projections.sql'))
   // Owner setup (as in the SQL editor): players, teams, a season.
   await db.exec(`
     insert into public.players (full_name, login_name) values ('Akiva Test', 'akiva'), ('Eddie Test', 'eddie'), ('Leon Test', 'leo');
@@ -67,6 +68,7 @@ const TABLES = [
   'settings', 'seasons', 'scoring_types', 'stat_types', 'players', 'teams', 'roster_memberships',
   'member_logins', 'games', 'score_events', 'stat_events', 'record_adjustments', 'edit_history',
   'game_scores', 'standings', 'player_stat_totals', 'current_rosters',
+  'game_clocks', 'trades', 'current_season', 'player_projections', 'game_projections',
 ]
 
 describe('logged out', () => {
@@ -76,6 +78,8 @@ describe('logged out', () => {
 
   it('cannot call actions', async () => {
     await expect(as('anon', 'select public.link_my_login()')).rejects.toThrow(/permission denied/)
+    await expect(as('anon', `select public.set_final_score(gen_random_uuid(), 1, 2)`)).rejects.toThrow(/permission denied/)
+    await expect(as('anon', `select public.make_trade(gen_random_uuid(), '{}', gen_random_uuid(), '{}')`)).rejects.toThrow(/permission denied/)
   })
 })
 
@@ -204,5 +208,125 @@ describe('calculations', () => {
       { team_id: tig, ends_on: '2026-10-01' },
       { team_id: sd, ends_on: null },
     ])
+  })
+})
+
+describe('game night, trades and projections (change 003)', () => {
+  const season = '20000000-0000-0000-0000-000000000001'
+  const tig = '10000000-0000-0000-0000-000000000001'
+  const sd = '10000000-0000-0000-0000-000000000002'
+  const day = '10000000-0000-0000-0000-000000000003'
+
+  it('types in a final score in one step and voids the old lines', async () => {
+    const [game] = await as<{ id: string }>(
+      AKIVA,
+      `insert into public.games (season_id, home_team_id, away_team_id) values ($1, $2, $3) returning id`,
+      [season, sd, day],
+    )
+    await as(AKIVA, `insert into public.score_events (game_id, team_id, scoring_type_id, points) values ($1, $2, 'td', 6)`, [game?.id, sd])
+    await as(AKIVA, `select public.set_final_score($1, 28, 35)`, [game?.id])
+    const [score] = await as<{ status: string; home_points: number; away_points: number }>(
+      AKIVA,
+      `select status, home_points, away_points from public.game_scores where game_id = $1`,
+      [game?.id],
+    )
+    expect(score).toEqual({ status: 'final', home_points: 28, away_points: 35 })
+    const voided = await as(AKIVA, `select 1 from public.score_events where game_id = $1 and voided_at is not null`, [game?.id])
+    expect(voided).toHaveLength(1)
+  })
+
+  it('refuses silly scores', async () => {
+    const [game] = await as<{ id: string }>(AKIVA, `select id from public.games limit 1`)
+    await expect(as(AKIVA, `select public.set_final_score($1, 500, 0)`, [game?.id])).rejects.toThrow(/between 0 and 200/)
+  })
+
+  it('swaps players in a trade, keeps the old lines and records it', async () => {
+    const [akiva] = await as<{ id: string }>(AKIVA, `select id from public.players where login_name = 'akiva'`)
+    const [leo] = await as<{ id: string }>(AKIVA, `select id from public.players where login_name = 'leo'`)
+    await as(AKIVA, `select public.move_player($1, $2, '2026-09-01')`, [akiva?.id, day])
+    // Leo is on Speed Demons from the earlier test.
+    await as(AKIVA, `select public.make_trade($1, array[$2]::uuid[], $3, array[$4]::uuid[], '2026-10-20', 'Test trade')`, [day, akiva?.id, sd, leo?.id])
+    const now = await as<{ player_id: string; team_id: string }>(
+      AKIVA,
+      `select player_id, team_id from public.current_rosters where player_id in ($1, $2) order by team_id`,
+      [akiva?.id, leo?.id],
+    )
+    expect(now).toEqual(expect.arrayContaining([{ player_id: akiva?.id, team_id: sd }, { player_id: leo?.id, team_id: day }]))
+    const trades = await as<{ note: string }>(AKIVA, `select note from public.trades`)
+    expect(trades).toEqual([{ note: 'Test trade' }])
+  })
+
+  it('refuses a trade when a player is not on that team', async () => {
+    const [akiva] = await as<{ id: string }>(AKIVA, `select id from public.players where login_name = 'akiva'`)
+    await expect(
+      as(AKIVA, `select public.make_trade($1, array[$2]::uuid[], $3, '{}')`, [day, akiva?.id, tig]),
+    ).rejects.toThrow(/not on that team/)
+  })
+
+  it('projects players from their stats and their team games', async () => {
+    const [akiva] = await as<{ id: string }>(AKIVA, `select id from public.players where login_name = 'akiva'`)
+    await as(
+      AKIVA,
+      `insert into public.stat_events (season_id, player_id, stat_type_id, value) values ($1, $2, 'td', 4), ($1, $2, 'rec', 10)`,
+      [season, akiva?.id],
+    )
+    const [p] = await as<{ games: number; td_per_game: string; points_total: string; points_per_game: string }>(
+      AKIVA,
+      `select games, td_per_game, points_total, points_per_game from public.player_projections where player_id = $1`,
+      [akiva?.id],
+    )
+    // Speed Demons: 2-1 adjustment + the 28-35 loss = 4 games. 4 TD x 6 + 10 catches x 1 = 34 points.
+    expect({ ...p, td_per_game: Number(p?.td_per_game), points_total: Number(p?.points_total), points_per_game: Number(p?.points_per_game) })
+      .toEqual({ games: 4, td_per_game: 1, points_total: 34, points_per_game: 8.5 })
+  })
+
+  it('projects an upcoming game between teams that have played', async () => {
+    const [game] = await as<{ id: string }>(
+      AKIVA,
+      `insert into public.games (season_id, home_team_id, away_team_id) values ($1, $2, $3) returning id`,
+      [season, tig, day],
+    )
+    const [g] = await as<{ home_points: number; away_points: number; home_win_chance: string }>(
+      AKIVA,
+      `select home_points, away_points, home_win_chance from public.game_projections where game_id = $1`,
+      [game?.id],
+    )
+    // Tigers: scored 21, let in 14. Daybies: scored 14 and 35 (avg 24.5), let in 21 and 28 (avg 24.5).
+    expect(g?.home_points).toBe(Math.round((21 + 24.5) / 2))
+    expect(g?.away_points).toBe(Math.round((24.5 + 14) / 2))
+    expect(Number(g?.home_win_chance)).toBeGreaterThan(0.5)
+  })
+
+  it('keeps a game clock that only members can change', async () => {
+    const [game] = await as<{ id: string }>(AKIVA, `select id from public.games limit 1`)
+    await as(AKIVA, `insert into public.game_clocks (game_id, seconds_left) values ($1, 600)`, [game?.id])
+    await as(AKIVA, `update public.game_clocks set running = true, started_at = public.server_now() where game_id = $1`, [game?.id])
+    await expect(as(STRANGER, `update public.game_clocks set running = false where game_id = $1`, [game?.id]).then((r) => r.length)).resolves.toBe(0)
+    const [c] = await as<{ running: boolean }>(AKIVA, `select running from public.game_clocks where game_id = $1`, [game?.id])
+    expect(c?.running).toBe(true)
+  })
+})
+
+describe('playoffs', () => {
+  it('never lets the championship game change the regular-season table', async () => {
+    const season = '20000000-0000-0000-0000-000000000001'
+    const tig = '10000000-0000-0000-0000-000000000001'
+    const sd = '10000000-0000-0000-0000-000000000002'
+    const table = () =>
+      as<{ team_id: string; wins: number; losses: number; points_for: number }>(
+        AKIVA,
+        `select team_id, wins, losses, points_for from public.standings where season_id = $1 order by team_id`,
+        [season],
+      )
+    const before = await table()
+    const [game] = await as<{ id: string }>(
+      AKIVA,
+      `insert into public.games (season_id, home_team_id, away_team_id, kind) values ($1, $2, $3, 'playoff') returning id`,
+      [season, tig, sd],
+    )
+    await as(AKIVA, `select public.set_final_score($1, 40, 12)`, [game?.id])
+    const [score] = await as<{ kind: string; status: string }>(AKIVA, `select kind, status from public.game_scores where game_id = $1`, [game?.id])
+    expect(score).toEqual({ kind: 'playoff', status: 'final' })
+    expect(await table()).toEqual(before)
   })
 })

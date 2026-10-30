@@ -22,6 +22,7 @@ export function AddGameSheet({ open, onOpenChange, seasonId, defaultWeek }: Prop
   const [away, setAway] = useState('')
   const [week, setWeek] = useState(String(defaultWeek))
   const [when, setWhen] = useState('')
+  const [kind, setKind] = useState<'regular' | 'playoff'>('regular')
 
   const weekNumber = Number(week)
   const weekBad = !Number.isInteger(weekNumber) || weekNumber < 1 || weekNumber > 99
@@ -38,11 +39,13 @@ export function AddGameSheet({ open, onOpenChange, seasonId, defaultWeek }: Prop
         home_team_id: home,
         away_team_id: away,
         starts_at: when ? fromZonedInput(when) : null,
+        kind,
       })
-      toast.success('Game added')
+      toast.success(kind === 'playoff' ? 'Championship final added' : 'Game added')
       setHome('')
       setAway('')
       setWhen('')
+      setKind('regular')
       onOpenChange(false)
     } catch {
       toast.error("Couldn't add the game. Check your signal and try again.")
@@ -67,6 +70,10 @@ export function AddGameSheet({ open, onOpenChange, seasonId, defaultWeek }: Prop
       }
     >
       <form id="add-game" onSubmit={submit} className="flex flex-col gap-4">
+        <Select label="Game type" value={kind} onChange={(e) => setKind(e.target.value as 'regular' | 'playoff')}>
+          <option value="regular">Regular season</option>
+          <option value="playoff">Championship final (doesn't count in the table)</option>
+        </Select>
         <Select label="Team 1" value={home} onChange={(e) => setHome(e.target.value)}>
           <option value="">Choose a team</option>
           {teamOptions}

@@ -1,7 +1,9 @@
 /*
  * MLF design tokens: the ONLY place raw colours, sizes and timings live.
- * Direction (Akiva, 2026-10-30): cinematic sports editorial + Apple Liquid Glass.
- * Everything else (Tailwind utilities, shadcn parts, glass tiers, motion helpers) reads these.
+ * Direction (Akiva, 2026-10-30): "ESPN + Apple + liquid glass": broadcast-bold numbers and team
+ * colours (ESPN), calm readable rows and clear hierarchy (Apple Sports), frosted glass over
+ * real stadium photos (Liquid Glass). Team colours lead; white is the main button; floodlight gold is a
+ * small highlight only (focus, live, links).
  * Exceptions that cannot read CSS: the theme-color meta tag in index.html and the PWA manifest
  * both repeat --bg (#050B14) by hand.
  */
@@ -9,61 +11,88 @@
   /* ── Colour ─────────────────────────────────────────── */
   --bg: #050b14;
   --panel: #0b1624; /* deep midnight */
-  --panel-2: #102035; /* a step lighter, for raised rows */
-  --accent: #20cfff; /* cyan: primary action, active tab, rank 1, live. Nothing decorative. */
-  --accent-ink: #03121c; /* text on a cyan fill */
-  --accent-soft: rgb(32 207 255 / 0.12); /* tinted row / chip fill */
-  --accent-line: rgb(32 207 255 / 0.45); /* cyan edge lighting */
-  --accent-glow: 0 0 28px rgb(32 207 255 / 0.45), 0 0 2px rgb(32 207 255 / 0.9);
-  --accent-glow-soft: 0 0 18px rgb(32 207 255 / 0.28);
+  --panel-2: #12233a; /* a step lighter, for raised rows */
+  --primary: #f5f7fa; /* the main button: white capsule */
+  --primary-ink: #050b14; /* text on the white button */
+  --accent: #ffd36e; /* floodlight gold highlight: focus ring, eyebrows, small links. Never a big fill. */
+  --accent-ink: #1a1203; /* text on a gold fill */
+  --accent-soft: rgb(255 211 110 / 0.14);
+  --accent-line: rgb(255 211 110 / 0.5);
+  --accent-glow: 0 0 24px rgb(255 211 110 / 0.4), 0 0 2px rgb(255 211 110 / 0.9);
+  --accent-glow-soft: 0 0 16px rgb(255 211 110 / 0.25);
+  --gold: #f5c451; /* first place, crowns, MVP. Small doses. */
+  --gold-soft: rgb(245 196 81 / 0.14);
   --text: #f5f7fa;
-  --text-2: #8795a8;
-  --text-2-strong: #a6b2c3; /* secondary text on strong glass (sheets) */
-  --text-3: #5d6b7e; /* hairline numbers, never body text */
+  --text-2: #a3b1c4; /* secondary text: 9:1 on --bg, 6.6:1 on glass */
+  --text-2-strong: #b9c5d5; /* secondary text on strong glass and photos */
+  --text-3: #8896ab; /* tertiary: AA (4.5:1+) on every surface incl. glass */
   --danger: #ff6b7a;
   --warn: #ffb347;
   --ok: #3ddc97;
+  --live: #d81e33; /* the LIVE pill, broadcast red (white text 4.7:1) */
 
-  /* Team colours: badge ring, glow and a dot, always next to the written team name. */
+  /* Team colours. --team-x is the brand colour (fills, crests, glows).
+     --team-x-light is the same hue lifted for text on dark (AA). --team-x-deep is the dark end of a gradient. */
   --team-demons: #f04444;
+  --team-demons-light: #ff8a8a;
+  --team-demons-deep: #5c0d18;
   --team-daybies: #5b7cff;
+  --team-daybies-light: #9db0ff;
+  --team-daybies-deep: #141d66;
   --team-tigers: #ff7a1a;
+  --team-tigers-light: #ffaa66;
+  --team-tigers-deep: #6b2604;
+  --team-none: #7d8ba0;
+  --team-none-light: #b9c5d5;
+  --team-none-deep: #1a2638;
 
-  /* ── Glass (three tiers) ────────────────────────────── */
+  /* ── Liquid glass (three tiers) ─────────────────────── */
+  /* Clear material (iOS 26 Liquid Glass): almost no tint, light blur so the world behind stays
+     readable, a hairline edge, and (Chromium) a lens that bends the background near the edges. */
   --glass-subtle-fill: rgb(255 255 255 / 0.04);
-  --glass-panel-fill: rgb(14 28 46 / 0.55);
-  --glass-strong-fill: rgb(16 32 53 / 0.72);
-  --glass-subtle-blur: 10px;
-  --glass-panel-blur: 18px;
-  --glass-strong-blur: 28px;
-  --glass-saturate: 1.6;
-  --glass-border: rgb(255 255 255 / 0.09);
+  --glass-panel-fill: rgb(255 255 255 / 0.035);
+  --glass-strong-fill: rgb(12 22 38 / 0.55);
+  --glass-subtle-blur: 6px;
+  --glass-panel-blur: 9px;
+  --glass-strong-blur: 22px;
+  --glass-saturate: 1.7;
+  --glass-brightness: 1.05;
+  --glass-border: rgb(255 255 255 / 0.1);
   --glass-border-strong: rgb(255 255 255 / 0.16);
-  --glass-highlight: rgb(255 255 255 / 0.1); /* light catching the top rim */
-  --glass-edge: rgb(32 207 255 / 0.22); /* faint cyan edge lighting */
-  --glass-shadow: 0 18px 48px rgb(0 0 0 / 0.45), 0 2px 6px rgb(0 0 0 / 0.3);
+  --glass-highlight: rgb(255 255 255 / 0.08);
+  --glass-rim-bright: rgb(255 255 255 / 0.3);
+  --glass-rim-dim: rgb(255 255 255 / 0.04);
+  --glass-edge: rgb(255 255 255 / 0.2);
+  --glass-shadow: 0 10px 30px rgb(0 0 0 / 0.28);
+  --glass-specular:
+    inset 0 1px 0 -0.5px var(--glass-rim-bright),
+    inset 0 0 0 1px rgb(255 255 255 / 0.03);
   --glass-fallback: rgb(11 22 36 / 0.97); /* no blur support or reduced transparency */
-  --scrim: rgb(3 8 15 / 0.72); /* behind sheets and dialogs */
-  --row-hover: rgb(255 255 255 / 0.035);
-  --row-divider: rgb(255 255 255 / 0.06);
+  --scrim: rgb(3 8 15 / 0.7);
+  --row-hover: rgb(255 255 255 / 0.05);
+  --row-divider: rgb(255 255 255 / 0.07);
+  --press-fill: rgb(255 255 255 / 0.1);
 
-  /* ── Cinematic backdrop (stadium at night) ──────────── */
-  --hero-photo: none; /* set to url('/images/stadium.webp') once Akiva adds photos */
-  --floodlight: rgb(190 225 255 / 0.16);
-  --floodlight-core: rgb(225 242 255 / 0.32);
-  --haze: rgb(32 207 255 / 0.07);
-  --haze-deep: rgb(40 70 160 / 0.22);
-  --turf-line: rgb(255 255 255 / 0.07);
+  /* ── Photos and the night backdrop ──────────────────── */
+  --photo-lights: url('/images/stadium-lights.webp');
+  --photo-bowl: url('/images/stadium-bowl.webp');
+  --photo-sunset: url('/images/stadium-sunset.webp');
+  --photo-field: url('/images/field-aerial.webp');
+  --photo-dim: rgb(5 11 20 / 0.62);
+  --floodlight: rgb(190 225 255 / 0.14);
+  --floodlight-core: rgb(225 242 255 / 0.3);
+  --haze: rgb(255 211 110 / 0.06);
+  --haze-deep: rgb(40 70 160 / 0.2);
   --vignette: rgb(2 5 10 / 0.85);
-  --hero-fade: linear-gradient(180deg, transparent 35%, var(--bg) 100%);
-  --team-tint-strength: 30%; /* how much team colour tints a glow */
-  --beam-spread: 13deg; /* half-width of a floodlight beam */
-  --beam-tilt: 26deg; /* how far the corner beams lean in */
+  --glow-radius: 28px;
+  --glow-radius-sm: 10px;
+  --ambient-strength: 30%; /* team colour in the moving background */
+  --beam: rgb(255 255 255 / 0.05); /* floodlight beams sweeping the background */
+  --dur-beam: 26s;
+  --dur-ambient: 48s; /* one slow drift of the background lights */
+  --team-tint-strength: 34%; /* how much team colour tints a glow */
+  --parallax: 40; /* px a hero photo drifts while scrolling (plain number, read by JS) */
   --beam-blur: 18px;
-  --field-tilt: 64deg; /* yard-line plane, seen from the stands */
-  --field-depth: 600px;
-  --yard-gap: 56px;
-  --lamp-size: 120px;
 
   /* ── Type ───────────────────────────────────────────── */
   --font-display: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
@@ -72,54 +101,60 @@
   --weight-medium: 500;
   --weight-strong: 600;
   --weight-display: 700;
-  --text-label: 0.75rem;
-  --text-small: 0.875rem;
-  --text-body: 1rem;
-  --text-body-lg: 1.125rem;
-  --text-title: 1.5rem;
-  --text-stat: 2.25rem; /* numbers inside stat boxes */
-  --text-headline: clamp(2.25rem, 7vw + 1rem, 3.5rem);
-  --text-score: clamp(3.5rem, 18vw, 6rem);
-  --text-display: clamp(4.5rem, 24vw, 9rem); /* the WEEK / SEASON hero word */
-  --leading-none: 0.86;
-  --leading-tight: 1.05;
+  --weight-black: 800;
+  --text-label: 0.6875rem; /* 11px caps labels */
+  --text-small: 0.8125rem; /* 13px meta */
+  --text-body: 0.9375rem; /* 15px, Apple body */
+  --text-body-lg: 1.0625rem;
+  --text-title: 1.1875rem;
+  --text-stat: 1.75rem;
+  --text-headline: clamp(1.875rem, 5vw + 0.75rem, 2.75rem);
+  --text-score: clamp(3rem, 15vw, 4.75rem);
+  --text-display: clamp(3.25rem, 17vw, 6rem);
+  --leading-none: 0.88;
+  --leading-tight: 1.1;
   --leading-body: 1.5;
-  --tracking-label: 0.16em;
-  --tracking-brand: 0.34em;
-  --tracking-display: 0.005em;
-  --tracking-tight: -0.01em;
+  --tracking-label: 0.08em; /* small caps labels: readable, not airy */
+  --tracking-brand: 0.3em;
+  --tracking-display: 0.01em;
+  --tracking-tight: -0.015em;
+  --tracking-normal: 0;
 
   /* ── Space, shape, layers ───────────────────────────── */
   --space-unit: 4px; /* steps: 4, 8, 12, 16, 24, 32, 48 */
-  --tap-min: 44px;
+  --tap-min: 44px; /* hit area for icon-only and list rows */
+  --control-h: 38px; /* visible height of normal buttons and inputs */
+  --control-h-sm: 30px; /* chips and small buttons */
   --tap-game: 56px;
+  --tap-score: 64px; /* live-game score buttons */
   --tap-gap: 8px;
   --radius-chip: 6px;
   --radius-control: 10px;
-  --radius-panel: 16px;
-  --radius-hero: 22px;
+  --radius-panel: 14px;
+  --radius-hero: 20px;
   --radius-pill: 999px;
   --stripe: 3px; /* team colour stripe width */
-  --dot: 8px; /* team colour dot */
+  --dot: 6px;
   --border-width: 1px;
   --focus-ring: 2px;
   --focus-offset: 2px;
-  --nav-height: 64px;
-  --nav-inset: 12px; /* floating nav sits this far from the screen edges */
-  --header-height: 60px;
+  --nav-height: 58px;
+  --nav-inset: 10px;
+  --header-height: 48px;
   --content-max: 720px;
-  --measure-narrow: 32ch;
+  --measure-narrow: 34ch;
   --measure-form: 400px;
-  --sheet-max: 90dvh;
+  --sheet-max: 92dvh;
   --icon-xs: 16px;
-  --icon-sm: 20px;
-  --icon-md: 24px;
-  --icon-lg: 32px;
-  --badge-sm: 36px;
-  --badge-md: 48px;
-  --badge-lg: 72px;
-  --badge-xl: 96px;
-  --hero-min: 300px;
+  --icon-sm: 18px;
+  --icon-md: 22px;
+  --icon-lg: 28px;
+  --badge-sm: 28px;
+  --badge-md: 38px;
+  --badge-lg: 56px;
+  --badge-xl: 84px;
+  --hero-min: 220px;
+  --bar-height: 4px; /* win-chance and stat bars */
   --z-content: 0;
   --z-raised: 1;
   --z-header: 10;
@@ -134,22 +169,31 @@
   --ease-hover: ease;
   --dur-press: 120ms;
   --dur-fast: 160ms;
-  --dur-drill: 200ms;
+  --dur-drill: 260ms;
   --dur-base: 240ms;
   --dur-sheet: 300ms;
-  --dur-rise: 520ms; /* screen entrance, once per visit */
-  --dur-count: 900ms; /* number count-up, once per visit */
-  --press-scale: 0.97;
-  --rise: 14px; /* entrance rises this far */
-  --stagger: 40ms;
-  --lift: -2px; /* hover lift on cards (fine pointers only) */
-  --spotlight-size: 260px; /* pointer light on glass */
-  --spotlight: rgb(32 207 255 / 0.1);
-  --spotlight-rim: rgb(32 207 255 / 0.35);
+  --dur-ripple: 520ms;
+  --dur-shine: 900ms;
+  --dur-rise: 560ms; /* entrances, once per visit */
+  --dur-count: 900ms; /* count-ups and bar fills, once per visit */
+  --dur-shimmer: 1400ms; /* loading shimmer */
+  --dur-pulse: 1600ms; /* the LIVE dot */
+  --dur-flash: 200ms; /* live score: one highlight fade on the changed number */
+  --press-scale: 0.96;
+  --rise: 12px;
+  --stagger: 45ms;
+  --lift: -2px;
+  --spotlight-size: 280px;
+  --spotlight: rgb(255 255 255 / 0.07);
+  --spotlight-rim: rgb(255 255 255 / 0.4);
+  --ripple: rgb(255 255 255 / 0.22);
+  --ripple-dark: rgb(5 11 20 / 0.14); /* ripple on the white button */
+  --ripple-size: 240px;
   /* Read by src/ui/motion (plain numbers, no units): */
   --magnet-max: 6; /* px a primary button leans toward the pointer */
-  --tilt-max: 5; /* degrees a hero card tilts under the pointer */
+  --tilt-max: 6; /* degrees a hero card tilts under the pointer */
   --tilt-perspective: 900; /* px */
   --spring-duration: 0.45; /* seconds, Motion springs */
-  --spring-bounce: 0.12;
+  --spring-bounce: 0.15;
+  --slide: 28; /* px a screen slides in from when switching tabs */
 }

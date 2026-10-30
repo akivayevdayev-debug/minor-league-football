@@ -1,6 +1,7 @@
 /*
  * Liquid glass: three tiers. Values come from tokens.css.
- * Five layers each: translucent fill, backdrop blur, hairline rim, top highlight, soft lift.
+ * Five layers each: translucent fill, backdrop blur, a rim that is bright where light hits
+ * (top and left) and dim where it doesn't, an inner top highlight, and a soft lift.
  * Rules: max 5 blurred surfaces per screen, never glass inside glass (use .surface-inset),
  * never animate the blur, near-solid when blur is unsupported or transparency is reduced.
  */
@@ -8,37 +9,53 @@
   .glass-subtle,
   .glass-panel,
   .glass-strong {
-    background: var(--glass-fallback);
+    background-color: var(--glass-fallback);
     border: var(--border-width) solid var(--glass-border);
-    box-shadow:
-      inset 0 var(--border-width) 0 var(--glass-highlight),
-      inset 0 0 0 var(--border-width) transparent,
-      var(--glass-shadow);
-  }
-
-  /* Faint cyan rim along the top edge: the "edge lighting" of the brief. */
-  .glass-panel,
-  .glass-strong {
-    background-image: linear-gradient(180deg, var(--glass-highlight), transparent 28%);
     border-top-color: var(--glass-edge);
+    border-bottom-color: var(--glass-rim-dim);
+    box-shadow: var(--glass-specular), var(--glass-shadow);
+  }
+  .glass-subtle {
+    box-shadow: var(--glass-specular);
   }
 
   @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .glass-subtle {
       background-color: var(--glass-subtle-fill);
-      -webkit-backdrop-filter: blur(var(--glass-subtle-blur)) saturate(var(--glass-saturate));
-      backdrop-filter: blur(var(--glass-subtle-blur)) saturate(var(--glass-saturate));
+      -webkit-backdrop-filter: blur(var(--glass-subtle-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-brightness));
+      backdrop-filter: blur(var(--glass-subtle-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-brightness));
     }
     .glass-panel {
       background-color: var(--glass-panel-fill);
-      -webkit-backdrop-filter: blur(var(--glass-panel-blur)) saturate(var(--glass-saturate));
-      backdrop-filter: blur(var(--glass-panel-blur)) saturate(var(--glass-saturate));
+      -webkit-backdrop-filter: blur(var(--glass-panel-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-brightness));
+      backdrop-filter: blur(var(--glass-panel-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-brightness));
     }
     .glass-strong {
       background-color: var(--glass-strong-fill);
       -webkit-backdrop-filter: blur(var(--glass-strong-blur)) saturate(var(--glass-saturate));
       backdrop-filter: blur(var(--glass-strong-blur)) saturate(var(--glass-saturate));
     }
+  }
+
+  /* Lens refraction (Chromium only; html.lg-refract is set by src/ui/motion/glass.ts).
+     The SVG filter #lg-lens lives in index.html. Safari keeps the plain blur above. */
+  html.lg-refract .glass-panel {
+    -webkit-backdrop-filter: url(#lg-lens) blur(var(--glass-panel-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-brightness));
+    backdrop-filter: url(#lg-lens) blur(var(--glass-panel-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-brightness));
+  }
+  html.lg-refract .glass-subtle {
+    backdrop-filter: url(#lg-lens) blur(var(--glass-subtle-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-brightness));
+  }
+
+  /* Glass that sits over a photo: a touch darker so white text always reads. */
+  .glass-on-photo {
+    background-color: rgb(5 11 20 / 0.3);
+  }
+
+  /* Scroll edge: content fades softly under floating chrome instead of a hard line. */
+  .scroll-edge-top {
+    -webkit-mask-image: linear-gradient(to bottom, currentColor 70%, transparent);
+    mask-image: linear-gradient(to bottom, currentColor 70%, transparent);
   }
 
   @media (prefers-reduced-transparency: reduce) {
@@ -64,6 +81,20 @@
   .surface-inset {
     background: var(--glass-subtle-fill);
     border: var(--border-width) solid var(--glass-border);
+    border-top-color: var(--glass-border-strong);
+  }
+
+  /* Long lists: the same clear fill, rim and highlight as glass, but no blur (cheap on long pages).
+     The moving background lights are already soft, so they read as glass through it. */
+  .glass-list {
+    background: var(--glass-panel-fill);
+    border: var(--border-width) solid var(--glass-border);
+    border-top-color: var(--glass-edge);
+    border-bottom-color: var(--glass-rim-dim);
+    box-shadow: var(--glass-specular), var(--glass-shadow);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .glass-list { background: var(--glass-fallback); }
   }
 
   /* Solid rows for long lists. */
@@ -72,17 +103,17 @@
     border: var(--border-width) solid var(--glass-border);
   }
 
-  /* Cyan-tinted glass: the active row, rank 1, the "your team" highlight. */
+  /* Team-tinted row: "your team", rank 1, the active row. Set --team inline (falls back to white). */
   .surface-accent {
-    background: linear-gradient(90deg, var(--accent-soft), transparent 85%);
-    box-shadow: inset var(--stripe) 0 0 var(--accent);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--team, var(--primary)) 16%, transparent), transparent 85%);
+    box-shadow: inset var(--stripe) 0 0 var(--team, var(--primary));
   }
 
   /* Text inputs, selects and text areas. */
   .field-control {
     width: 100%;
-    min-height: var(--tap-min);
-    padding: 0 calc(var(--space-unit) * 3.5);
+    min-height: var(--control-h);
+    padding: 0 calc(var(--space-unit) * 3);
     border-radius: var(--radius-control);
     background: var(--glass-subtle-fill);
     border: var(--border-width) solid var(--glass-border-strong);
@@ -96,7 +127,7 @@
       background-color var(--dur-fast) var(--ease-hover);
   }
   .field-control::placeholder {
-    color: var(--text-2);
+    color: var(--text-3);
   }
   textarea.field-control {
     padding-block: calc(var(--space-unit) * 3);
@@ -111,12 +142,12 @@
     color: var(--text);
   }
   .field-control:hover {
-    border-color: var(--accent-line);
+    border-color: var(--glass-edge);
   }
   .field-control:focus-visible {
     border-color: var(--accent);
-    box-shadow: var(--accent-glow-soft);
-    background-color: var(--accent-soft);
+    box-shadow: 0 0 0 calc(var(--focus-ring) + 1px) var(--accent-soft);
+    background-color: var(--press-fill);
   }
   .field-control[aria-invalid='true'] {
     border-color: var(--danger);

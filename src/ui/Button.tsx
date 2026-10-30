@@ -2,17 +2,17 @@ import type { ButtonHTMLAttributes } from 'react'
 import { Button as ShadButton } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger'
-type Size = 'md' | 'xl' | 'icon'
+type Variant = 'primary' | 'team' | 'secondary' | 'outline' | 'ghost' | 'danger'
+type Size = 'sm' | 'md' | 'xl' | 'icon'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant
-  /** md = 44 px (normal screens), xl = 56 px (game screens), icon = 44 px square. */
+  /** sm = 30 px chip, md = 38 px (normal screens), xl = 56 px (game screens), icon = 38 px circle. */
   size?: Size
   loading?: boolean
 }
 
-/** One primary (glowing cyan) button per screen. Built on the shadcn Button. */
+/** One primary (white capsule) button per screen. Built on the shadcn Button. */
 export function Button({ variant = 'secondary', size = 'md', loading = false, disabled, className, children, ...rest }: ButtonProps) {
   return (
     <ShadButton

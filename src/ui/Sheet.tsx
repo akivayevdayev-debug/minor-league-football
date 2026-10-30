@@ -16,12 +16,12 @@ export function Sheet({ open, onOpenChange, title, description, children, footer
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent>
-        <div className="flex flex-col gap-1 px-5 pt-4">
+        <div className="flex flex-col gap-1 px-4 pt-3">
           <DrawerTitle>{title}</DrawerTitle>
           <DrawerDescription className={description ? undefined : 'sr-only'}>{description ?? title}</DrawerDescription>
         </div>
-        <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5">{children}</div>
-        {footer && <div className="flex gap-2 border-t border-divider px-5 py-3">{footer}</div>}
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4">{children}</div>
+        {footer && <div className="flex gap-2 border-t border-divider px-4 py-3">{footer}</div>}
       </DrawerContent>
     </Drawer>
   )

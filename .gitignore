@@ -1,0 +1,14 @@
+# Real league data (names, birthdays, heights, weights of the players) stays on this Mac, never in git
+data/private/
+
+# Secrets (only the Supabase URL and anon key are ever used; still, never commit env files)
+.env
+.env.*
+!.env.example
+
+# Tools and system files
+node_modules/
+dist/
+.DS_Store
+.serena/
+*.log

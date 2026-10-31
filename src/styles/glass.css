@@ -80,21 +80,28 @@
     .glass-bar { background-color: var(--glass-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
   }
 
-  /* Top bar: full-width, so no lens warp (it smears content into blobs). A light tint and
-     medium blur keep the logo and season label calm while content scrolls under. */
+  /* Top bar: full-width frosted glass with a hairline underneath. The blur sits on a layer behind
+     the bar (not on the bar itself), so the logo and season label are never blurred. */
   .glass-header {
-    background-color: var(--glass-fallback);
     border-bottom: var(--border-width) solid var(--glass-rim-dim);
   }
+  .glass-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-color: var(--glass-fallback);
+  }
   @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-    .glass-header {
+    .glass-header::before {
       background-color: var(--glass-header-fill);
       -webkit-backdrop-filter: blur(var(--glass-header-blur)) saturate(var(--glass-bar-saturate));
       backdrop-filter: blur(var(--glass-header-blur)) saturate(var(--glass-bar-saturate));
     }
   }
   @media (prefers-reduced-transparency: reduce) {
-    .glass-header { background-color: var(--glass-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
+    .glass-header::before { background-color: var(--glass-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
   }
 
   /* Glass that sits over a photo: a touch darker so white text always reads. */
@@ -157,6 +164,14 @@
   .surface-accent {
     background: linear-gradient(90deg, color-mix(in srgb, var(--team, var(--primary)) 16%, transparent), transparent 85%);
     box-shadow: inset var(--stripe) 0 0 var(--team, var(--primary));
+  }
+
+  /* Softer team header for a card's title row: a team-colour wash and a thin team line along the
+     bottom, both fading to the right, instead of a hard bar down the left edge. Set --team inline. */
+  .surface-accent-fade {
+    background:
+      linear-gradient(90deg, color-mix(in srgb, var(--team, var(--primary)) 14%, transparent), transparent 75%),
+      linear-gradient(90deg, color-mix(in srgb, var(--team, var(--primary)) 70%, transparent), transparent 60%) bottom / 100% var(--border-width) no-repeat;
   }
 
   /* Text inputs, selects and text areas. */

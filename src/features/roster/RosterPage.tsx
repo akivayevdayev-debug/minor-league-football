@@ -162,8 +162,8 @@ export default function RosterPage() {
       </nav>
 
       {/* Lineup */}
-      <section aria-labelledby="lineup-title" className="rise glass-panel team-glow overflow-hidden rounded-panel" style={{ '--i': 3 } as CSSProperties}>
-        <header className="surface-accent flex items-center gap-2 px-3 py-2">
+      <section aria-labelledby="lineup-title" className="rise glass-panel overflow-hidden rounded-panel" style={{ '--i': 3 } as CSSProperties}>
+        <header className="surface-accent-fade flex items-center gap-2 px-3 py-2">
           <h2 id="lineup-title" className="flex-1 text-body font-strong">
             Lineup <span className="text-text-2 nums">· {lineup.length}</span>
           </h2>

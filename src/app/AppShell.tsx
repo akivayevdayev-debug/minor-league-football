@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
 import { BottomNav } from './BottomNav'
+import { PullToRefresh } from './PullToRefresh'
 import { activeTabIndex } from './tabs'
 import { useCurrentSeason } from '../features/league'
 import { BrandMark } from '../ui/BrandMark'
@@ -48,21 +49,23 @@ export function AppShell() {
         </header>
       </div>
 
-      <main
-        id="main"
-        tabIndex={-1}
-        className="mx-auto w-full max-w-(--content-max) flex-1 overflow-x-clip px-4 pt-4 pb-[calc(var(--nav-height)+var(--nav-gap)+var(--nav-inset)+var(--space-unit)*5)] outline-none"
-      >
-        {/* Keyed on the path so each screen plays its entrance once. */}
-        <motion.div
-          key={pathname}
-          initial={{ opacity: 0, transform: `translateX(${slide}px)` }}
-          animate={{ opacity: 1, transform: 'translateX(0px)' }}
-          transition={{ duration: durationToken('--dur-drill'), ease: easeToken('--ease-out') }}
+      <PullToRefresh>
+        <main
+          id="main"
+          tabIndex={-1}
+          className="mx-auto w-full max-w-(--content-max) flex-1 overflow-x-clip px-4 pt-4 pb-[calc(var(--nav-height)+var(--nav-gap)+var(--nav-inset)+var(--space-unit)*5)] outline-none"
         >
-          <Outlet />
-        </motion.div>
-      </main>
+          {/* Keyed on the path so each screen plays its entrance once. */}
+          <motion.div
+            key={pathname}
+            initial={{ opacity: 0, transform: `translateX(${slide}px)` }}
+            animate={{ opacity: 1, transform: 'translateX(0px)' }}
+            transition={{ duration: durationToken('--dur-drill'), ease: easeToken('--ease-out') }}
+          >
+            <Outlet />
+          </motion.div>
+        </main>
+      </PullToRefresh>
 
       <BottomNav />
     </div>

@@ -59,7 +59,7 @@ export function LeagueLeaders() {
   return (
     <section aria-labelledby="league-leaders" className="flex flex-col gap-3">
       <h2 id="league-leaders" className="text-body-lg">League leaders</h2>
-      <ul className="no-scrollbar -mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1">
+      <ul className="no-scrollbar -mx-4 -my-2 flex snap-x gap-2 overflow-x-auto px-4 py-2">
         {leaders.map(({ stat, player, team, value }, i) => {
           const body = (
             <>

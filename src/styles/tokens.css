@@ -203,6 +203,7 @@
   --dur-count: 900ms; /* count-ups and bar fills, once per visit */
   --dur-shimmer: 1400ms; /* loading shimmer */
   --dur-pulse: 1600ms; /* the LIVE dot */
+  --dur-spin: 900ms; /* one turn of the reload gear */
   --dur-flash: 200ms; /* live score: one highlight fade on the changed number */
   --press-scale: 0.96;
   --rise: 12px;
@@ -221,4 +222,8 @@
   --spring-duration: 0.45; /* seconds, Motion springs */
   --spring-bounce: 0.15;
   --slide: 28; /* px a screen slides in from when switching tabs */
+  --pull-threshold: 72; /* px you drag down from the top before letting go reloads */
+  --pull-max: 112; /* px the screen can be dragged down at most */
+  --pull-hold: 56; /* px the screen stays pulled down while reloading */
+  --pull-resist: 0.5; /* the drag moves the screen this fraction of your finger */
 }

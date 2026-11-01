@@ -168,10 +168,19 @@
     animation: live-pulse var(--dur-pulse) var(--ease-in-out) infinite;
   }
 
+  /* The reload gear: turns while a pull-to-reload is running. */
+  .spin {
+    animation: spin var(--dur-spin) linear infinite;
+  }
+
   /* Photo fades in once (login and home hero). */
   .lights-on {
     animation: lights-on var(--dur-count) var(--ease-out) both;
   }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 @keyframes rise {
@@ -252,6 +261,7 @@
   .ripple-wave,
   .pop,
   .live-dot,
+  .spin,
   .bar-fill {
     animation: none;
   }

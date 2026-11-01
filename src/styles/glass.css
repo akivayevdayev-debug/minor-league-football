@@ -80,28 +80,21 @@
     .glass-bar { background-color: var(--glass-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
   }
 
-  /* Top bar: full-width frosted glass with a hairline underneath. The blur sits on a layer behind
-     the bar (not on the bar itself), so the logo and season label are never blurred. */
+  /* Top bar glass: a layer of its own (see AppShell), with the logo row stacked above it as a separate
+     element, so the blur can never land on the logo or season label. Plain blur, no colour boost. */
   .glass-header {
+    background-color: var(--glass-fallback);
     border-bottom: var(--border-width) solid var(--glass-rim-dim);
   }
-  .glass-header::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background-color: var(--glass-fallback);
-  }
   @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-    .glass-header::before {
+    .glass-header {
       background-color: var(--glass-header-fill);
-      -webkit-backdrop-filter: blur(var(--glass-header-blur)) saturate(var(--glass-bar-saturate));
-      backdrop-filter: blur(var(--glass-header-blur)) saturate(var(--glass-bar-saturate));
+      -webkit-backdrop-filter: blur(var(--glass-header-blur));
+      backdrop-filter: blur(var(--glass-header-blur));
     }
   }
   @media (prefers-reduced-transparency: reduce) {
-    .glass-header::before { background-color: var(--glass-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
+    .glass-header { background-color: var(--glass-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
   }
 
   /* Glass that sits over a photo: a touch darker so white text always reads. */

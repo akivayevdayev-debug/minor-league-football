@@ -163,7 +163,7 @@
   --nav-home-gap: 14px; /* tab bar: space under it on phones with a home indicator, just clearing it */
   --safe-bottom: env(safe-area-inset-bottom, 0px); /* the home-indicator zone; 0 on screens without one */
   --nav-gap: max(var(--nav-inset), min(var(--safe-bottom), var(--nav-home-gap))); /* the one space under the tab bar */
-  --header-height: 40px;
+  --header-height: 44px;
   --header-top: max(calc(env(safe-area-inset-top, 0px) - 8px), 0px); /* the phone's status-bar gap above the top bar, trimmed a little; still clears the Dynamic Island */
   --toast-gap: 8px; /* space between the top bar and a notification */
   --content-max: 720px;

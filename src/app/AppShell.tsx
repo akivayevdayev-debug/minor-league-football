@@ -35,14 +35,18 @@ export function AppShell() {
         Skip to content
       </a>
 
-      <header className="glass-header sticky top-0 z-(--z-header) pt-(--header-top)">
-        <div className="mx-auto flex h-(--header-height) max-w-(--content-max) items-center justify-between px-4">
-          <Link to="/roster" aria-label="MLF home" className="pressable flex h-full items-center">
-            <BrandMark />
-          </Link>
-          {season.data && <span className="caps-label truncate">{season.data.name}</span>}
-        </div>
-      </header>
+      <div className="sticky top-0 z-(--z-header)">
+        {/* The blur is its own layer behind the logo row. They are siblings, never parent and child. */}
+        <div aria-hidden className="glass-header pointer-events-none absolute inset-0 z-0" />
+        <header className="relative z-1 transform-gpu pt-(--header-top)">
+          <div className="mx-auto flex h-(--header-height) max-w-(--content-max) items-center justify-between px-4">
+            <Link to="/roster" aria-label="MLF home" className="pressable flex h-full items-center">
+              <BrandMark />
+            </Link>
+            {season.data && <span className="caps-label truncate">{season.data.name}</span>}
+          </div>
+        </header>
+      </div>
 
       <main
         id="main"

@@ -38,9 +38,9 @@ export function AppShell() {
 
       <PullToRefresh>
         <div className="sticky top-0 z-(--z-header)">
-          {/* The blur is its own layer behind the logo row. They are siblings, never parent and child. */}
-          <div aria-hidden className="glass-header pointer-events-none absolute inset-0 z-0" />
-          <header className="relative z-1 transform-gpu pt-(--header-top)">
+          {/* The blur is its own layer, sunk below everything in this wrapper (which is its own stacking context), so it can never paint over the logo row. No transform on the row: a separate GPU layer for the text goes stale when the page rescales on iPhone and shows up blurry. */}
+          <div aria-hidden className="glass-header pointer-events-none absolute inset-0 -z-1" />
+          <header className="relative pt-(--header-top)">
             <div className="mx-auto flex h-(--header-height) max-w-(--content-max) items-center justify-between px-4">
               <Link to="/roster" aria-label="MLF home" className="pressable flex h-full items-center">
                 <BrandMark />

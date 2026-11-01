@@ -118,6 +118,13 @@
     }
   }
 
+  /* While the screen is dragged down to reload, panels skip their blur: re-blurring every card on
+     each frame is what made the drag stutter. Set by PullToRefresh for the length of the drag. */
+  html[data-pulling] :is(.glass-subtle, .glass-panel, .glass-strong, .glass-bar) {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
   @media (prefers-contrast: more) {
     .glass-subtle,
     .glass-panel,

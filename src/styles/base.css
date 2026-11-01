@@ -5,6 +5,8 @@
     background: var(--bg);
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    /* No native rubber-band at the top: the reload pull (PullToRefresh) draws its own. */
+    overscroll-behavior-y: none;
   }
 
   body {

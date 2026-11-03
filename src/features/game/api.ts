@@ -250,21 +250,44 @@ const POINTS: Record<Exclude<ScoringTypeId, 'final_manual'>, number> = { td: 6, 
  * Adds a score line. If a scorer is picked, a matching stat line is added with the SAME id,
  * so Undo voids both together. Shows on screen at once (optimistic), rolls back if it fails.
  */
+export interface ScoreLineInput {
+  id: string
+  teamId: string
+  type: keyof typeof POINTS
+  playerId: string | null
+  half: number
+  clockSeconds?: number | null
+}
+
+/**
+ * Saves a score line and, with a scorer, its stat line (same id). The stat line is written first:
+ * it is the only write that can hit the player's per-game limit, so a refused tap saves neither
+ * line. If the score line is then refused, the stat line is taken back (best effort).
+ */
+export async function saveScoreLine(db: typeof supabase, game: Pick<Game, 'id' | 'season_id'>, input: ScoreLineInput): Promise<void> {
+  const { id, teamId, type, playerId, half, clockSeconds = null } = input
+  if (playerId) {
+    const { error } = await db
+      .from('stat_events')
+      .upsert({ id, season_id: game.season_id, game_id: game.id, team_id: teamId, player_id: playerId, stat_type_id: type, value: 1, half, clock_seconds: clockSeconds })
+    if (error) throw statWriteError(error)
+  }
+  const { error } = await db
+    .from('score_events')
+    .upsert({ id, game_id: game.id, team_id: teamId, scoring_type_id: type, points: POINTS[type], player_id: playerId, clock_seconds: clockSeconds })
+  if (error) {
+    if (playerId) await db.from('stat_events').update({ voided_at: new Date().toISOString() }).eq('id', id)
+    throw statWriteError(error)
+  }
+}
+
 export function useAddScore(game: Game | undefined) {
   const qc = useQueryClient()
   return useMutation({
     mutationKey: ['game-write', 'score'],
-    mutationFn: async ({ id, teamId, type, playerId, half, clockSeconds }: { id: string; teamId: string; type: keyof typeof POINTS; playerId: string | null; half: number; clockSeconds?: number | null }) => {
+    mutationFn: async (input: ScoreLineInput) => {
       if (!game) throw new Error('Request failed')
-      await rows<null>(
-        supabase.from('score_events').insert({ id, game_id: game.id, team_id: teamId, scoring_type_id: type, points: POINTS[type], player_id: playerId, clock_seconds: clockSeconds ?? null }),
-      )
-      if (playerId) {
-        const { error } = await supabase
-          .from('stat_events')
-          .insert({ id, season_id: game.season_id, game_id: game.id, team_id: teamId, player_id: playerId, stat_type_id: type, value: 1, half, clock_seconds: clockSeconds ?? null })
-        if (error) throw statWriteError(error)
-      }
+      await saveScoreLine(supabase, game, input)
     },
     onMutate: async ({ id, teamId, type, playerId }) => {
       if (!game) return

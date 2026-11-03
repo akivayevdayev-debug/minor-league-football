@@ -26,6 +26,8 @@ const SHORT: Partial<Record<StatTypeId, string>> = {
   rec: 'Catches', target: 'Targets', drop: 'Drops', td: 'TD', fumble: 'Fumbles',
   int: 'INT', pick6: 'Pick 6', conv1: '1-point', conv2: '2-point', block: 'Blocks',
 }
+/** Pad order: the player's own groups first, then every other group in a fixed order. */
+const GROUP_ORDER: StatGroup[] = ['qb', 'receiving', 'line', 'defense', 'kicks', 'team', 'legacy']
 const GROUP_NAME: Partial<Record<StatGroup, string>> = {
   qb: 'Quarterback', receiving: 'Receiving', line: 'Line', defense: 'Defense', kicks: 'Kicks', team: 'Team', legacy: 'Older stats',
 }
@@ -106,10 +108,15 @@ export function LiveStatsPanel({
     const scoring = SCORING.has(type.id) && value === 1 && !!player && game.status !== 'final'
     // The game time of this tap, read now (null when the game is not running).
     const clock_seconds = clockNow()
+    // A refused save takes its line back out of Undo, so Undo never points at a stat that did not save.
+    const failed = (e: unknown) => {
+      fail(e)
+      setLast((l) => (l?.id === id ? null : l))
+    }
     if (scoring) {
-      addScore.mutate({ id, teamId: team.id, type: type.id as 'td' | 'conv1' | 'conv2', playerId: player.id, half, clockSeconds: clock_seconds }, { onError: fail })
+      addScore.mutate({ id, teamId: team.id, type: type.id as 'td' | 'conv1' | 'conv2', playerId: player.id, half, clockSeconds: clock_seconds }, { onError: failed })
     } else {
-      logStat.mutate({ id, team_id: team.id, player_id: player?.id ?? null, stat_type_id: type.id, value, half, clock_seconds }, { onError: fail })
+      logStat.mutate({ id, team_id: team.id, player_id: player?.id ?? null, stat_type_id: type.id, value, half, clock_seconds }, { onError: failed })
     }
     setLast({ id, who, label: `${type.label} ${value > 0 ? '+' : ''}${value}`, scoring, teamId: team.id, playerId: player?.id ?? null })
   }
@@ -319,15 +326,13 @@ function StatPad({
   const [typing, setTyping] = useState<StatType | null>(null)
   const [draft, setDraft] = useState('')
   const [showAll, setShowAll] = useState(false)
+  const groupOrder = [...groups, ...GROUP_ORDER]
 
   // The player's own groups first (in group order), then the rest; the legacy touchdown and
   // pick-six stay on the pad because they are still scored. "All stats" shows everything.
-  const rank = (s: StatType) => {
-    const i = groups.indexOf(s.stat_group)
-    return i === -1 ? groups.length : i
-  }
+  const rank = (s: StatType) => groupOrder.indexOf(s.stat_group)
   const own = (s: StatType) => groups.includes(s.stat_group) || s.stat_group === 'legacy'
-  const shown = [...types.filter((s) => showAll || own(s))].sort((a, b) => rank(a) - rank(b))
+  const shown = types.filter((s) => showAll || own(s)).sort((a, b) => rank(a) - rank(b))
 
   function saveTotal(e: FormEvent) {
     e.preventDefault()

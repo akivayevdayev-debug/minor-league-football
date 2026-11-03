@@ -2,10 +2,13 @@
  * Box score: one game's player stats per team, the scoring timeline, and (on request) the edit history.
  * The "Fill in the stat sheet" button opens GameStatSheet to type or fix a whole game's stats.
  */
-import { useMemo, useState, type JSX } from 'react'
+import { useMemo, useState, type FormEvent, type JSX } from 'react'
+import { toast } from 'sonner'
 import { displayName, useSeasonRules, useSettings } from '../league'
-import type { Game, Player, ScoreEvent, ScoringTypeId, StatType, StatTypeId, Team } from '../../types/db'
+import type { Game, Player, PlayerMinutes, ScoreEvent, ScoringTypeId, StatType, StatTypeId, Team } from '../../types/db'
+import { Button } from '../../ui/Button'
 import { Icon } from '../../ui/Icon'
+import { Sheet } from '../../ui/Sheet'
 import { Skeleton } from '../../ui/Skeleton'
 import { TeamBadge } from '../../ui/TeamBadge'
 import { teamStyle } from '../../ui/team'
@@ -13,6 +16,7 @@ import { useGameClock, useGameHistory, type GameHistoryRow, type GameStat } from
 import { gameElapsed, minutesText, playingTime, trackedFromKickoff, useGameLineups } from './lineup'
 import { GameStatSheet } from './GameStatSheet'
 import { statTimeLabel } from './statGroups'
+import { SubWriteError, useGameMinutes, useGameSubs, useSetGameMinutes, withTypedMinutes } from './subs'
 
 const ABBR: Partial<Record<StatTypeId, string>> = {
   rec: 'REC',
@@ -69,14 +73,22 @@ function TeamBox({
   playersById,
   statTypes,
   minutes,
+  typed,
+  extraIds,
+  onEdit,
 }: {
   team: Team
   stats: GameStat[]
   lines: ScoreEvent[]
   playersById: Map<string, Player>
   statTypes: StatType[]
-  /** Seconds on the field per player, when this game tracked who played. */
-  minutes: Map<string, number> | null
+  /** Seconds on the field per player: tracked time, with typed minutes in place of it. */
+  minutes: Map<string, number>
+  /** Typed minutes rows for this game, by player. */
+  typed: Map<string, PlayerMinutes>
+  /** Players in this team's box even with no stats (its subs and tracked players). */
+  extraIds: string[]
+  onEdit(player: Player, existing: PlayerMinutes | undefined): void
 }) {
   const points = lines.filter((l) => l.team_id === team.id).reduce((n, l) => n + l.points, 0)
   const used = useMemo(() => new Set(stats.filter((s) => s.value !== 0).map((s) => s.stat_type_id)), [stats])
@@ -85,7 +97,7 @@ function TeamBox({
   const t = useMemo(() => tally(team.id, stats), [team.id, stats])
 
   const played = new Map(t.players)
-  for (const pid of minutes?.keys() ?? []) if (!played.has(pid)) played.set(pid, new Map())
+  for (const pid of extraIds) if (!played.has(pid)) played.set(pid, new Map())
   const rows = [...played.entries()]
     .map(([playerId, counts]) => ({
       playerId,
@@ -121,11 +133,9 @@ function TeamBox({
                 <th scope="col" className="px-4 py-2 text-left caps-label">
                   Player
                 </th>
-                {minutes && (
-                  <th scope="col" title="Minutes played" className="px-2 py-2 text-center caps-label">
-                    MIN
-                  </th>
-                )}
+                <th scope="col" title="Minutes played" className="px-2 py-2 text-center caps-label">
+                  MIN
+                </th>
                 {playerCols.map((s) => (
                   <th key={s.id} scope="col" title={s.label} className="px-2 py-2 text-center caps-label">
                     {abbr(s)}
@@ -141,7 +151,21 @@ function TeamBox({
                     <span className="font-strong">{r.player ? displayName(r.player) : 'Unknown player'}</span>
                     {r.player?.is_guest && <span className="ml-2 caps-label">Sub</span>}
                   </th>
-                  {minutes && <td className="px-2 py-2.5 text-center">{minutes.has(r.playerId) ? minutesText(minutes.get(r.playerId)!) : '–'}</td>}
+                  <td className="px-2 py-2.5 text-center">
+                    {typed.has(r.playerId) ? (
+                      <button type="button" onClick={() => r.player && onEdit(r.player, typed.get(r.playerId))} disabled={!r.player} className="pressable nums min-h-(--tap-min) min-w-(--tap-min) underline decoration-dotted">
+                        {minutesText(minutes.get(r.playerId)!)}
+                      </button>
+                    ) : minutes.has(r.playerId) ? (
+                      minutesText(minutes.get(r.playerId)!)
+                    ) : r.player ? (
+                      <button type="button" onClick={() => onEdit(r.player!, undefined)} className="pressable min-h-(--tap-min) px-1 text-small font-strong text-text-2-strong">
+                        Set minutes
+                      </button>
+                    ) : (
+                      '–'
+                    )}
+                  </td>
                   {playerCols.map((s) => {
                     const v = r.counts.get(s.id) ?? 0
                     return (
@@ -303,6 +327,52 @@ function ChangeHistory({ gameId, playersById }: { gameId: string; playersById: M
   )
 }
 
+/** Type in how many minutes a player was on the field, for a game where who came on was not tracked. */
+function MinutesSheet({ game, player, existing, onClose }: { game: Game; player: Player | null; existing: PlayerMinutes | undefined; onClose(): void }) {
+  const save = useSetGameMinutes(game)
+  const [value, setValue] = useState(existing ? String(existing.minutes) : '')
+  const n = Number(value)
+  // Minutes are stored to one decimal place, from 0 to 60.
+  const valid = value.trim() !== '' && Number.isFinite(n) && n >= 0 && n <= 60 && Math.round(n * 10) === n * 10
+
+  function submit(e: FormEvent) {
+    e.preventDefault()
+    if (!player || !valid) return
+    save.mutate(
+      { playerId: player.id, minutes: n, existingId: existing?.id },
+      {
+        onSuccess: () => {
+          toast.success(`Minutes saved for ${displayName(player)}`)
+          onClose()
+        },
+        onError: (err) => toast.error(err instanceof SubWriteError ? err.message : "Couldn't save that. Check your signal and try again."),
+      },
+    )
+  }
+
+  return (
+    <Sheet open={!!player} onOpenChange={(o) => !o && onClose()} title={`Set minutes for ${player ? displayName(player) : ''}`} description="Minutes this player was on the field. Use it when who came on was not tracked.">
+      <form onSubmit={submit} className="flex gap-2">
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          type="number"
+          inputMode="decimal"
+          min={0}
+          max={60}
+          step={0.1}
+          placeholder="Minutes, e.g. 7.5"
+          aria-label="Minutes played"
+          className="min-h-(--tap-game) min-w-0 flex-1 rounded-control surface-inset px-3"
+        />
+        <Button size="xl" variant="primary" type="submit" loading={save.isPending} disabled={!valid}>
+          Save
+        </Button>
+      </form>
+    </Sheet>
+  )
+}
+
 export function BoxScorePanel({
   game,
   home,
@@ -324,15 +394,30 @@ export function BoxScorePanel({
   const [sheetOpen, setSheetOpen] = useState(false)
   const lineups = useGameLineups(game.id)
   const clock = useGameClock(game.id)
+  const subs = useGameSubs(game.id)
+  const typedRows = useGameMinutes(game.id)
   const settings = useSettings()
   const [now] = useState(() => Date.now())
+  const [editing, setEditing] = useState<{ player: Player; existing: PlayerMinutes | undefined } | null>(null)
   // The game's own season sets the half length; the league setting is only a fallback.
   const halfSeconds = useSeasonRules(game.season_id)?.halfSeconds ?? (settings.data?.half_minutes ?? 10) * 60
+  const typed = useMemo(() => new Map((typedRows.data ?? []).map((r) => [r.player_id, r])), [typedRows.data])
+  const typedMinutes = useMemo(() => new Map([...typed].map(([pid, r]) => [pid, r.minutes])), [typed])
+  /** Tracked seconds per player for a team (empty when the game did not track who played), typed minutes replacing them. */
   const minutesFor = (teamId: string) => {
     const all = lineups.data ?? []
-    if (!trackedFromKickoff(all, teamId, halfSeconds)) return null
-    return playingTime(all.filter((l) => l.team_id === teamId), halfSeconds, gameElapsed(clock.data, halfSeconds, now))
+    const tracked = trackedFromKickoff(all, teamId, halfSeconds)
+      ? playingTime(all.filter((l) => l.team_id === teamId), halfSeconds, gameElapsed(clock.data, halfSeconds, now))
+      : new Map<string, number>()
+    return withTypedMinutes(tracked, typedMinutes)
   }
+  /** Players a team's box lists even with no stats: its live subs and anyone with tracked time. */
+  const extraIdsFor = (teamId: string, minutes: Map<string, number>) => [
+    ...(subs.data ?? []).filter((s) => s.team_id === teamId).map((s) => s.player_id),
+    ...minutes.keys(),
+  ]
+  const homeMinutes = minutesFor(home.id)
+  const awayMinutes = minutesFor(away.id)
 
   return (
     <div className="flex flex-col gap-4">
@@ -344,8 +429,35 @@ export function BoxScorePanel({
         <Icon name="edit" size="sm" /> Fill in the stat sheet
       </button>
       <GameStatSheet game={game} home={home} away={away} open={sheetOpen} onOpenChange={setSheetOpen} />
-      <TeamBox team={home} stats={stats} lines={lines} playersById={playersById} statTypes={statTypes} minutes={minutesFor(home.id)} />
-      <TeamBox team={away} stats={stats} lines={lines} playersById={playersById} statTypes={statTypes} minutes={minutesFor(away.id)} />
+      <TeamBox
+        team={home}
+        stats={stats}
+        lines={lines}
+        playersById={playersById}
+        statTypes={statTypes}
+        minutes={homeMinutes}
+        typed={typed}
+        extraIds={extraIdsFor(home.id, homeMinutes)}
+        onEdit={(player, existing) => setEditing({ player, existing })}
+      />
+      <TeamBox
+        team={away}
+        stats={stats}
+        lines={lines}
+        playersById={playersById}
+        statTypes={statTypes}
+        minutes={awayMinutes}
+        typed={typed}
+        extraIds={extraIdsFor(away.id, awayMinutes)}
+        onEdit={(player, existing) => setEditing({ player, existing })}
+      />
+      <MinutesSheet
+        key={editing?.player.id ?? 'none'}
+        game={game}
+        player={editing?.player ?? null}
+        existing={editing?.existing}
+        onClose={() => setEditing(null)}
+      />
       <ScoringTimeline lines={lines} home={home} away={away} playersById={playersById} />
       <ChangeHistory gameId={game.id} playersById={playersById} />
     </div>

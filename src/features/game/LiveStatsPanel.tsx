@@ -16,6 +16,7 @@ import { type GameStat, StatLimitError, useAddScore, useLogStat, useVoidScore, u
 import { BenchPicker } from './KickoffSheet'
 import { currentLineup, type Lineup } from './lineup'
 import { groupsFor } from './statGroups'
+import { SubWriteError, teamListWithSubs, useAddGameSub, useGameSubs, useRemoveGameSub } from './subs'
 
 const ICONS: Partial<Record<StatTypeId, IconName>> = {
   rec: 'check', target: 'target', drop: 'minus', td: 'games', fumble: 'error',
@@ -61,9 +62,12 @@ export function LiveStatsPanel({
   const [nowSits, setNowSits] = useState<Record<string, string>>({})
   const [padFor, setPadFor] = useState<{ player: Player; team: Team } | null>(null)
   const [subFor, setSubFor] = useState<Team | null>(null)
-  const [addedSubs, setAddedSubs] = useState<Record<string, string[]>>({})
+  const [removing, setRemoving] = useState<{ subId: string; name: string } | null>(null)
   const [last, setLast] = useState<LastAction | null>(null)
 
+  const subs = useGameSubs(game.id)
+  const addSub = useAddGameSub(game)
+  const removeSub = useRemoveGameSub(game)
   const logStat = useLogStat(game)
   const voidStat = useVoidStat(game)
   const addScore = useAddScore(game)
@@ -86,20 +90,15 @@ export function LiveStatsPanel({
     return out
   }, [stats])
 
-  /** The team's roster, plus anyone who has played for it in this game as a sub. */
+  /** The team's roster, plus its subs in this game (and anyone with stat lines for it). */
   const lineup = (team: Team) => {
-    const roster = rosterOf(team.id)
-    const ids = new Set(roster.map((p) => p.id))
-    const subIds = new Set([
-      ...stats.filter((s) => s.team_id === team.id && s.player_id && !ids.has(s.player_id)).map((s) => s.player_id!),
-      ...(addedSubs[team.id] ?? []),
-    ])
-    const subs = [...subIds].filter((id) => !ids.has(id)).map((id) => playerById.get(id)).filter((p): p is Player => !!p)
-    return [...roster.map((p) => ({ p, sub: p.is_guest })), ...subs.map((p) => ({ p, sub: true }))]
+    const statIds = [...new Set(stats.filter((s) => s.team_id === team.id && s.player_id).map((s) => s.player_id!))]
+    const teamSubs = (subs.data ?? []).filter((s) => s.team_id === team.id)
+    return teamListWithSubs(rosterOf(team.id), teamSubs, statIds, players)
   }
 
   const fail = (e: unknown) =>
-    toast.error(e instanceof StatLimitError ? e.message : "Couldn't save that. Check your signal; it will try again.")
+    toast.error(e instanceof StatLimitError || e instanceof SubWriteError ? e.message : "Couldn't save that. Check your signal; it will try again.")
 
   function record(team: Team, player: Player | null, type: StatType, value = 1) {
     const id = crypto.randomUUID()
@@ -203,6 +202,40 @@ export function LiveStatsPanel({
                 )
               })}
             </ul>
+            {(subs.data ?? []).filter((s) => s.team_id === team.id && playerById.has(s.player_id)).map((s) => {
+              const name = displayName(playerById.get(s.player_id)!)
+              return removing?.subId === s.id ? (
+                <div key={s.id} role="group" aria-label={`Remove ${name}`} className="flex flex-col gap-2 rounded-panel surface-inset p-3">
+                  <span className="text-body">Remove {name} from this game? Their stats stay.</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => setRemoving(null)} className="pressable min-h-(--tap-game) rounded-panel surface-inset px-3 font-strong">
+                      Keep sub
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        removeSub.mutate(s.id, { onError: fail })
+                        setRemoving(null)
+                      }}
+                      className="pressable min-h-(--tap-game) rounded-panel surface-inset px-3 font-strong text-danger"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div key={s.id} className="flex items-center justify-between gap-2">
+                  <span className="truncate text-small text-text-2">Sub: {name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setRemoving({ subId: s.id, name })}
+                    className="pressable inline-flex min-h-(--tap-game) items-center gap-1 rounded-pill px-3 text-small font-strong text-text-2-strong hover-fine:text-text"
+                  >
+                    Remove sub
+                  </button>
+                </div>
+              )
+            })}
             {on && bench.length > 0 && (
               <div className="flex flex-col gap-2">
                 <span className="caps-label text-text-2">Bench</span>
@@ -298,7 +331,7 @@ export function LiveStatsPanel({
         onPick={(p) => {
           const team = subFor
           if (!team) return
-          setAddedSubs((s) => ({ ...s, [team.id]: [...(s[team.id] ?? []), p.id] }))
+          addSub.mutate({ teamId: team.id, playerId: p.id }, { onError: fail })
           setSubFor(null)
           setPadFor({ player: p, team })
         }}

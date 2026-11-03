@@ -144,20 +144,31 @@ export function useSetLineup(game: Game | undefined) {
   })
 }
 
-/** One player's time on the field across every tracked game, and which games those were. */
+/**
+ * One player's time on the field across every game, and which games those were. typed holds minutes
+ * typed in by hand for this player, keyed by game id; a typed value replaces the tracked time for that game.
+ */
 export function playerMinutes(
   lineups: Lineup[],
   clocks: GameClock[],
   playerId: string,
   halfSeconds: number,
   now: number,
+  typed: Map<string, number> = new Map(),
 ): { seconds: number; gameIds: string[] } {
   const clockOf = new Map(clocks.map((c) => [c.game_id, c]))
   const byGame = new Map<string, Lineup[]>()
   for (const l of lineups) byGame.set(l.game_id, [...(byGame.get(l.game_id) ?? []), l])
   let seconds = 0
   const gameIds: string[] = []
-  for (const [gameId, list] of byGame) {
+  for (const gameId of new Set([...byGame.keys(), ...typed.keys()])) {
+    const typedMinutes = typed.get(gameId)
+    if (typedMinutes !== undefined) {
+      gameIds.push(gameId)
+      seconds += typedMinutes * 60
+      continue
+    }
+    const list = byGame.get(gameId) ?? []
     const teamId = list.find((l) => l.on_field.includes(playerId))?.team_id
     if (!teamId || !trackedFromKickoff(list, teamId, halfSeconds)) continue
     gameIds.push(gameId)

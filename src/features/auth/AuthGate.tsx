@@ -1,14 +1,17 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useAuth } from './auth-context'
 import { ChangePasswordForm } from './ChangePasswordForm'
 import { LoginScreen } from './LoginScreen'
 import { NotLinkedScreen } from './NotLinkedScreen'
 import { needsNewPassword } from './mustChange'
 import { BrandMark } from '../../ui/BrandMark'
+import { Button } from '../../ui/Button'
 import { StadiumBackdrop } from '../../ui/StadiumBackdrop'
 
 /** Shown before anything else to a member who must choose their own password (first sign-in, or a launch reset). */
 function ChooseNewPasswordScreen() {
+  const { signOut } = useAuth()
+  const [busy, setBusy] = useState(false)
   return (
     <main className="safe-top safe-bottom relative isolate flex min-h-dvh items-center justify-center overflow-hidden px-4 py-6">
       <StadiumBackdrop photo="lights" lightsOn />
@@ -19,7 +22,18 @@ function ChooseNewPasswordScreen() {
             <h1 className="text-title">Choose a New Password</h1>
             <p className="text-small text-text-2-strong">Pick your own password to keep using MLF. At least 8 characters.</p>
           </header>
-          <ChangePasswordForm />
+          <ChangePasswordForm forced />
+          {/* Always available, so a shared phone or a password that can't be chosen right now is never a trap. */}
+          <Button
+            variant="outline"
+            loading={busy}
+            onClick={async () => {
+              setBusy(true)
+              await signOut()
+            }}
+          >
+            Sign out
+          </Button>
         </section>
       </div>
     </main>

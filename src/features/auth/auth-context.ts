@@ -17,7 +17,8 @@ export type AuthState =
   | { status: 'member'; session: Session; member: Member }
 
 export type SignInResult = 'ok' | 'wrong-details' | 'offline'
-export type PasswordResult = 'ok' | 'too-weak' | 'same-as-old' | 'failed'
+/** 'saved-not-finished': the new password is stored, but the forced-change flag could not be cleared yet. */
+export type PasswordResult = 'ok' | 'too-weak' | 'same-as-old' | 'failed' | 'saved-not-finished'
 
 export interface Auth {
   state: AuthState

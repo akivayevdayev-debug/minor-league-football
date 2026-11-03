@@ -1,6 +1,6 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-import { SeasonSelect, useGameProjections, useGameScores, useGames, useSeasons, useTeams, useViewedSeason } from '../league'
+import { isOpenSeason, SeasonSelect, useGameProjections, useGameScores, useGames, useSeasons, useTeams, useViewedSeason } from '../league'
 import { formatGameTime, ZONE_LABEL } from '../../lib/time'
 import type { Game, GameProjection, Team } from '../../types/db'
 import { Badge } from '@/components/ui/badge'
@@ -54,6 +54,7 @@ export default function SchedulePage() {
 
   const rowProps = (g: Game): GameProps => ({
     game: g,
+    locked: !isOpenSeason(season),
     teamById,
     score: scores.data?.get(g.id),
     projection: projections.data?.get(g.id),
@@ -80,7 +81,7 @@ export default function SchedulePage() {
           <p className="brand-type text-small text-accent">{season.name}</p>
           <h1 className="text-headline">Schedule</h1>
         </div>
-        {season.status !== 'finished' && (
+        {isOpenSeason(season) && (
           <Button variant="primary" onClick={() => setAdding(true)}>
             <Icon name="add" size="sm" />
             Add game
@@ -138,6 +139,8 @@ interface GameProps {
   onScore(): void
   /** Opens the game's stat sheet (finished games). */
   onStats(): void
+  /** True on a finished season: no time edits, no score entry. */
+  locked: boolean
 }
 
 function teamsOf(game: Game, teamById: Map<string, Team>) {
@@ -148,7 +151,7 @@ function teamsOf(game: Game, teamById: Map<string, Team>) {
 }
 
 /** The photo hero for the next game: crests, a short centre column, the estimate, then actions. */
-function NextUp({ game, teamById, score, projection, onEditTime, onScore }: GameProps) {
+function NextUp({ game, teamById, score, projection, onEditTime, onScore, locked }: GameProps) {
   const { home, away } = teamsOf(game, teamById)
   const live = game.status === 'live' || game.status === 'halftime'
 
@@ -184,9 +187,9 @@ function NextUp({ game, teamById, score, projection, onEditTime, onScore }: Game
 
       <div className="flex flex-col items-center gap-1">
         <div className="flex flex-wrap items-center justify-center gap-2">
-          <GameActions game={game} live={live} onScore={onScore} />
+          <GameActions game={game} live={live} onScore={onScore} locked={locked} />
         </div>
-        <TimeButton game={game} onEditTime={onEditTime} />
+        <TimeButton game={game} onEditTime={onEditTime} locked={locked} />
       </div>
     </section>
   )
@@ -205,7 +208,7 @@ function HeroSide({ team }: { team: Team | undefined }) {
  * One scoreboard line, ESPN style: home crest, name and score on the left, away on the right,
  * the status in the middle. Upcoming games add the estimate and the score actions underneath.
  */
-function GameRow({ game, teamById, score, projection, onEditTime, onScore, onStats }: GameProps) {
+function GameRow({ game, teamById, score, projection, onEditTime, onScore, onStats, locked }: GameProps) {
   const { home, away } = teamsOf(game, teamById)
   const final = game.status === 'final'
   const live = game.status === 'live' || game.status === 'halftime'
@@ -219,7 +222,9 @@ function GameRow({ game, teamById, score, projection, onEditTime, onScore, onSta
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
         <Side team={home} points={showScore ? hp : undefined} loser={final && hp < ap} />
         <div className="flex min-w-16 flex-col items-center">
-          {final ? (
+          {final && locked ? (
+            <span className="caps-label flex min-h-(--tap-min) items-center">Final</span>
+          ) : final ? (
             <button
               type="button"
               onClick={onScore}
@@ -232,7 +237,7 @@ function GameRow({ game, teamById, score, projection, onEditTime, onScore, onSta
           ) : live ? (
             <Badge variant="live">{game.status === 'live' ? 'Live' : 'Half'}</Badge>
           ) : (
-            <TimeButton game={game} onEditTime={onEditTime} />
+            <TimeButton game={game} onEditTime={onEditTime} locked={locked} />
           )}
         </div>
         <Side team={away} points={showScore ? ap : undefined} loser={final && ap < hp} away />
@@ -248,7 +253,7 @@ function GameRow({ game, teamById, score, projection, onEditTime, onScore, onSta
       )}
       {canScore && (
         <div className="flex items-center justify-center gap-2">
-          <GameActions game={game} live={live} onScore={onScore} />
+          <GameActions game={game} live={live} onScore={onScore} locked={locked} />
         </div>
       )}
     </div>
@@ -303,7 +308,7 @@ function Projection({
 }
 
 /** Live (or Open game once it is on) links to the game screen; Enter score types the final in a sheet. */
-function GameActions({ game, live, onScore }: { game: Game; live: boolean; onScore(): void }) {
+function GameActions({ game, live, onScore, locked }: { game: Game; live: boolean; onScore(): void; locked: boolean }) {
   return (
     <>
       <LinkButton asChild variant="outline" size="sm" className="text-accent">
@@ -312,15 +317,23 @@ function GameActions({ game, live, onScore }: { game: Game; live: boolean; onSco
           {live ? 'Open game' : 'Live'}
         </Link>
       </LinkButton>
-      <Button variant="ghost" size="sm" onClick={onScore}>
-        Enter score
-      </Button>
+      {!locked && (
+        <Button variant="ghost" size="sm" onClick={onScore}>
+          Enter score
+        </Button>
+      )}
     </>
   )
 }
 
-function TimeButton({ game, onEditTime }: { game: Game; onEditTime(): void }) {
+function TimeButton({ game, onEditTime, locked }: { game: Game; onEditTime(): void; locked: boolean }) {
   const time = game.starts_at ? `${formatGameTime(game.starts_at)} ${ZONE_LABEL}` : 'Set time'
+  if (locked)
+    return (
+      <span className="flex min-h-(--tap-min) flex-col items-center justify-center gap-0.5 caps-label">
+        <span className="nums">{game.starts_at ? time : '–'}</span>
+      </span>
+    )
   return (
     <button
       type="button"

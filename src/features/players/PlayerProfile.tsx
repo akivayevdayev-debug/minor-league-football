@@ -1,7 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMember } from '../auth'
-import { approxAge, displayName, formatHeight, SeasonSelect, seasonRules, STAT_LABELS, useGames, usePlayerProjections, usePlayers, useRosters, useSettings, useStatTotals, useTeams, useViewedSeason } from '../league'
+import { approxAge, displayName, formatHeight, SeasonSelect, seasonRules, STAT_LABELS, useGames, usePlayerProjections, usePlayers, useRosters, useSeasons, useSeasonStats, useTeams, useViewedSeason } from '../league'
 import { minutesText, playerMinutes, useAllLineups, usePlayerStatsIn } from '../game/lineup'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '../../ui/Button'
@@ -27,20 +27,20 @@ export default function PlayerProfile() {
   const players = usePlayers()
   const rosters = useRosters()
   const teams = useTeams()
-  const totals = useStatTotals()
+  const seasons = useSeasons()
   const projections = usePlayerProjections()
   const [editing, setEditing] = useState(false)
   const [moving, setMoving] = useState(false)
   const allLineups = useAllLineups()
-  const settings = useSettings()
   const member = useMember()
-  // Minutes are for the viewed season: its half length, and only its games.
+  // Stats, minutes and the half length all follow the viewed season (no fallback while seasons load).
   const [season] = useViewedSeason()
   const seasonGames = useGames(season?.id)
+  const seasonStats = useSeasonStats(id, season?.id)
   const [now] = useState(() => Date.now())
-  const halfSeconds = season ? seasonRules(season).halfSeconds : (settings.data?.half_minutes ?? 10) * 60
+  const halfSeconds = season ? seasonRules(season).halfSeconds : null
   const played = useMemo(() => {
-    if (!allLineups.data || !id) return { seconds: 0, gameIds: [] as string[] }
+    if (!allLineups.data || !id || halfSeconds === null) return { seconds: 0, gameIds: [] as string[] }
     const inSeason = new Set((seasonGames.data ?? []).map((g) => g.id))
     return playerMinutes(
       allLineups.data.lineups.filter((l) => inSeason.has(l.game_id)),
@@ -62,7 +62,7 @@ export default function PlayerProfile() {
   if (players.isError) return <ErrorState what="this player" onRetry={() => players.refetch()} />
   if (!player) return <EmptyState icon="players" title="Player not found" body="They may have been removed. Go back to the list." />
 
-  const stats = totals.data?.get(player.id) ?? {}
+  const stats = seasonStats.data ?? {}
   const proj = projections.data?.get(player.id)
   const tiles = STAT_LABELS.filter(([key]) => (stats[key] ?? 0) > 0)
   const age = approxAge(player.birth_year)
@@ -118,7 +118,7 @@ export default function PlayerProfile() {
 
       {tiles.length > 0 && (
         <section className="rise flex flex-col gap-2" style={rise(2)}>
-          <h2 className="text-body-lg">Career stats</h2>
+          <h2 className="text-body-lg">{season ? `${season.name} stats` : 'Stats'}</h2>
           <dl className="glass-panel grid grid-cols-4 gap-x-2 gap-y-3 rounded-panel p-3 sm:grid-cols-6">
             {tiles.map(([key, short, long]) => (
               <StatBox key={key} label={short} value={stats[key] ?? 0} count title={long} />
@@ -127,6 +127,7 @@ export default function PlayerProfile() {
         </section>
       )}
 
+      {seasons.isPending && <Skeleton rows={2} />}
       {played.seconds > 0 && (
         <section className="rise flex flex-col gap-2" style={rise(2)}>
           <h2 className="text-body-lg">Playing time</h2>

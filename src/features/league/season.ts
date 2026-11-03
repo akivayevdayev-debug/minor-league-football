@@ -40,9 +40,14 @@ export function selectableSeasons(seasons: Season[]): Season[] {
     .sort((a, b) => (b.starts_on ?? '').localeCompare(a.starts_on ?? ''))
 }
 
-/** The season asked for by id, or the active season when the id is missing or unknown. */
+/** The season asked for by id; else the active season; else the newest selectable one. */
 export function pickViewedSeason(seasons: Season[], id: string | null): Season | undefined {
-  return seasons.find((s) => s.id === id) ?? activeSeason(seasons)
+  return seasons.find((s) => s.id === id) ?? activeSeason(seasons) ?? selectableSeasons(seasons)[0]
+}
+
+/** Games and their times, scores and stats can be edited only while the season is not finished. */
+export function isOpenSeason(s: Season): boolean {
+  return s.status !== 'finished'
 }
 
 /** The rules of one season, or null while the seasons are still loading. */

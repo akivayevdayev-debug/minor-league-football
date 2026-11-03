@@ -1,6 +1,6 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-import { currentTeams, displayName, usePlayers, useRosters, useStatTotals, useTeams } from '../league'
+import { currentTeams, displayName, seasonTeams, usePlayers, useRosters, useStatTotals, useTeams, useViewedSeason } from '../league'
 import { rankPlayers } from './rank'
 import type { Player, StatTypeId, Team } from '../../types/db'
 import { ErrorState } from '../../ui/ErrorState'
@@ -33,7 +33,12 @@ export function LeagueLeaders() {
   const teams = useTeams()
 
   const [picked, setPicked] = useState<StatTypeId>('td')
-  const teamOf = useMemo(() => currentTeams(rosters.data ?? [], teams.data ?? []), [rosters.data, teams.data])
+  // Totals are all-time; only the team names follow the viewed season.
+  const [season] = useViewedSeason()
+  const teamOf = useMemo(
+    () => currentTeams(rosters.data ?? [], seasonTeams(teams.data ?? [], season?.id ?? '')),
+    [rosters.data, teams.data, season?.id],
+  )
   const leaders = useMemo<Leader[]>(
     () =>
       STATS.map((stat) => {

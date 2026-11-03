@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Season, Team } from '../../types/db'
-import { activeSeason, pickViewedSeason, seasonRules, selectableSeasons, seasonTeams } from './season'
+import { activeSeason, isOpenSeason, pickViewedSeason, seasonRules, selectableSeasons, seasonTeams } from './season'
 
 const base = { games_planned: null, voided_at: null, counts_for_standings: true }
 
@@ -74,6 +74,17 @@ describe('which season is active and which can be picked', () => {
 
   it('offers only seasons that count for standings, newest first', () => {
     expect(selectableSeasons([earlier, season1, season2]).map((s) => s.id)).toEqual(['s2', 's1'])
+  })
+
+  it('with no active season, falls back to the newest selectable season', () => {
+    expect(pickViewedSeason([season1], null)?.id).toBe('s1')
+    expect(pickViewedSeason([earlier, season1], null)?.id).toBe('s1')
+    expect(pickViewedSeason([], null)).toBeUndefined()
+  })
+
+  it('a finished season is not open for editing; the active one is', () => {
+    expect(isOpenSeason(season2)).toBe(true)
+    expect(isOpenSeason(season1)).toBe(false)
   })
 
   it('falls back to the active season when the asked-for id is missing or unknown', () => {

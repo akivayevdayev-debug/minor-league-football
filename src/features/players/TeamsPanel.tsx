@@ -1,6 +1,6 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-import { displayName, recordText, useCurrentSeason, usePlayers, useRosters, useStandings, useTeams } from '../league'
+import { displayName, recordText, seasonTeams, useSeasons, usePlayers, useRosters, useStandings, useTeams, useViewedSeason } from '../league'
 import { Button } from '../../ui/Button'
 import { EmptyState } from '../../ui/EmptyState'
 import { ErrorState } from '../../ui/ErrorState'
@@ -16,16 +16,19 @@ export function TeamsPanel() {
   const teams = useTeams()
   const rosters = useRosters()
   const players = usePlayers()
-  const season = useCurrentSeason()
-  const standings = useStandings(season.data?.id)
+  const seasons = useSeasons()
+  const [season] = useViewedSeason()
+  const standings = useStandings(season?.id)
+  // Only the viewed season's teams: Season 1 teams do not show up in Season 2.
+  const teamList = useMemo(() => seasonTeams(teams.data ?? [], season?.id ?? ''), [teams.data, season?.id])
   const [moving, setMoving] = useState(false)
 
   const playerById = useMemo(() => new Map((players.data ?? []).map((p) => [p.id, p])), [players.data])
   const rowByTeam = useMemo(() => new Map((standings.data ?? []).map((r) => [r.team_id, r])), [standings.data])
 
-  if (teams.isPending || rosters.isPending) return <Skeleton rows={3} />
-  if (teams.isError || rosters.isError) return <ErrorState what="teams" onRetry={() => void (teams.refetch(), rosters.refetch())} />
-  if (teams.data.length === 0) return <EmptyState icon="players" title="No teams yet" body="Teams appear here once the roster is imported." />
+  if (teams.isPending || rosters.isPending || seasons.isPending) return <Skeleton rows={3} />
+  if (teams.isError || rosters.isError || seasons.isError) return <ErrorState what="teams" onRetry={() => void (teams.refetch(), rosters.refetch(), seasons.refetch())} />
+  if (teamList.length === 0) return <EmptyState icon="players" title="No teams yet" body="Teams appear here once the roster is imported." />
 
   return (
     <div className="flex flex-col gap-3">
@@ -36,7 +39,7 @@ export function TeamsPanel() {
         </Button>
       </div>
 
-      {teams.data.map((team, i) => {
+      {teamList.map((team, i) => {
         const lines = rosters.data.filter((r) => r.team_id === team.id)
         const now = lines.filter((r) => r.ends_on === null)
         const past = lines.filter((r) => r.ends_on !== null)

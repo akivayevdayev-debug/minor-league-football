@@ -125,6 +125,23 @@ export function useStandings(seasonId: string | undefined) {
 
 export type StatTotals = Map<string, Partial<Record<StatTypeId, number>>>
 
+/** One player's stat totals in one season (same view as the career totals, filtered by season). */
+export function useSeasonStats(playerId: string | undefined, seasonId: string | undefined) {
+  return useQuery({
+    queryKey: ['stat-totals', 'season', seasonId ?? '', playerId ?? ''],
+    enabled: !!playerId && !!seasonId,
+    queryFn: () =>
+      rows<StatTotalRow[]>(
+        supabase.from('player_stat_totals').select('stat_type_id, total').eq('season_id', seasonId!).eq('player_id', playerId!),
+      ),
+    select: (list) => {
+      const out: Partial<Record<StatTypeId, number>> = {}
+      for (const r of list) out[r.stat_type_id] = (out[r.stat_type_id] ?? 0) + r.total
+      return out
+    },
+  })
+}
+
 /** Career totals per player (all seasons, including "Earlier totals"): player id → stat → total. */
 export function useStatTotals() {
   return useQuery({

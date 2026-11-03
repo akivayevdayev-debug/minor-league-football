@@ -8,6 +8,11 @@
 --   • Safety is a scoring type (2 points).
 --   • Games record their quarterbacks. Stat and score lines can record the clock second.
 --   • game_subs and player_minutes: who came in, and how long each player was on the field.
+--   • standings lists only each season's own teams.
+--
+-- Re-running this file resets the stat group and limit of every stat type listed below, and sets
+-- conv1, conv2 and conv_old back to inactive. Any hand edit to those fields is lost. Stat types
+-- not listed below that still have no limit are set to legacy, limit 15, inactive.
 -- ════════════════════════════════════════════════════════════════════════════
 
 -- ── Seasons: each season has its own rules ─────────────────────────────────
@@ -57,6 +62,49 @@ end $$;
 alter table public.teams drop constraint if exists teams_color_key_check;
 alter table public.teams add constraint teams_color_key_check
   check (color_key in ('demons', 'daybies', 'tigers', 'gooners', 'sucks', 'spicy', 'shpitzy'));
+
+-- Standings: each counting season lists only its own teams (was: every season crossed with every team).
+-- Same columns and order as before, so grants and the app keep working.
+create or replace view public.standings with (security_invoker = true) as
+with results as (
+  select season_id, home_team_id as team_id, home_points as pf, away_points as pa
+  from public.game_scores where status = 'final' and kind = 'regular' and home_team_id is not null and away_team_id is not null
+  union all
+  select season_id, away_team_id, away_points, home_points
+  from public.game_scores where status = 'final' and kind = 'regular' and home_team_id is not null and away_team_id is not null
+),
+played as (
+  select season_id, team_id,
+    count(*) filter (where pf > pa) as w, count(*) filter (where pf < pa) as l,
+    count(*) filter (where pf = pa) as t, sum(pf) as pf, sum(pa) as pa
+  from results group by season_id, team_id
+),
+adjusted as (
+  select season_id, team_id, sum(wins) as w, sum(losses) as l, sum(ties) as t
+  from public.record_adjustments where voided_at is null group by season_id, team_id
+),
+totals as (
+  select s.id as season_id, tm.id as team_id,
+    (coalesce(p.w, 0) + coalesce(a.w, 0))::int as wins,
+    (coalesce(p.l, 0) + coalesce(a.l, 0))::int as losses,
+    (coalesce(p.t, 0) + coalesce(a.t, 0))::int as ties,
+    coalesce(p.pf, 0)::int as points_for,
+    coalesce(p.pa, 0)::int as points_against
+  from public.seasons s
+  cross join public.teams tm
+  left join played p on p.season_id = s.id and p.team_id = tm.id
+  left join adjusted a on a.season_id = s.id and a.team_id = tm.id
+  where s.counts_for_standings and s.voided_at is null and tm.voided_at is null
+    and tm.season_id = s.id
+)
+select *,
+  wins + losses + ties as games_played,
+  round((wins + 0.5 * ties) / nullif(wins + losses + ties, 0), 3) as win_pct,
+  points_for - points_against as point_diff,
+  rank() over (partition by season_id
+    order by (wins + 0.5 * ties) / nullif(wins + losses + ties, 0) desc nulls last,
+             points_for - points_against desc, points_for desc) as rank
+from totals;
 
 -- ── Stat types: groups and limits per game ─────────────────────────────────
 alter table public.stat_types add column if not exists stat_group text not null default 'legacy'
@@ -125,6 +173,10 @@ on conflict (id) do update
 update public.stat_types set active = false
 where id in ('conv1', 'conv2', 'conv_old') and active;
 
+-- Any other existing stat type without a limit is old: legacy, 15 per game, inactive. td and pick6 stay active.
+update public.stat_types set stat_group = 'legacy', max_per_game = 15, active = false
+where stat_group = 'legacy' and id not in ('td', 'pick6') and max_per_game is null;
+
 -- ── Scoring: safety ────────────────────────────────────────────────────────
 insert into public.scoring_types (id, label, points, display_order) values
   ('safety', 'Safety', 2, 4)
@@ -162,6 +214,10 @@ create table if not exists public.player_minutes (
   updated_at timestamptz, updated_by uuid
 );
 create index if not exists player_minutes_game on public.player_minutes (game_id);
+
+-- One live row per player per game. Voided rows do not count, so a mistake can be voided and re-entered.
+create unique index if not exists game_subs_one_live on public.game_subs (game_id, player_id) where voided_at is null;
+create unique index if not exists player_minutes_one_live on public.player_minutes (game_id, player_id) where voided_at is null;
 
 -- RLS, stamps, history, member policies, grants (no delete), as in 006_lineups.
 do $$

@@ -1,16 +1,39 @@
 /*
  * Season 2 database changes (migration 008, section 1), tested on a local Postgres (PGlite).
- * Proves: Season 1 is closed and Season 2 has the rulebook rules, teams belong to a season,
- * stat types have groups and limits, safety scores 2, and the new tables follow the house rules.
+ * Proves: Season 1 is closed and its data does not change, Season 2 has the rulebook rules,
+ * teams belong to a season, standings list only their own season's teams, stat types have groups
+ * and limits, safety scores 2, clock seconds are range-checked, and the new tables follow the house rules.
  */
 import { beforeAll, describe, expect, it } from 'vitest'
 import { PGlite } from '@electric-sql/pglite'
 import { SUPABASE_STUB, runAs, sql } from './helpers'
 
 const SEASON_1_ID = '20000000-0000-0000-0000-000000000001'
+const EARLIER_ID = '20000000-0000-0000-0000-000000000002'
+const TEAM_1 = '10000000-0000-0000-0000-000000000001'
+const TEAM_2 = '10000000-0000-0000-0000-000000000002'
+const TEAM_3 = '10000000-0000-0000-0000-000000000003'
+const GAME_1 = '30000000-0000-0000-0000-000000000001'
+const PLAYER_SAM = '40000000-0000-0000-0000-000000000001'
 const AKIVA = '00000000-0000-0000-0000-00000000000a'
 
+// Season 2 test data (created after migration 008)
+const CLOCK_TEAM_A = '50000000-0000-0000-0000-000000000001'
+const CLOCK_TEAM_B = '50000000-0000-0000-0000-000000000002'
+const GAME_2 = '30000000-0000-0000-0000-000000000002'
+const P_CLOCK = '40000000-0000-0000-0000-000000000002'
+const P_SUB = '40000000-0000-0000-0000-000000000003'
+const P_MIN = '40000000-0000-0000-0000-000000000004'
+const P_ZERO = '40000000-0000-0000-0000-000000000005'
+const P_MAX = '40000000-0000-0000-0000-000000000006'
+const P_OVER = '40000000-0000-0000-0000-000000000007'
+const P_NEG = '40000000-0000-0000-0000-000000000008'
+
+const ROLLBACK = 'rollback-test'
+
 let db: PGlite
+let before: { standings: Record<string, unknown>[]; game_scores: Record<string, unknown>[]; player_stat_totals: Record<string, unknown>[] }
+let season2Id = ''
 
 const as = <T>(user: string | 'anon', query: string, params: unknown[] = []) => runAs<T>(db, user, query, params)
 
@@ -28,17 +51,42 @@ beforeAll(async () => {
   ]) {
     await db.exec(sql(file))
   }
-  // The database as it is before Season 2: the 2026 season and three teams, with no season column yet.
+  // The database as it is before Season 2: the 2026 season with real results, an "Earlier totals"
+  // season with a stat line, a record adjustment, and three teams with no season column yet.
   await db.exec(`
-    insert into public.players (full_name, login_name) values ('Akiva Test', 'akiva');
+    insert into public.players (id, full_name, login_name) values
+      ('${PLAYER_SAM}', 'Sam Test', null),
+      ('40000000-0000-0000-0000-0000000000a1', 'Akiva Test', 'akiva');
     insert into public.seasons (id, name) values ('${SEASON_1_ID}', '2026 season');
+    insert into public.seasons (id, name, status, counts_for_standings)
+      values ('${EARLIER_ID}', 'Earlier totals', 'finished', false);
     insert into public.teams (id, name, short_name, color_key) values
-      ('10000000-0000-0000-0000-000000000001', 'Tigers', 'TIG', 'tigers'),
-      ('10000000-0000-0000-0000-000000000002', 'Speed Demons', 'SD', 'demons'),
-      ('10000000-0000-0000-0000-000000000003', 'Daybies', 'DAY', 'daybies');
+      ('${TEAM_1}', 'Tigers', 'TIG', 'tigers'),
+      ('${TEAM_2}', 'Speed Demons', 'SD', 'demons'),
+      ('${TEAM_3}', 'Daybies', 'DAY', 'daybies');
+    insert into public.games (id, season_id, week, home_team_id, away_team_id, status, kind)
+      values ('${GAME_1}', '${SEASON_1_ID}', 1, '${TEAM_1}', '${TEAM_2}', 'final', 'regular');
+    insert into public.score_events (game_id, team_id, scoring_type_id, points) values
+      ('${GAME_1}', '${TEAM_1}', 'td', 6),
+      ('${GAME_1}', '${TEAM_1}', 'conv1', 1),
+      ('${GAME_1}', '${TEAM_2}', 'td', 6);
+    insert into public.stat_events (season_id, game_id, team_id, player_id, stat_type_id, value, half) values
+      ('${SEASON_1_ID}', '${GAME_1}', '${TEAM_1}', '${PLAYER_SAM}', 'rec', 2, 1),
+      ('${EARLIER_ID}', null, null, '${PLAYER_SAM}', 'rec', 5, null);
+    insert into public.record_adjustments (season_id, team_id, wins, losses, ties, note)
+      values ('${SEASON_1_ID}', '${TEAM_3}', 1, 0, 0, 'Recorded before the app');
     insert into auth.users values ('${AKIVA}', 'akiva@mlf.invalid', now());
   `)
+  // Snapshot of everything Season 1 shows, taken before migration 008 runs.
+  before = {
+    standings: (await db.query<Record<string, unknown>>(`select * from public.standings order by season_id, team_id`)).rows,
+    game_scores: (await db.query<Record<string, unknown>>(`select * from public.game_scores order by game_id`)).rows,
+    player_stat_totals: (
+      await db.query<Record<string, unknown>>(`select * from public.player_stat_totals order by season_id, player_id, stat_type_id`)
+    ).rows,
+  }
   await db.exec(sql('008_season_2.sql'))
+  season2Id = (await db.query<{ id: string }>(`select id from public.seasons where name = 'Season 2'`)).rows[0]?.id ?? ''
 })
 
 describe('seasons', () => {
@@ -87,6 +135,49 @@ describe('seasons', () => {
     expect(seasons.rows[0]?.n).toBe(1)
     const s1 = await db.query<{ n: number }>(`select count(*)::int as n from public.seasons where name = 'Season 1'`)
     expect(s1.rows[0]?.n).toBe(1)
+  })
+})
+
+describe('Season 1 data is unchanged', () => {
+  it('Season 1 standings are identical before and after', async () => {
+    const after = await db.query<Record<string, unknown>>(`select * from public.standings order by season_id, team_id`)
+    const s1 = (rows: Record<string, unknown>[]) => rows.filter((r) => r.season_id === SEASON_1_ID)
+    expect(s1(after.rows)).toEqual(s1(before.standings))
+    expect(s1(after.rows)).toHaveLength(3)
+  })
+
+  it('game scores are identical before and after', async () => {
+    const after = await db.query<Record<string, unknown>>(`select * from public.game_scores order by game_id`)
+    expect(after.rows).toEqual(before.game_scores)
+  })
+
+  it('player stat totals, including Earlier totals, are identical before and after', async () => {
+    const after = await db.query<Record<string, unknown>>(
+      `select * from public.player_stat_totals order by season_id, player_id, stat_type_id`,
+    )
+    expect(after.rows).toEqual(before.player_stat_totals)
+  })
+
+  it('standings list only each season’s own teams, and Season 2 has none yet', async () => {
+    let seen: { team_season: string; standing_season: string }[] = []
+    await expect(
+      db.transaction(async (tx) => {
+        await tx.exec(`
+          insert into public.teams (name, short_name, color_key, season_id)
+            select 'Gooners', 'GOO', 'gooners', id from public.seasons where name = 'Season 2';
+        `)
+        const r = await tx.query<{ team_season: string; standing_season: string }>(
+          `select t.season_id as team_season, st.season_id as standing_season
+             from public.standings st join public.teams t on t.id = st.team_id`,
+        )
+        seen = r.rows
+        throw new Error(ROLLBACK)
+      }),
+    ).rejects.toThrow(ROLLBACK)
+    // 3 Season 1 teams plus 1 Season 2 team; every row matches its own season. The insert was rolled back.
+    expect(seen).toHaveLength(4)
+    expect(seen.every((r) => r.team_season === r.standing_season)).toBe(true)
+    expect(seen.filter((r) => r.standing_season === season2Id)).toHaveLength(1)
   })
 })
 
@@ -178,23 +269,76 @@ describe('scoring and stat types', () => {
   })
 })
 
-describe('new columns on games and events', () => {
-  it('accepts clock seconds from 0 to 3600 and rejects others', async () => {
-    await expect(
-      db.exec(`insert into public.score_events (game_id, team_id, scoring_type_id, points, clock_seconds) values (gen_random_uuid(), '10000000-0000-0000-0000-000000000001', 'td', 6, 3601)`),
-    ).rejects.toThrow(/check constraint|foreign key/)
-    const cols = await db.query<{ table_name: string; column_name: string }>(
-      `select table_name, column_name from information_schema.columns
-        where table_schema = 'public' and (
-          (table_name = 'stat_events' and column_name = 'clock_seconds') or
-          (table_name = 'score_events' and column_name = 'clock_seconds') or
-          (table_name = 'games' and column_name in ('home_qb_id','away_qb_id')))`,
+describe('clock seconds (score and stat lines)', () => {
+  beforeAll(async () => {
+    await db.exec(`
+      insert into public.teams (id, name, short_name, color_key, season_id) values
+        ('${CLOCK_TEAM_A}', 'Clock A', 'CLA', 'sucks', '${season2Id}'),
+        ('${CLOCK_TEAM_B}', 'Clock B', 'CLB', 'spicy', '${season2Id}');
+      insert into public.games (id, season_id, home_team_id, away_team_id, status, kind)
+        values ('${GAME_2}', '${season2Id}', '${CLOCK_TEAM_A}', '${CLOCK_TEAM_B}', 'scheduled', 'regular');
+      insert into public.players (id, full_name) values ('${P_CLOCK}', 'Clock Player');
+    `)
+  })
+
+  it('score lines accept 0, 3600 and no clock second', async () => {
+    await db.exec(`
+      insert into public.score_events (game_id, team_id, scoring_type_id, points, clock_seconds) values
+        ('${GAME_2}', '${CLOCK_TEAM_A}', 'td', 6, 0),
+        ('${GAME_2}', '${CLOCK_TEAM_A}', 'td', 6, 3600),
+        ('${GAME_2}', '${CLOCK_TEAM_A}', 'td', 6, null);
+    `)
+    const rows = await db.query<{ clock_seconds: number | null }>(
+      `select clock_seconds from public.score_events where game_id = '${GAME_2}' order by clock_seconds nulls last`,
     )
-    expect(cols.rows).toHaveLength(4)
+    expect(rows.rows.map((r) => r.clock_seconds)).toEqual([0, 3600, null])
+  })
+
+  it('score lines refuse 3601 and -1', async () => {
+    await expect(
+      db.exec(`insert into public.score_events (game_id, team_id, scoring_type_id, points, clock_seconds)
+               values ('${GAME_2}', '${CLOCK_TEAM_A}', 'td', 6, 3601)`),
+    ).rejects.toThrow(/check constraint/)
+    await expect(
+      db.exec(`insert into public.score_events (game_id, team_id, scoring_type_id, points, clock_seconds)
+               values ('${GAME_2}', '${CLOCK_TEAM_A}', 'td', 6, -1)`),
+    ).rejects.toThrow(/check constraint/)
+  })
+
+  it('stat lines accept 0, 3600 and no clock second', async () => {
+    await db.exec(`
+      insert into public.stat_events (season_id, game_id, team_id, player_id, stat_type_id, value, clock_seconds) values
+        ('${season2Id}', '${GAME_2}', '${CLOCK_TEAM_A}', '${P_CLOCK}', 'rec', 1, 0),
+        ('${season2Id}', '${GAME_2}', '${CLOCK_TEAM_A}', '${P_CLOCK}', 'rec', 1, 3600),
+        ('${season2Id}', '${GAME_2}', '${CLOCK_TEAM_A}', '${P_CLOCK}', 'rec', 1, null);
+    `)
+    const rows = await db.query<{ clock_seconds: number | null }>(
+      `select clock_seconds from public.stat_events where game_id = '${GAME_2}' order by clock_seconds nulls last`,
+    )
+    expect(rows.rows.map((r) => r.clock_seconds)).toEqual([0, 3600, null])
+  })
+
+  it('stat lines refuse 3601 and -1', async () => {
+    await expect(
+      db.exec(`insert into public.stat_events (season_id, game_id, team_id, player_id, stat_type_id, value, clock_seconds)
+               values ('${season2Id}', '${GAME_2}', '${CLOCK_TEAM_A}', '${P_CLOCK}', 'rec', 1, 3601)`),
+    ).rejects.toThrow(/check constraint/)
+    await expect(
+      db.exec(`insert into public.stat_events (season_id, game_id, team_id, player_id, stat_type_id, value, clock_seconds)
+               values ('${season2Id}', '${GAME_2}', '${CLOCK_TEAM_A}', '${P_CLOCK}', 'rec', 1, -1)`),
+    ).rejects.toThrow(/check constraint/)
   })
 })
 
 describe('game_subs and player_minutes', () => {
+  beforeAll(async () => {
+    await db.exec(`
+      insert into public.players (id, full_name) values
+        ('${P_SUB}', 'Sub Test'), ('${P_MIN}', 'Minutes Test'), ('${P_ZERO}', 'Zero Test'),
+        ('${P_MAX}', 'Max Test'), ('${P_OVER}', 'Over Test'), ('${P_NEG}', 'Neg Test');
+    `)
+  })
+
   it.each(['game_subs', 'player_minutes'])('%s has row level security and no delete grant', async (table) => {
     const rls = await db.query<{ relrowsecurity: boolean }>(
       `select relrowsecurity from pg_class where relname = '${table}' and relnamespace = 'public'::regnamespace`,
@@ -212,5 +356,69 @@ describe('game_subs and player_minutes', () => {
 
   it.each(['game_subs', 'player_minutes'])('%s cannot be deleted by a member', async (table) => {
     await expect(as(AKIVA, `delete from public.${table}`)).rejects.toThrow(/permission denied/)
+  })
+
+  it('a linked member can add and read game subs and playing time, and the history records it', async () => {
+    const linked = await as<{ n: number }>(AKIVA, `select count(*)::int as n from public.member_logins where user_id = auth.uid()`)
+    expect(linked).toEqual([{ n: 1 }])
+
+    const [sub] = await as<{ id: string; created_by: string }>(
+      AKIVA,
+      `insert into public.game_subs (game_id, team_id, player_id) values ($1, $2, $3) returning id, created_by`,
+      [GAME_2, CLOCK_TEAM_A, P_SUB],
+    )
+    expect(sub?.created_by).toBe(AKIVA)
+    expect(await as(AKIVA, `select id from public.game_subs where id = $1`, [sub?.id])).toHaveLength(1)
+
+    const [min] = await as<{ id: string; created_by: string }>(
+      AKIVA,
+      `insert into public.player_minutes (game_id, player_id, minutes) values ($1, $2, 12.5) returning id, created_by`,
+      [GAME_2, P_MIN],
+    )
+    expect(min?.created_by).toBe(AKIVA)
+    expect(await as(AKIVA, `select id from public.player_minutes where id = $1`, [min?.id])).toHaveLength(1)
+
+    const hist = await db.query<{ action: string; changed_by: string }>(
+      `select action, changed_by::text as changed_by from public.edit_history where table_name = 'game_subs' and row_id = $1`,
+      [sub?.id],
+    )
+    expect(hist.rows).toEqual([{ action: 'insert', changed_by: AKIVA }])
+  })
+
+  it('one live sub per player per game: a second is refused, a voided one is allowed', async () => {
+    await expect(
+      db.exec(`insert into public.game_subs (game_id, team_id, player_id) values ('${GAME_2}', '${CLOCK_TEAM_A}', '${P_SUB}')`),
+    ).rejects.toThrow(/duplicate key|unique/)
+    await expect(
+      db.exec(`insert into public.game_subs (game_id, team_id, player_id, voided_at)
+               values ('${GAME_2}', '${CLOCK_TEAM_A}', '${P_SUB}', now())`),
+    ).resolves.toBeDefined()
+  })
+
+  it('one live playing-time row per player per game: a second is refused, a voided one is allowed', async () => {
+    await expect(
+      db.exec(`insert into public.player_minutes (game_id, player_id, minutes) values ('${GAME_2}', '${P_MIN}', 5)`),
+    ).rejects.toThrow(/duplicate key|unique/)
+    await expect(
+      db.exec(`insert into public.player_minutes (game_id, player_id, minutes, voided_at)
+               values ('${GAME_2}', '${P_MIN}', 5, now())`),
+    ).resolves.toBeDefined()
+  })
+
+  it('player_minutes accepts 0 and 60, refuses 60.1 and -1', async () => {
+    await db.exec(`
+      insert into public.player_minutes (game_id, player_id, minutes) values
+        ('${GAME_2}', '${P_ZERO}', 0), ('${GAME_2}', '${P_MAX}', 60);
+    `)
+    const rows = await db.query<{ minutes: number }>(
+      `select minutes from public.player_minutes where game_id = '${GAME_2}' and player_id in ('${P_ZERO}', '${P_MAX}') order by minutes`,
+    )
+    expect(rows.rows.map((r) => Number(r.minutes))).toEqual([0, 60])
+    await expect(
+      db.exec(`insert into public.player_minutes (game_id, player_id, minutes) values ('${GAME_2}', '${P_OVER}', 60.1)`),
+    ).rejects.toThrow(/check constraint|out of range/)
+    await expect(
+      db.exec(`insert into public.player_minutes (game_id, player_id, minutes) values ('${GAME_2}', '${P_NEG}', -1)`),
+    ).rejects.toThrow(/check constraint/)
   })
 })

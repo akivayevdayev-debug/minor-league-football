@@ -213,7 +213,7 @@ export function useGameHistory(gameId: string | undefined, enabled: boolean) {
   })
 }
 
-const POINTS: Record<Exclude<ScoringTypeId, 'final_manual'>, number> = { td: 6, conv1: 1, conv2: 2 }
+const POINTS: Record<Exclude<ScoringTypeId, 'final_manual'>, number> = { td: 6, conv1: 1, conv2: 2, safety: 2 }
 
 /**
  * Adds a score line. If a scorer is picked, a matching stat line is added with the SAME id,

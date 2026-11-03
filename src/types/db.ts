@@ -92,7 +92,50 @@ export interface StandingRow {
   rank: number
 }
 
-export type StatTypeId = 'rec' | 'target' | 'drop' | 'td' | 'fumble' | 'int' | 'pick6' | 'conv1' | 'conv2' | 'block' | 'conv_old'
+export type StatTypeId =
+  | 'rec'
+  | 'target'
+  | 'drop'
+  | 'td'
+  | 'fumble'
+  | 'int'
+  | 'pick6'
+  | 'conv1'
+  | 'conv2'
+  | 'block'
+  | 'conv_old'
+  | 'completion'
+  | 'incompletion'
+  | 'pass_td'
+  | 'int_thrown'
+  | 'qb_run'
+  | 'qb_rush_td'
+  | 'rollout'
+  | 'sack_taken'
+  | 'fumble_lost'
+  | 'pass_first_down'
+  | 'rush_first_down'
+  | 'rec_td'
+  | 'first_down_catch'
+  | 'sack_allowed'
+  | 'pressure_allowed'
+  | 'blocking_penalty'
+  | 'sack'
+  | 'pass_defended'
+  | 'forced_fumble'
+  | 'fumble_recovery'
+  | 'safety'
+  | 'two_hand_touch'
+  | 'kickoff_return'
+  | 'punt_return'
+  | 'return_td'
+  | 'touchback'
+  | 'onside_recovery'
+  | 'kickoff'
+  | 'punt'
+  | 'penalty'
+  | 'first_down'
+  | 'turnover'
 
 export interface StatTotalRow {
   season_id: string
@@ -156,7 +199,7 @@ export interface Settings {
   time_zone: string
 }
 
-export type ScoringTypeId = 'td' | 'conv1' | 'conv2' | 'final_manual'
+export type ScoringTypeId = 'td' | 'conv1' | 'conv2' | 'safety' | 'final_manual'
 
 export interface ScoreEvent {
   id: string

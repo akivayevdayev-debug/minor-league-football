@@ -30,6 +30,7 @@ const TYPE_LABEL: Record<ScoringTypeId, string> = {
   td: 'Touchdown',
   conv1: '1-point conversion',
   conv2: '2-point conversion',
+  safety: 'Safety',
   final_manual: 'Final score',
 }
 

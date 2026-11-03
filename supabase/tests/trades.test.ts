@@ -281,3 +281,38 @@ describe('owner tools: signing people out', () => {
     expect(left).toEqual([U.leo])
   })
 })
+
+describe('owner tools: undo a change', () => {
+  const lastChange = async (table: string, rowId: string) =>
+    (
+      await db.query<{ id: number }>(
+        `select id from public.edit_history where table_name = $1 and row_id = $2 order by id desc limit 1`,
+        [table, rowId],
+      )
+    ).rows[0]!.id
+
+  it('Akiva undoes a rename: the team gets its old name back', async () => {
+    await as(U.leo, `update public.teams set name = 'Oops Name' where id = $1`, [SUCKS])
+    const change = await lastChange('teams', SUCKS)
+    await as(U.akiva, `select public.owner_undo_change($1)`, [change])
+    const name = (await db.query<{ name: string }>(`select name from public.teams where id = $1`, [SUCKS])).rows[0]!.name
+    expect(name).toBe('Team Sucks')
+  })
+
+  it('undoing an added row voids it instead of deleting it', async () => {
+    const id = await propose(U.david, SHPITZY, [P.david], SUCKS, [])
+    await as(U.akiva, `select public.owner_undo_change($1)`, [await lastChange('trades', id)])
+    const row = (await db.query<{ voided_at: string | null }>(`select voided_at from public.trades where id = $1`, [id])).rows[0]!
+    expect(row.voided_at).not.toBeNull()
+  })
+
+  it('nobody else can undo, and logins cannot be undone this way', async () => {
+    await as(U.leo, `update public.teams set name = 'Oops Again' where id = $1`, [SUCKS])
+    const change = await lastChange('teams', SUCKS)
+    await expect(as(U.eddie, `select public.owner_undo_change($1)`, [change])).rejects.toThrow(/Only Akiva/)
+    await as(U.akiva, `select public.owner_undo_change($1)`, [change])
+    await db.exec(`update public.member_logins set must_change_password = true where user_id = '${U.mair}'`)
+    const login = await lastChange('member_logins', U.mair)
+    await expect(as(U.akiva, `select public.owner_undo_change($1)`, [login])).rejects.toThrow(/can't be undone here/)
+  })
+})

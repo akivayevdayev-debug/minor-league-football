@@ -726,3 +726,55 @@ end $$;
 
 revoke all on function public.owner_end_sessions(uuid[]) from public, anon, authenticated;
 grant execute on function public.owner_end_sessions(uuid[]) to service_role;
+
+-- Akiva's Undo in the edit history. A change puts the row back as it was before; an added row is
+-- voided (nothing is ever deleted). The undo itself is recorded in the history like any change.
+create or replace function public.owner_undo_change(p_history_id bigint) returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  h public.edit_history;
+  v_key text;
+  v_cols text;
+  n integer;
+begin
+  if not app_private.is_owner() then
+    raise exception 'Only Akiva can undo changes.' using errcode = '42501';
+  end if;
+  select * into h from public.edit_history where id = p_history_id;
+  if h.id is null then
+    raise exception 'That change was not found.' using errcode = '22023';
+  end if;
+  if h.table_name = 'member_logins' or not exists (
+    select 1 from pg_catalog.pg_trigger tg
+      join pg_catalog.pg_class c on c.oid = tg.tgrelid
+      join pg_catalog.pg_namespace ns on ns.oid = c.relnamespace
+     where ns.nspname = 'public' and c.relname = h.table_name and tg.tgname = 'history') then
+    raise exception 'That change can''t be undone here.' using errcode = '22023';
+  end if;
+  v_key := case h.table_name when 'game_clocks' then 'game_id' else 'id' end;
+
+  if h.action = 'update' then
+    select string_agg(format('%I', column_name), ', ' order by ordinal_position) into v_cols
+      from information_schema.columns
+     where table_schema = 'public' and table_name = h.table_name
+       and column_name not in (v_key, 'created_at', 'created_by', 'updated_at', 'updated_by')
+       and is_generated = 'NEVER' and is_identity = 'NO';
+    execute format('update public.%1$I t set (%2$s) = (select %2$s from jsonb_populate_record(null::public.%1$I, $1)) where t.%3$I::text = $2',
+                   h.table_name, v_cols, v_key)
+      using h.before, h.row_id;
+  else
+    if not exists (select 1 from information_schema.columns
+                    where table_schema = 'public' and table_name = h.table_name and column_name = 'voided_at') then
+      raise exception 'That added row can''t be taken away (nothing is ever deleted).' using errcode = '22023';
+    end if;
+    execute format('update public.%I set voided_at = now() where %I::text = $1 and voided_at is null', h.table_name, v_key)
+      using h.row_id;
+  end if;
+  get diagnostics n = row_count;
+  if n = 0 then
+    raise exception 'Nothing to undo: that row was already changed back or removed.' using errcode = '22023';
+  end if;
+end $$;
+
+revoke all on function public.owner_undo_change(bigint) from public, anon;
+grant execute on function public.owner_undo_change(bigint) to authenticated;

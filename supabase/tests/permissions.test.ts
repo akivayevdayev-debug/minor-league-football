@@ -80,6 +80,22 @@ describe('roles', () => {
     const rows = await db.query<{ user_id: string }>('select user_id from public.member_logins where is_owner')
     expect(rows.rows.map((r) => r.user_id)).toEqual([AKIVA])
   })
+
+  it("marks Akiva's login as owner even when it is linked after the change", async () => {
+    const LATE = '00000000-0000-0000-0000-0000000000b1'
+    await db.exec(`
+      delete from public.member_logins where user_id = '${AKIVA}';
+      insert into auth.users values ('${LATE}', 'akiva2@mlf.invalid', now());
+      insert into public.member_logins (user_id, player_id) values ('${LATE}', '${P.akiva}');
+    `)
+    const rows = await db.query<{ is_owner: boolean }>(`select is_owner from public.member_logins where user_id = '${LATE}'`)
+    expect(rows.rows[0].is_owner).toBe(true)
+    // Put things back the way the other tests expect.
+    await db.exec(`
+      delete from public.member_logins where user_id = '${LATE}';
+      insert into public.member_logins (user_id, player_id) values ('${AKIVA}', '${P.akiva}');
+    `)
+  })
 })
 
 describe('profiles', () => {
@@ -163,7 +179,52 @@ describe('finished games', () => {
   })
 })
 
+describe('finished games cannot be changed by members', () => {
+  it.each([
+    ['void it', `update public.games set voided_at = now() where id = $1`],
+    ['make it a playoff', `update public.games set kind = 'playoff' where id = $1`],
+    ['swap its teams', `update public.games set home_team_id = '${AWAY}', away_team_id = '${HOME}' where id = $1`],
+  ])('member cannot %s', async (_, q) => {
+    await expect(as(MAIR, q, [FINAL])).rejects.toThrow(/Only Akiva or Eddie/)
+  })
+
+  it('member cannot add a game that is already final, or remove a scheduled one', async () => {
+    await expect(
+      as(MAIR, `insert into public.games (season_id, home_team_id, away_team_id, status) values ($1, $2, $3, 'final')`, [season2, HOME, AWAY]),
+    ).rejects.toThrow(/Only Akiva or Eddie/)
+    const [{ id }] = await as<{ id: string }>(
+      MAIR,
+      `insert into public.games (season_id, home_team_id, away_team_id) values ($1, $2, $3) returning id`,
+      [season2, HOME, AWAY],
+    )
+    await expect(as(MAIR, `update public.games set voided_at = now() where id = $1`, [id])).rejects.toThrow(/Only Akiva or Eddie/)
+    expect(await as(EDDIE, `update public.games set voided_at = now() where id = $1 returning id`, [id])).toHaveLength(1)
+  })
+})
+
+describe('stat rules', () => {
+  it('member cannot change a stat limit; Eddie can', async () => {
+    await expect(as(MAIR, `update public.stat_types set max_per_game = 999 where id = 'rec_td'`)).rejects.toThrow(/stat limits/)
+    expect(await as(EDDIE, `update public.stat_types set max_per_game = 15 where id = 'rec_td' returning id`)).toHaveLength(1)
+  })
+})
+
 describe('limits', () => {
+  it('a negative game line is refused, so it cannot cancel out the limit', async () => {
+    await expect(addStat(MAIR, LIVE, 'rec_td', -999)).rejects.toThrow(/1 or more/)
+  })
+
+  it('team-only lines are limited too', async () => {
+    const g = await uuid()
+    await db.query(
+      `insert into public.games (id, season_id, home_team_id, away_team_id, status) values ($1, $2, $3, $4, 'live')`,
+      [g, season2, HOME, AWAY],
+    )
+    const q = `insert into public.stat_events (season_id, game_id, team_id, stat_type_id, value) values ($1, $2, $3, 'turnover', $4)`
+    await as(MAIR, q, [season2, g, HOME, 20])
+    await expect(as(MAIR, q, [season2, g, HOME, 1])).rejects.toThrow(/MLF_LIMIT/)
+  })
+
   it('stat limit blocks a 16th TD and ignores voided lines', async () => {
     const g = await uuid()
     await db.query(
@@ -191,6 +252,11 @@ describe('limits', () => {
     for (let i = 0; i < 30; i++) await as(MAIR, q, [g, HOME])
     await expect(as(MAIR, q, [g, HOME])).rejects.toThrow(/MLF_LIMIT:Score lines:30/)
     expect(await as(MAIR, `${q} returning id`, [g, AWAY])).toHaveLength(1)
+    // Moving a line onto the full team is caught too.
+    const [{ id }] = await as<{ id: string }>(MAIR, `${q} returning id`, [g, AWAY])
+    await expect(as(MAIR, `update public.score_events set team_id = $2 where id = $1`, [id, HOME])).rejects.toThrow(
+      /MLF_LIMIT:Score lines:30/,
+    )
   })
 })
 

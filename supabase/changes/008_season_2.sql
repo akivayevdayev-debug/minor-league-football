@@ -346,23 +346,59 @@ begin
   end loop;
 end $$;
 
--- ── Reopening a final game ─────────────────────────────────────────────────
+-- ── Finished games ──────────────────────────────────────────────────────────
+-- Once a game is final, only Akiva or Eddie can change anything about it (reopen, void, swap
+-- teams, change its kind). Only they can void a game or create one that is already final.
 create or replace function app_private.guard_final_game() returns trigger
 language plpgsql set search_path = '' as $$
 begin
-  if auth.uid() is not null and old.status = 'final' and new.status is distinct from 'final'
-     and not app_private.is_admin() then
-    raise exception 'Only Akiva or Eddie can reopen a finished game.' using errcode = '42501';
+  if auth.uid() is null or app_private.is_admin() then
+    return new;
+  end if;
+  if tg_op = 'INSERT' then
+    if new.status = 'final' or new.voided_at is not null then
+      raise exception 'Only Akiva or Eddie can add a finished game.' using errcode = '42501';
+    end if;
+    return new;
+  end if;
+  if old.status = 'final' and (new.status, new.season_id, new.week, new.starts_at, new.field,
+       new.home_team_id, new.away_team_id, new.home_slot, new.away_slot, new.kind, new.voided_at,
+       new.home_qb_id, new.away_qb_id)
+     is distinct from (old.status, old.season_id, old.week, old.starts_at, old.field,
+       old.home_team_id, old.away_team_id, old.home_slot, old.away_slot, old.kind, old.voided_at,
+       old.home_qb_id, old.away_qb_id) then
+    raise exception 'Only Akiva or Eddie can reopen or change a finished game.' using errcode = '42501';
+  end if;
+  if new.voided_at is distinct from old.voided_at then
+    raise exception 'Only Akiva or Eddie can remove a game.' using errcode = '42501';
   end if;
   return new;
 end $$;
 
 drop trigger if exists guard_final_game on public.games;
-create trigger guard_final_game before update on public.games
+create trigger guard_final_game before insert or update on public.games
   for each row execute function app_private.guard_final_game();
+
+-- ── Stat rules (groups, limits, on/off) belong to Akiva and Eddie ──────────
+create or replace function app_private.guard_stat_rules() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  if auth.uid() is not null and not app_private.is_admin()
+     and (new.max_per_game, new.stat_group, new.active)
+         is distinct from (old.max_per_game, old.stat_group, old.active) then
+    raise exception 'Only Akiva or Eddie can change stat limits.' using errcode = '42501';
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists guard_stat_rules on public.stat_types;
+create trigger guard_stat_rules before update on public.stat_types
+  for each row execute function app_private.guard_stat_rules();
 
 -- ── Limits ──────────────────────────────────────────────────────────────────
 -- The app reads "MLF_LIMIT:<label>:<max>" and shows a friendly message.
+-- Two phones adding the same stat at the same moment wait for each other (advisory lock), so
+-- both cannot slip past a limit. Game lines from a login must be positive: mistakes are voided.
 create or replace function app_private.check_stat_limit() returns trigger
 language plpgsql security definer set search_path = '' as $$
 declare
@@ -370,17 +406,25 @@ declare
   v_label text;
   v_total bigint;
 begin
-  if new.voided_at is not null or new.game_id is null or new.player_id is null then
+  if new.voided_at is not null or new.game_id is null then
     return new;
+  end if;
+  if auth.uid() is not null and new.value < 1 then
+    raise exception 'Stat lines must be 1 or more. Remove a wrong line instead.' using errcode = '22023';
   end if;
   select max_per_game, label into v_max, v_label from public.stat_types where id = new.stat_type_id;
   if v_max is null then
     return new;
   end if;
+  perform pg_advisory_xact_lock(hashtextextended(
+    'stat:' || new.game_id::text || ':' || coalesce(new.player_id::text, 'team:' || new.team_id::text)
+    || ':' || new.stat_type_id, 0));
   select coalesce(sum(value), 0) into v_total
     from public.stat_events
-   where game_id = new.game_id and player_id = new.player_id and stat_type_id = new.stat_type_id
-     and voided_at is null and id <> new.id;
+   where game_id = new.game_id and stat_type_id = new.stat_type_id
+     and voided_at is null and id <> new.id
+     and (case when new.player_id is not null then player_id = new.player_id
+               else player_id is null and team_id = new.team_id end);
   if v_total + new.value > v_max then
     raise exception 'MLF_LIMIT:%:%', v_label, v_max using errcode = '23514';
   end if;
@@ -394,10 +438,16 @@ create trigger check_stat_limit before insert or update on public.stat_events
 create or replace function app_private.check_score_line_limit() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
-  if new.voided_at is null and (tg_op = 'INSERT' or old.voided_at is not null) and (
-    select count(*) from public.score_events
-     where game_id = new.game_id and team_id = new.team_id and voided_at is null and id <> new.id
-  ) >= 30 then
+  if new.voided_at is not null then
+    return new;
+  end if;
+  if tg_op = 'UPDATE' and old.voided_at is null
+     and (new.game_id, new.team_id) is not distinct from (old.game_id, old.team_id) then
+    return new;
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended('score:' || new.game_id::text || ':' || new.team_id::text, 0));
+  if (select count(*) from public.score_events
+       where game_id = new.game_id and team_id = new.team_id and voided_at is null and id <> new.id) >= 30 then
     raise exception 'MLF_LIMIT:Score lines:30' using errcode = '23514';
   end if;
   return new;
@@ -406,3 +456,17 @@ end $$;
 drop trigger if exists check_score_line_limit on public.score_events;
 create trigger check_score_line_limit before insert or update on public.score_events
   for each row execute function app_private.check_score_line_limit();
+
+-- Akiva's login is the owner whenever it gets linked, even if that happens after this change.
+create or replace function app_private.mark_owner() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if exists (select 1 from public.players where id = new.player_id and login_name = 'akiva') then
+    new.is_owner := true;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists mark_owner on public.member_logins;
+create trigger mark_owner before insert on public.member_logins
+  for each row execute function app_private.mark_owner();

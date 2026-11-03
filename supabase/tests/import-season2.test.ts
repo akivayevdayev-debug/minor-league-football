@@ -82,12 +82,14 @@ const SCHEDULE: [number, string, string, string, string, string][] = [
 const u = (n: number) => `00000000-0000-0000-0000-${String(n).padStart(12, '0')}`
 const ID = {
   leo: u(1), mair: u(2), david: u(3), lawrence: u(4), akiva: u(5), morris: u(6), max: u(7), ariel: u(8), chaimy: u(9),
-  eddieSalem: u(10), maurice: u(11),
+  eddieSalem: u(10), maurice: u(11), moshe: u(12), jtt: u(13),
   season1: u(100), tigers: u(101), demons: u(102), daybies: u(103), game1: u(104),
 }
 
 // The league as it is before Season 2: the 2026 season, three teams, nine players with
-// open memberships, Eddie Salem (QB, no team) and Maurice as a guest.
+// open memberships, Eddie Salem (QB, no team), and three players the import must find rather than
+// duplicate: Moshe (already there, no login, exact name), Joseph Torjman-Thomas (login jtt, name
+// spelled differently) and Maurice as a guest spelled "Maurice Cohn".
 const SEED = `
   insert into public.seasons (id, name) values ('${ID.season1}', '2026 season');
   insert into public.teams (id, name, short_name, color_key) values
@@ -105,7 +107,9 @@ const SEED = `
     ('${ID.ariel}', 'Ariel Levy', 'ariel', '{}', false),
     ('${ID.chaimy}', 'Chaimy Salman', 'chaimy', '{}', false),
     ('${ID.eddieSalem}', 'Eddie Salem', null, '{QB}', false),
-    ('${ID.maurice}', 'Maurice Cohen', null, '{}', true);
+    ('${ID.maurice}', 'Maurice Cohn', null, '{}', true),
+    ('${ID.moshe}', 'Moshe Lahav', null, '{}', false),
+    ('${ID.jtt}', 'Joseph Torjman-Thomas', 'jtt', '{}', false);
   insert into public.roster_memberships (player_id, team_id, starts_on) values
     ('${ID.leo}', '${ID.tigers}', '2026-03-01'),
     ('${ID.mair}', '${ID.tigers}', '2026-03-01'),
@@ -130,6 +134,15 @@ describe.skipIf(!has)('Season 2 private import', () => {
 
   const q = async <T = Record<string, unknown>>(query: string, params: unknown[] = []) =>
     (await db.query<T>(query, params)).rows
+
+  // A player by login when the private file gives one, otherwise by name (the backups).
+  const playerFor = async (name: string) => {
+    const login = LOGIN_BY_NAME[name]
+    const rows = login
+      ? await q<Record<string, unknown>>(`select * from public.players where login_name = $1`, [login])
+      : await q<Record<string, unknown>>(`select * from public.players where full_name = $1`, [name])
+    return rows[0]
+  }
 
   const count = async (query: string) => Number((await q<{ n: number }>(`select count(*)::int as n from (${query}) x`))[0]?.n)
 
@@ -211,7 +224,7 @@ describe.skipIf(!has)('Season 2 private import', () => {
 
   it('brings in each private detail exactly as the private file has it', async () => {
     for (const p of priv.players) {
-      const row = (await q<Record<string, unknown>>(`select * from public.players where full_name = $1`, [p.full_name]))[0]
+      const row = await playerFor(p.full_name)
       expect(row, p.full_name).toBeDefined()
       expect(row?.jersey, `${p.full_name} jersey`).toBe(p.jersey)
       expect(row?.birth_year, `${p.full_name} birth year`).toBe(yearOf(p.birth_date))
@@ -224,12 +237,28 @@ describe.skipIf(!has)('Season 2 private import', () => {
     }
   })
 
-  it('stores Maurice as a real QB with no team', async () => {
-    const row = (await q<Record<string, unknown>>(`select * from public.players where full_name = 'Maurice Cohen'`))[0]
+  it('turns the one guest Maurice into a real QB with no team, and never creates a second Maurice', async () => {
+    const row = await playerFor('Maurice Cohen')
+    expect(row?.id).toBe(ID.maurice)
     expect(row?.is_guest).toBe(false)
     expect(row?.login_name).toBe('maurice')
     expect(row?.positions).toEqual(['QB'])
+    expect(await count(`select 1 from public.players where full_name ilike 'maurice%'`)).toBe(1)
     expect(await count(`select 1 from public.roster_memberships rm where rm.player_id = '${ID.maurice}' and rm.ends_on is null`)).toBe(0)
+  })
+
+  it('matches an existing player by login even when his name is spelled differently, and keeps that name', async () => {
+    const row = await playerFor('Joseph Torjman Thomas')
+    expect(row?.id).toBe(ID.jtt)
+    expect(row?.full_name).toBe('Joseph Torjman-Thomas')
+    expect(await count(`select 1 from public.players where full_name like 'Joseph Torjman%'`)).toBe(1)
+  })
+
+  it('gives a login to an existing player with no login, instead of duplicating him', async () => {
+    const row = await playerFor('Moshe Lahav')
+    expect(row?.id).toBe(ID.moshe)
+    expect(row?.login_name).toBe('moshe')
+    expect(await count(`select 1 from public.players where full_name = 'Moshe Lahav'`)).toBe(1)
   })
 
   it('adds the backups with no login and no team, and the name-only players with no details', async () => {

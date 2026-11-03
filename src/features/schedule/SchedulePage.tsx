@@ -1,6 +1,6 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-import { useCurrentSeason, useGameProjections, useGameScores, useGames, useTeams } from '../league'
+import { SeasonSelect, useGameProjections, useGameScores, useGames, useSeasons, useTeams, useViewedSeason } from '../league'
 import { formatGameTime, ZONE_LABEL } from '../../lib/time'
 import type { Game, GameProjection, Team } from '../../types/db'
 import { Badge } from '@/components/ui/badge'
@@ -26,10 +26,11 @@ type Score = { home_points: number; away_points: number } | undefined
  * Changing a time: tap the time, pick, Save. Scores: Live opens the game, Enter score types the final.
  */
 export default function SchedulePage() {
-  const season = useCurrentSeason()
-  const games = useGames(season.data?.id)
-  const scores = useGameScores(season.data?.id)
-  const projections = useGameProjections(season.data?.id)
+  const seasons = useSeasons()
+  const [season] = useViewedSeason()
+  const games = useGames(season?.id)
+  const scores = useGameScores(season?.id)
+  const projections = useGameProjections(season?.id)
   const teams = useTeams()
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<Game | null>(null)
@@ -47,9 +48,9 @@ export default function SchedulePage() {
   }, [games.data, next])
   const lastWeek = (games.data ?? []).reduce((max, g) => (g.week !== null && g.week > max ? g.week : max), 0)
 
-  if (season.isPending || (season.data && games.isPending)) return <Skeleton rows={5} />
-  if (season.isError || games.isError) return <ErrorState what="the schedule" onRetry={() => void (season.refetch(), games.refetch())} />
-  if (!season.data) return <EmptyState icon="schedule" title="No season yet" body="The schedule appears once the league data is imported." />
+  if (seasons.isPending || (season && games.isPending)) return <Skeleton rows={5} />
+  if (seasons.isError || games.isError) return <ErrorState what="the schedule" onRetry={() => void (seasons.refetch(), games.refetch())} />
+  if (!season) return <EmptyState icon="schedule" title="No season yet" body="The schedule appears once the league data is imported." />
 
   const rowProps = (g: Game): GameProps => ({
     game: g,
@@ -73,15 +74,18 @@ export default function SchedulePage() {
 
   return (
     <section className="flex flex-col gap-6">
+      <SeasonSelect />
       <header className="rise flex flex-wrap items-end justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <p className="brand-type text-small text-accent">{season.data.name}</p>
+          <p className="brand-type text-small text-accent">{season.name}</p>
           <h1 className="text-headline">Schedule</h1>
         </div>
-        <Button variant="primary" onClick={() => setAdding(true)}>
-          <Icon name="add" size="sm" />
-          Add game
-        </Button>
+        {season.status !== 'finished' && (
+          <Button variant="primary" onClick={() => setAdding(true)}>
+            <Icon name="add" size="sm" />
+            Add game
+          </Button>
+        )}
       </header>
 
       {next && <NextUp {...rowProps(next)} />}
@@ -106,7 +110,7 @@ export default function SchedulePage() {
         ))
       )}
 
-      <AddGameSheet open={adding} onOpenChange={setAdding} seasonId={season.data.id} defaultWeek={lastWeek || 1} />
+      <AddGameSheet open={adding} onOpenChange={setAdding} seasonId={season.id} defaultWeek={lastWeek || 1} />
       {editing && <TimeSheet game={editing} onClose={() => setEditing(null)} />}
       {scoring && scoringTeams && (
         <EnterScoreSheet

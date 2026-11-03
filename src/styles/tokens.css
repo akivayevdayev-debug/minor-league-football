@@ -46,6 +46,18 @@
   --team-tigers: #ff7a1a;
   --team-tigers-light: #ffaa66;
   --team-tigers-deep: #6b2604;
+  --team-gooners: #f5c451; /* gold, same as --gold */
+  --team-gooners-light: #ffd77a;
+  --team-gooners-deep: #5c4208;
+  --team-sucks: #e5383b;
+  --team-sucks-light: #ff8585;
+  --team-sucks-deep: #4a0b0e;
+  --team-spicy: #ffa33a;
+  --team-spicy-light: #ffc27a;
+  --team-spicy-deep: #5e3206;
+  --team-shpitzy: #3d6bff;
+  --team-shpitzy-light: #8fb0ff;
+  --team-shpitzy-deep: #0c1f5c;
   --team-none: #7d8ba0;
   --team-none-light: #b9c5d5;
   --team-none-deep: #1a2638;

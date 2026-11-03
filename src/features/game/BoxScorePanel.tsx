@@ -3,7 +3,7 @@
  * The "Fill in the stat sheet" button opens GameStatSheet to type or fix a whole game's stats.
  */
 import { useMemo, useState, type JSX } from 'react'
-import { displayName, useSettings } from '../league'
+import { displayName, useSeasonRules, useSettings } from '../league'
 import type { Game, Player, ScoreEvent, ScoringTypeId, StatType, StatTypeId, Team } from '../../types/db'
 import { Icon } from '../../ui/Icon'
 import { Skeleton } from '../../ui/Skeleton'
@@ -301,7 +301,8 @@ export function BoxScorePanel({
   const clock = useGameClock(game.id)
   const settings = useSettings()
   const [now] = useState(() => Date.now())
-  const halfSeconds = (settings.data?.half_minutes ?? 10) * 60
+  // The game's own season sets the half length; the league setting is only a fallback.
+  const halfSeconds = useSeasonRules(game.season_id)?.halfSeconds ?? (settings.data?.half_minutes ?? 10) * 60
   const minutesFor = (teamId: string) => {
     const all = lineups.data ?? []
     if (!trackedFromKickoff(all, teamId, halfSeconds)) return null

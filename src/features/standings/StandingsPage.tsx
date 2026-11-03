@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMember } from "../auth";
-import { recordText, useSeasonSnapshot } from "../league";
+import { recordText, SeasonSelect, useSeasonSnapshot } from "../league";
 import { EmptyState } from "../../ui/EmptyState";
 import { ErrorState } from "../../ui/ErrorState";
 import { Skeleton } from "../../ui/Skeleton";
@@ -40,26 +40,33 @@ export default function StandingsPage() {
     snap.standings.every((r) => r.games_played === 0)
   )
     return (
-      <EmptyState
-        icon="trophy"
-        title="No table yet"
-        body="The standings fill in once the first game is final."
-      />
+      <section className="flex flex-col gap-6">
+        <SeasonSelect />
+        <EmptyState
+          icon="trophy"
+          title="No table yet"
+          body="The standings fill in once the first game is final."
+        />
+      </section>
     );
 
   const leader = snap.standings.find((r) => r.rank === 1) ?? snap.standings[0];
   if (!leader)
     return (
-      <EmptyState
-        icon="trophy"
-        title="No table yet"
-        body="The standings fill in once the first game is final."
-      />
+      <section className="flex flex-col gap-6">
+        <SeasonSelect />
+        <EmptyState
+          icon="trophy"
+          title="No table yet"
+          body="The standings fill in once the first game is final."
+        />
+      </section>
     );
   const leaderTeam = snap.teamById.get(leader.team_id);
 
   return (
     <section className="flex flex-col gap-6">
+      <SeasonSelect />
       <header className="rise flex flex-col gap-1">
         <p className="brand-type text-small text-accent">{snap.season.name}</p>
         <h1 className="text-headline">Standings</h1>

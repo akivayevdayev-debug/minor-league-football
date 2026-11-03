@@ -2,7 +2,7 @@
  * Row shapes from supabase/schema.sql (hand-kept for Phase 1a; switch to generated types when the
  * Supabase CLI is set up). Only the columns the app reads are listed.
  */
-export type TeamColor = 'demons' | 'daybies' | 'tigers'
+export type TeamColor = 'demons' | 'daybies' | 'tigers' | 'gooners' | 'sucks' | 'spicy' | 'shpitzy'
 
 export interface Player {
   id: string

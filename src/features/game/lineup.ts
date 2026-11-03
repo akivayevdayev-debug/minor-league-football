@@ -1,5 +1,5 @@
 /*
- * Who is on the field. Two players per team play at once; the third sits and subs in.
+ * Who is on the field. Each season sets how many of a team's players play at once (seasonRules().onField); the rest sub in.
  * Each lineup row is a team's on-field players from one clock moment on (kickoff writes the first,
  * every sub writes a new one). Playing time is worked out from these rows, never stored as a total.
  */
@@ -8,8 +8,6 @@ import { supabase } from '../../lib/supabase'
 import { remainingMs } from '../../lib/clock'
 import { rows } from '../league/api'
 import type { Game, GameClock } from '../../types/db'
-
-export const ON_FIELD = 2
 
 export interface Lineup {
   id: string

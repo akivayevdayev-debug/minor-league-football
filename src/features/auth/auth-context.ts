@@ -4,6 +4,8 @@ import type { Session } from '@supabase/supabase-js'
 export interface Member {
   playerId: string
   isLeagueManager: boolean
+  /** The owner can edit any profile (the database enforces it too). */
+  isOwner: boolean
 }
 
 export type AuthState =

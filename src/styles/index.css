@@ -38,6 +38,14 @@
   --color-team-demons-light: var(--team-demons-light);
   --color-team-daybies-light: var(--team-daybies-light);
   --color-team-tigers-light: var(--team-tigers-light);
+  --color-team-gooners: var(--team-gooners);
+  --color-team-sucks: var(--team-sucks);
+  --color-team-spicy: var(--team-spicy);
+  --color-team-shpitzy: var(--team-shpitzy);
+  --color-team-gooners-light: var(--team-gooners-light);
+  --color-team-sucks-light: var(--team-sucks-light);
+  --color-team-spicy-light: var(--team-spicy-light);
+  --color-team-shpitzy-light: var(--team-shpitzy-light);
   --color-team-none: var(--team-none);
   --color-border: var(--glass-border);
   --color-border-strong: var(--glass-border-strong);

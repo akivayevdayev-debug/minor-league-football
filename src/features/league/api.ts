@@ -66,6 +66,15 @@ export function useRosters() {
   })
 }
 
+/** Every season that isn't voided, newest first. Use season.ts helpers to pick one. */
+export function useSeasons() {
+  return useQuery({
+    queryKey: keys.seasons,
+    queryFn: () =>
+      rows<Season[]>(supabase.from('seasons').select('*').is('voided_at', null).order('starts_on', { ascending: false })),
+  })
+}
+
 /** The season the schedule shows: newest one that counts for standings and isn't finished. */
 export function useCurrentSeason() {
   return useQuery({

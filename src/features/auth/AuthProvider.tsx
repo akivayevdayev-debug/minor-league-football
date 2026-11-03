@@ -8,13 +8,15 @@ import { AuthContext, type Auth, type AuthState, type Member, type PasswordResul
 /** Looks up the login's player link; asks the database to link it once if missing. */
 async function findMember(session: Session): Promise<Member | null> {
   const read = () =>
-    supabase.from('member_logins').select('player_id, is_league_manager').eq('user_id', session.user.id).maybeSingle()
+    supabase.from('member_logins').select('player_id, is_league_manager, is_owner').eq('user_id', session.user.id).maybeSingle()
   let { data } = await read()
   if (!data) {
     await supabase.rpc('link_my_login')
     ;({ data } = await read())
   }
-  return data ? { playerId: data.player_id as string, isLeagueManager: data.is_league_manager as boolean } : null
+  return data
+    ? { playerId: data.player_id as string, isLeagueManager: data.is_league_manager as boolean, isOwner: data.is_owner as boolean }
+    : null
 }
 
 /** How often a signed-in device asks the server "does my login still exist?". Also checked on focus and reconnect. */

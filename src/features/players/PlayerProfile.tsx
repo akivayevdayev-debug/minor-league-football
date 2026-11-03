@@ -1,6 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { approxAge, displayName, formatHeight, STAT_LABELS, usePlayerProjections, usePlayers, useRosters, useSettings, useStatTotals, useTeams } from '../league'
+import { useMember } from '../auth'
+import { approxAge, displayName, formatHeight, SeasonSelect, seasonRules, STAT_LABELS, useGames, usePlayerProjections, usePlayers, useRosters, useSettings, useStatTotals, useTeams, useViewedSeason } from '../league'
 import { minutesText, playerMinutes, useAllLineups, usePlayerStatsIn } from '../game/lineup'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '../../ui/Button'
@@ -32,12 +33,23 @@ export default function PlayerProfile() {
   const [moving, setMoving] = useState(false)
   const allLineups = useAllLineups()
   const settings = useSettings()
+  const member = useMember()
+  // Minutes are for the viewed season: its half length, and only its games.
+  const [season] = useViewedSeason()
+  const seasonGames = useGames(season?.id)
   const [now] = useState(() => Date.now())
-  const halfSeconds = (settings.data?.half_minutes ?? 10) * 60
-  const played = useMemo(
-    () => (allLineups.data && id ? playerMinutes(allLineups.data.lineups, allLineups.data.clocks, id, halfSeconds, now) : { seconds: 0, gameIds: [] }),
-    [allLineups.data, id, halfSeconds, now],
-  )
+  const halfSeconds = season ? seasonRules(season).halfSeconds : (settings.data?.half_minutes ?? 10) * 60
+  const played = useMemo(() => {
+    if (!allLineups.data || !id) return { seconds: 0, gameIds: [] as string[] }
+    const inSeason = new Set((seasonGames.data ?? []).map((g) => g.id))
+    return playerMinutes(
+      allLineups.data.lineups.filter((l) => inSeason.has(l.game_id)),
+      allLineups.data.clocks.filter((c) => inSeason.has(c.game_id)),
+      id,
+      halfSeconds,
+      now,
+    )
+  }, [allLineups.data, seasonGames.data, id, halfSeconds, now])
   const trackedStats = usePlayerStatsIn(id, played.gameIds)
 
   const player = players.data?.find((p) => p.id === id)
@@ -60,6 +72,7 @@ export default function PlayerProfile() {
 
   return (
     <article className="flex flex-col gap-5">
+      <SeasonSelect />
       <Link to="/roster" className="pressable -ml-2 flex min-h-(--tap-min) w-fit items-center gap-1 px-2 caps-label hover-fine:text-accent">
         <Icon name="back" size="xs" />
         Roster
@@ -89,10 +102,12 @@ export default function PlayerProfile() {
       </header>
 
       <div className="rise flex flex-wrap gap-2" style={rise(1)}>
-        <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
-          <Icon name="edit" size="xs" />
-          Edit
-        </Button>
+        {(member.isOwner || player.id === member.playerId) && (
+          <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
+            <Icon name="edit" size="xs" />
+            Edit
+          </Button>
+        )}
         {!player.is_guest && (
           <Button variant="outline" size="sm" onClick={() => setMoving(true)}>
             <Icon name="history" size="xs" />

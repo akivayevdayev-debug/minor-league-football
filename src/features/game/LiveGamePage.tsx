@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { currentTeams, displayName, usePlayers, useRosters, useSettings, useStatTypes, useTeams } from '../league'
+import { currentTeams, displayName, seasonRules, seasonTeams, useSeasons, usePlayers, useRosters, useSettings, useStatTypes, useTeams } from '../league'
 import { remainingMs } from '../../lib/clock'
 import { gameScore } from '../../lib/score'
 import type { ScoreEvent, Team } from '../../types/db'
@@ -27,7 +27,7 @@ import { BoxScorePanel } from './BoxScorePanel'
 import { LiveStatsPanel } from './LiveStatsPanel'
 import { EnterScoreSheet } from './EnterScoreSheet'
 import { KickoffSheet } from './KickoffSheet'
-import { ON_FIELD, currentLineup, useGameLineups, useSetLineup } from './lineup'
+import { currentLineup, useGameLineups, useSetLineup } from './lineup'
 
 const SCORES = [
   { type: 'td', label: 'TD', points: 6 },
@@ -85,6 +85,7 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
   const lines = useScoreEvents(id)
   const clock = useGameClock(id)
   const settings = useSettings()
+  const seasons = useSeasons()
   const teams = useTeams()
   const players = usePlayers()
   const rosters = useRosters()
@@ -109,15 +110,21 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
   // If the clock could not load, show no time and no clock controls, so Resume can't overwrite the real time.
   const clockDown = clock.isError
   const now = useNow(!!c?.running, offset)
-  const halfSeconds = (settings.data?.half_minutes ?? 10) * 60
+  // The game's own season sets the rules; the old league setting is only a fallback while seasons load.
+  const gameSeason = seasons.data?.find((s) => s.id === g?.season_id)
+  const rules = gameSeason ? seasonRules(gameSeason) : null
+  const halfSeconds = rules?.halfSeconds ?? (settings.data?.half_minutes ?? 10) * 60
+  const onField = rules?.onField ?? 2
   const left = c ? remainingMs({ running: c.running, secondsLeft: c.seconds_left, startedAt: c.started_at ? Date.parse(c.started_at) : null }, now) : halfSeconds * 1000
 
-  const teamById = useMemo(() => new Map((teams.data ?? []).map((t) => [t.id, t])), [teams.data])
+  // Only this game's season's teams: a Season 1 game shows Season 1 teams even when Season 2 is active.
+  const gameTeams = useMemo(() => seasonTeams(teams.data ?? [], g?.season_id ?? ''), [teams.data, g?.season_id])
+  const teamById = useMemo(() => new Map(gameTeams.map((t) => [t.id, t])), [gameTeams])
   const home = g?.home_team_id ? teamById.get(g.home_team_id) : undefined
   const away = g?.away_team_id ? teamById.get(g.away_team_id) : undefined
   const score = g && home && away ? gameScore(home.id, away.id, (lines.data ?? []).map((l) => ({ teamId: l.team_id, points: l.points, voided: false }))) : { home: 0, away: 0 }
 
-  const onTeam = useMemo(() => currentTeams(rosters.data ?? [], teams.data ?? []), [rosters.data, teams.data])
+  const onTeam = useMemo(() => currentTeams(rosters.data ?? [], gameTeams), [rosters.data, gameTeams])
   const rosterOf = useMemo(
     () => (teamId: string) => (players.data ?? []).filter((p) => onTeam.get(p.id)?.id === teamId),
     [onTeam, players.data],
@@ -125,7 +132,7 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
 
   // A clock that fails to load (e.g. change 003 not in the database yet) just means a fresh clock.
   if (game.isError) return <ErrorState what="this game" onRetry={() => void game.refetch()} />
-  if (!g || teams.isPending || clock.isPending) return <div className="p-4"><Skeleton rows={5} /></div>
+  if (!g || teams.isPending || seasons.isPending || clock.isPending) return <div className="p-4"><Skeleton rows={5} /></div>
   if (!home || !away)
     return <EmptyState icon="games" title="This game needs both teams first" body="Pick the two teams on the Schedule, then come back." />
 
@@ -138,7 +145,7 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
   /** Teams with a sub that have no lineup yet: they pick who sits first. */
   const needLineup = [home, away]
     .map((team) => ({ team, roster: rosterOf(team.id) }))
-    .filter(({ team, roster }) => roster.length > ON_FIELD && !currentLineup(lineups.data ?? [], team.id, halfSeconds))
+    .filter(({ team, roster }) => roster.length > onField && !currentLineup(lineups.data ?? [], team.id, halfSeconds))
   /** Saves who is on the field for a team from this clock moment on (kickoff or a sub). */
   const saveLineup = (teamId: string, onField: string[]) =>
     setLineup.mutate({ id: crypto.randomUUID(), team_id: teamId, on_field: onField, half, clock_seconds: clockSecondsNow }, { onError: fail })
@@ -249,6 +256,7 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
           onTeam={onTeam}
           lineups={lineups.data ?? []}
           halfSeconds={halfSeconds}
+          onField={onField}
           onLineup={saveLineup}
         />
       )}

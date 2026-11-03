@@ -15,7 +15,7 @@ import { Sheet } from '../../ui/Sheet'
 import { teamStyle } from '../../ui/team'
 import { type GameStat, useAddScore, useLogStat, useVoidScore, useVoidStat } from './api'
 import { BenchPicker } from './KickoffSheet'
-import { ON_FIELD, currentLineup, type Lineup } from './lineup'
+import { currentLineup, type Lineup } from './lineup'
 
 const ICONS: Partial<Record<StatTypeId, IconName>> = {
   rec: 'check', target: 'target', drop: 'minus', td: 'games', fumble: 'error',
@@ -33,7 +33,7 @@ type Side = 'home' | 'away' | 'both'
 interface LastAction { id: string; who: string; label: string; scoring: boolean; teamId: string; playerId: string | null }
 
 export function LiveStatsPanel({
-  game, home, away, half, players, statTypes, stats, rosterOf, onTeam, lineups, halfSeconds, onLineup,
+  game, home, away, half, players, statTypes, stats, rosterOf, onTeam, lineups, halfSeconds, onField, onLineup,
 }: {
   game: Game
   home: Team
@@ -46,6 +46,8 @@ export function LiveStatsPanel({
   onTeam: Map<string, Team>
   lineups: Lineup[]
   halfSeconds: number
+  /** Players per team on the field at once, from the game's season. */
+  onField: number
   /** Save who is on the field for a team from now on. */
   onLineup(teamId: string, onField: string[]): void
 }) {
@@ -144,7 +146,7 @@ export function LiveStatsPanel({
         const on = currentLineup(lineups, team.id, halfSeconds)
         const field = on ? list.filter(({ p }) => on.includes(p.id)) : list
         const bench = on ? list.filter(({ p }) => !on.includes(p.id)) : []
-        const needsPick = (game.status === 'live' || game.status === 'halftime') && rosterOf(team.id).length > ON_FIELD
+        const needsPick = (game.status === 'live' || game.status === 'halftime') && rosterOf(team.id).length > onField
         const teamTotal = teamTypes.length ? totals.get(`team:${team.id}`) ?? {} : null
         return (
           <section key={team.id} aria-label={`${team.name} players`} style={teamStyle(team.color_key)} className="flex flex-col gap-2">

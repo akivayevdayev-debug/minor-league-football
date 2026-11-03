@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { toast } from 'sonner'
 import { loginEmail, supabase } from '../../lib/supabase'
@@ -8,14 +8,23 @@ import { AuthContext, type Auth, type AuthState, type Member, type PasswordResul
 /** Looks up the login's player link; asks the database to link it once if missing. */
 async function findMember(session: Session): Promise<Member | null> {
   const read = () =>
-    supabase.from('member_logins').select('player_id, is_league_manager, is_owner').eq('user_id', session.user.id).maybeSingle()
+    supabase
+      .from('member_logins')
+      .select('player_id, is_league_manager, is_owner, must_change_password')
+      .eq('user_id', session.user.id)
+      .maybeSingle()
   let { data } = await read()
   if (!data) {
     await supabase.rpc('link_my_login')
     ;({ data } = await read())
   }
   return data
-    ? { playerId: data.player_id as string, isLeagueManager: data.is_league_manager as boolean, isOwner: data.is_owner as boolean }
+    ? {
+        playerId: data.player_id as string,
+        isLeagueManager: data.is_league_manager as boolean,
+        isOwner: data.is_owner as boolean,
+        mustChangePassword: data.must_change_password as boolean,
+      }
     : null
 }
 
@@ -25,16 +34,21 @@ const LOGIN_CHECK_MS = 2 * 60 * 1000
 /** Session that survives a reload (Supabase keeps it in local storage and refreshes it). */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ status: 'loading' })
+  // In memory only: the length of the password typed at sign-in. Never stored or logged.
+  const [typedPasswordLength, setTypedPasswordLength] = useState<number | null>(null)
+  // Each profile read gets a number; only the newest read may update state, so an old read cannot overwrite a newer one.
+  const latestRead = useRef(0)
 
   useEffect(() => {
     let cancelled = false
     async function apply(session: Session | null) {
+      const run = ++latestRead.current
       if (!session) {
-        if (!cancelled) setState({ status: 'signed-out' })
+        if (!cancelled && run === latestRead.current) setState({ status: 'signed-out' })
         return
       }
       const member = await findMember(session)
-      if (cancelled) return
+      if (cancelled || run !== latestRead.current) return
       setState(member ? { status: 'member', session, member } : { status: 'unlinked', session })
     }
     supabase.auth.getSession().then(({ data }) => apply(data.session))
@@ -81,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (loginName: string, password: string): Promise<SignInResult> => {
     if (!navigator.onLine) return 'offline'
+    setTypedPasswordLength(password.length)
     const { error } = await supabase.auth.signInWithPassword({ email: loginEmail(loginName), password })
     if (!error) return 'ok'
     if (import.meta.env.DEV) console.warn('sign-in failed:', error.status, error.code)
@@ -89,17 +104,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signOut = useCallback(async () => {
+    setTypedPasswordLength(null)
     await supabase.auth.signOut()
   }, [])
 
   const changePassword = useCallback(async (newPassword: string): Promise<PasswordResult> => {
     const { error } = await supabase.auth.updateUser({ password: newPassword })
-    if (!error) return 'ok'
-    if (error.code === 'weak_password') return 'too-weak'
-    if (error.code === 'same_password') return 'same-as-old'
-    return 'failed'
+    if (error) {
+      if (error.code === 'weak_password') return 'too-weak'
+      if (error.code === 'same_password') return 'same-as-old'
+      return 'failed'
+    }
+    // The new password is saved; now clear the forced-change flag (the database only lets the login clear its own).
+    const { error: flagError } = await supabase.rpc('clear_my_password_flag')
+    if (flagError) return 'failed'
+    const { data } = await supabase.auth.getSession()
+    if (data.session) {
+      const run = ++latestRead.current
+      const member = await findMember(data.session)
+      if (member && run === latestRead.current) setState({ status: 'member', session: data.session, member })
+    }
+    // A longer new password also lifts the "too short" rule that applied to the sign-in password.
+    setTypedPasswordLength(newPassword.length)
+    return 'ok'
   }, [])
 
-  const auth = useMemo<Auth>(() => ({ state, signIn, signOut, changePassword }), [state, signIn, signOut, changePassword])
+  const auth = useMemo<Auth>(
+    () => ({ state, signIn, signOut, changePassword, typedPasswordLength }),
+    [state, signIn, signOut, changePassword, typedPasswordLength],
+  )
   return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>
 }

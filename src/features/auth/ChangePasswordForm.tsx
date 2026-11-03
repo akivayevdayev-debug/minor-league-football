@@ -3,8 +3,7 @@ import { toast } from 'sonner'
 import { useAuth, type PasswordResult } from './auth-context'
 import { Button } from '../../ui/Button'
 import { Field } from '../../ui/Field'
-
-const MIN_LENGTH = 8
+import { MIN_PASSWORD_LENGTH as MIN_LENGTH } from './mustChange'
 
 const MESSAGES: Record<Exclude<PasswordResult, 'ok'>, string> = {
   'too-weak': 'That password is too easy to guess. Try a longer one.',
@@ -47,7 +46,7 @@ export function ChangePasswordForm() {
         revealable
         autoComplete="new-password"
         hint={`At least ${MIN_LENGTH} characters. Don't reuse one from another site.`}
-        error={tooShort ? `Use at least ${MIN_LENGTH} characters.` : undefined}
+        error={tooShort ? `Password must be at least ${MIN_LENGTH} characters` : undefined}
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />

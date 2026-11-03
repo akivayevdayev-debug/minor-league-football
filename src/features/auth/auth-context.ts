@@ -6,6 +6,8 @@ export interface Member {
   isLeagueManager: boolean
   /** The owner can edit any profile (the database enforces it too). */
   isOwner: boolean
+  /** Set at launch for everyone but the owner; cleared once they choose their own password. */
+  mustChangePassword: boolean
 }
 
 export type AuthState =
@@ -22,6 +24,8 @@ export interface Auth {
   signIn(loginName: string, password: string): Promise<SignInResult>
   signOut(): Promise<void>
   changePassword(newPassword: string): Promise<PasswordResult>
+  /** Length of the password typed at the last sign-in, in memory only. Null when restored from a saved session. */
+  typedPasswordLength: number | null
 }
 
 export const AuthContext = createContext<Auth | null>(null)

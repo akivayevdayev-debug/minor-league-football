@@ -1,11 +1,34 @@
 import type { ReactNode } from 'react'
 import { useAuth } from './auth-context'
+import { ChangePasswordForm } from './ChangePasswordForm'
 import { LoginScreen } from './LoginScreen'
 import { NotLinkedScreen } from './NotLinkedScreen'
+import { needsNewPassword } from './mustChange'
+import { BrandMark } from '../../ui/BrandMark'
+import { StadiumBackdrop } from '../../ui/StadiumBackdrop'
+
+/** Shown before anything else to a member who must choose their own password (first sign-in, or a launch reset). */
+function ChooseNewPasswordScreen() {
+  return (
+    <main className="safe-top safe-bottom relative isolate flex min-h-dvh items-center justify-center overflow-hidden px-4 py-6">
+      <StadiumBackdrop photo="lights" lightsOn />
+      <div className="flex w-full max-w-(--measure-form) flex-col items-center gap-5">
+        <BrandMark />
+        <section className="glass-strong rise flex w-full flex-col gap-4 rounded-hero p-5">
+          <header className="flex flex-col gap-2 text-center">
+            <h1 className="text-title">Choose a New Password</h1>
+            <p className="text-small text-text-2-strong">Pick your own password to keep using MLF. At least 8 characters.</p>
+          </header>
+          <ChangePasswordForm />
+        </section>
+      </div>
+    </main>
+  )
+}
 
 /** Nothing renders for strangers. While checking, only the wordmark shows (no flash of content). */
 export function AuthGate({ children }: { children: ReactNode }) {
-  const { state } = useAuth()
+  const { state, typedPasswordLength } = useAuth()
   switch (state.status) {
     case 'loading':
       return (
@@ -18,6 +41,6 @@ export function AuthGate({ children }: { children: ReactNode }) {
     case 'unlinked':
       return <NotLinkedScreen />
     case 'member':
-      return <>{children}</>
+      return needsNewPassword(typedPasswordLength, state.member.mustChangePassword) ? <ChooseNewPasswordScreen /> : <>{children}</>
   }
 }

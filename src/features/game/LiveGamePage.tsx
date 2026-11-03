@@ -28,9 +28,11 @@ import { BoxScorePanel } from './BoxScorePanel'
 import { LiveStatsPanel } from './LiveStatsPanel'
 import { EnterScoreSheet } from './EnterScoreSheet'
 import { KickoffSheet } from './KickoffSheet'
+import { KeepAwakeButton } from './KeepAwakeButton'
 import { LandscapeClock } from './LandscapeClock'
 import { useLandscape } from './landscape'
 import { currentLineup, useGameLineups, useSetLineup } from './lineup'
+import { useKeepAwake, useKeepAwakeSetting } from './wakeLock'
 
 const SCORES = [
   { type: 'td', label: 'TD', points: 6 },
@@ -100,6 +102,8 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
   const lineups = useGameLineups(id)
   const auth = useAuth()
   useLiveGame(id, auth.state.status === 'member' ? auth.state.session.user.id : null)
+  const [keepAwake, toggleKeepAwake] = useKeepAwakeSetting(id ?? '')
+  useKeepAwake(keepAwake, game.data?.status ?? 'scheduled')
 
   const g = game.data
   const addScore = useAddScore(g)
@@ -302,6 +306,7 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
 
   /** Start, pause, halftime, overtime and end: shared by the upright and sideways layouts. */
   const clockControls = (
+    <div className="flex flex-col gap-2">
     <div className="grid grid-cols-2 gap-2">
       {expired ? (
         half === 1 ? (
@@ -342,6 +347,8 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
           </Button>
         </>
       )}
+    </div>
+    <KeepAwakeButton on={keepAwake} onToggle={toggleKeepAwake} />
     </div>
   )
 

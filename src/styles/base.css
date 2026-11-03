@@ -68,6 +68,9 @@
     body::before,
     body::after { animation: none; }
   }
+  /* Battery: the background lights stop drifting while a game is live (spec C7). */
+  [data-live] body::before,
+  [data-live] body::after { animation-play-state: paused; }
 
   /* Page titles: broadcast condensed caps. Section titles: calm sentence case (Apple). */
   h1 {

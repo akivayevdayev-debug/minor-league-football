@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../auth'
 import { toast } from 'sonner'
-import { currentTeams, displayName, seasonRules, seasonTeams, useSeasons, usePlayers, useRosters, useSettings, useStatTypes, useTeams } from '../league'
+import { currentTeams, displayName, seasonRules, seasonTeams, useGames, useSeasons, usePlayers, useRosters, useSettings, useStatTypes, useTeams } from '../league'
 import { clockPhase, remainingMs, secondsLeftAt, type ClockState } from '../../lib/clock'
 import { gameScore } from '../../lib/score'
 import type { ScoreEvent, Team } from '../../types/db'
@@ -22,13 +22,15 @@ import { StadiumBackdrop } from '../../ui/StadiumBackdrop'
 import { TeamBadge } from '../../ui/TeamBadge'
 import { teamStyle } from '../../ui/team'
 import {
-  ClockConflictError, useAddScore, useCreditScorer, useFinishGame, useGame, useGameClock, useGameStats, useLiveGame, useScoreEvents, useServerOffset, useSetClock, useVoidScore,
+  ClockConflictError, useAddScore, useCreditScorer, useFinishGame, useGame, useGameClock, useGameStats, useLiveGame, useScoreEvents, useServerOffset, useSetClock, useSetQuarterbacks, useVoidScore,
 } from './api'
 import { BoxScorePanel } from './BoxScorePanel'
 import { LiveStatsPanel } from './LiveStatsPanel'
 import { EnterScoreSheet } from './EnterScoreSheet'
 import { KickoffSheet } from './KickoffSheet'
 import { KeepAwakeButton } from './KeepAwakeButton'
+import { lastQbFor, qbCandidates } from './qb'
+import { QbPickSheet, type QbPicks } from './QbPickSheet'
 import { LandscapeClock } from './LandscapeClock'
 import { useLandscape } from './landscape'
 import { currentLineup, useGameLineups, useSetLineup } from './lineup'
@@ -38,9 +40,10 @@ const SCORES = [
   { type: 'td', label: 'TD', points: 6 },
   { type: 'conv1', label: 'PAT', points: 1 },
   { type: 'conv2', label: '2-PT', points: 2 },
+  { type: 'safety', label: 'Safety', points: 2 },
 ] as const
 
-const TYPE_LABEL: Record<string, string> = { td: 'Touchdown', conv1: '1-point conversion', conv2: '2-point conversion', final_manual: 'Final score' }
+const TYPE_LABEL: Record<string, string> = { td: 'Touchdown', conv1: '1-point conversion', conv2: '2-point conversion', safety: 'Safety', final_manual: 'Final score' }
 
 /** Ticks every quarter second while the clock runs, so the display stays in step. */
 function useNow(running: boolean, offset: number) {
@@ -111,6 +114,12 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
   const credit = useCreditScorer(g)
   const setClock = useSetClock(g)
   const finish = useFinishGame(g)
+  const setQbs = useSetQuarterbacks(g)
+  const seasonGames = useGames(g?.season_id)
+  const [pickQbs, setPickQbs] = useState(false)
+  const [qbPicks, setQbPicks] = useState<QbPicks>({})
+  /** Before the first start, both sides need a quarterback. */
+  const needQbs = !!g && g.status === 'scheduled' && (!g.home_qb_id || !g.away_qb_id)
   const [askScorer, setAskScorer] = useState<ScoreEvent | null>(null)
   const [confirmEnd, setConfirmEnd] = useState(false)
   const [typing, setTyping] = useState(false)
@@ -176,7 +185,12 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
   const saveLineup = (teamId: string, onField: string[]) =>
     setLineup.mutate({ id: crypto.randomUUID(), team_id: teamId, on_field: onField, half, clock_seconds: leftNow() }, { onError: fail })
 
-  const start = () => {
+  /** `afterQbs`: the quarterbacks were just saved, so do not ask again. */
+  const start = (afterQbs?: true) => {
+    if (needQbs && !afterQbs) {
+      setPickQbs(true)
+      return
+    }
     if (status === 'scheduled' && needLineup.length > 0 && !kickoff) {
       setKickoff(true)
       return
@@ -193,6 +207,9 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
       { onError: failClock },
     )
   }
+  /** Saves the quarterbacks, then carries straight on to the start that asked for them. */
+  const saveQbs = (homeQb: string, awayQb: string) =>
+    setQbs.mutate({ home: homeQb, away: awayQb }, { onSuccess: () => { setPickQbs(false); start(true) }, onError: fail })
   const pause = () => setClock.mutate({ clock: { running: false, started_at: null, seconds_left: leftNow(), half }, seen: c }, { onError: failClock })
   const halftime = () =>
     setClock.mutate({ clock: { running: false, started_at: null, seconds_left: halfSeconds, half: 2 }, status: 'halftime', seen: c }, { onError: failClock })
@@ -214,7 +231,7 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
 
   const add = (team: Team, type: (typeof SCORES)[number]['type']) => {
     const lineId = crypto.randomUUID()
-    addScore.mutate({ id: lineId, teamId: team.id, type, playerId: null, half }, { onError: fail })
+    addScore.mutate({ id: lineId, teamId: team.id, type, playerId: null, half, clockSeconds: leftNow() }, { onError: fail })
     setAskScorer({ id: lineId, game_id: g.id, team_id: team.id, scoring_type_id: type, points: 0, player_id: null, voided_at: null, created_at: '' })
   }
 
@@ -296,11 +313,24 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
     teams={needLineup}
     picks={benchPicks}
     onPick={(teamId, pid) => setBenchPicks((b) => (b[teamId] === pid ? b : { ...b, [teamId]: pid }))}
-    onStart={start}
+    onStart={() => start()}
     busy={busy}
   />
 
   <EnterScoreSheet open={typing} onOpenChange={setTyping} game={g} home={home} away={away} current={score} />
+
+  <QbPickSheet
+    open={pickQbs}
+    onOpenChange={setPickQbs}
+    home={home}
+    away={away}
+    candidates={qbCandidates(players.data ?? [])}
+    defaults={{ home: lastQbFor(home.id, seasonGames.data ?? []) ?? undefined, away: lastQbFor(away.id, seasonGames.data ?? []) ?? undefined }}
+    picks={qbPicks}
+    onPick={(side, pid) => setQbPicks((p) => ({ ...p, [side]: pid }))}
+    onConfirm={saveQbs}
+    busy={setQbs.isPending}
+  />
     </>
   )
 
@@ -332,9 +362,9 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
               <Icon name="pause" size="sm" filled /> Pause clock
             </Button>
           ) : (
-            <Button size="xl" variant="primary" onClick={start} disabled={busy} className="col-span-2">
+            <Button size="xl" variant="primary" onClick={() => start()} disabled={busy} className="col-span-2">
               <Icon name="play" size="sm" filled />
-              {status === 'scheduled' ? 'Start game' : status === 'halftime' ? 'Start 2nd half' : 'Resume clock'}
+              {status === 'scheduled' ? 'Go live' : status === 'halftime' ? 'Start 2nd half' : 'Resume clock'}
             </Button>
           )}
           {half === 1 && status !== 'halftime' && (
@@ -478,6 +508,9 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
         </div>
       ) : (
         <div className="flex flex-col gap-2">
+          <Button size="xl" variant="primary" onClick={() => setTab('box')}>
+            <Icon name="stats" size="sm" /> Box score
+          </Button>
           <Button size="xl" variant="secondary" onClick={() => setTyping(true)}>
             <Icon name="edit" size="sm" /> Fix the final score
           </Button>

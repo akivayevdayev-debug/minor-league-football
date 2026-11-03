@@ -9,7 +9,7 @@ import { TeamBadge } from '../../ui/TeamBadge'
 import { teamStyle } from '../../ui/team'
 
 export interface ScoreKey {
-  type: 'td' | 'conv1' | 'conv2'
+  type: 'td' | 'conv1' | 'conv2' | 'safety'
   label: string
   points: number
 }

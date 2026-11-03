@@ -445,3 +445,19 @@ export function useCreditScorer(game: Game | undefined) {
     },
   })
 }
+
+/** Saves who plays quarterback for each side of a game (asked before its first start). */
+export function useSetQuarterbacks(game: Game | undefined) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ home, away }: { home: string; away: string }) => {
+      if (!game) throw new Error('Request failed')
+      await rows<null>(supabase.from('games').update({ home_qb_id: home, away_qb_id: away }).eq('id', game.id))
+    },
+    onSettled: () => {
+      if (!game) return
+      void qc.invalidateQueries({ queryKey: gameKeys.game(game.id) })
+      void qc.invalidateQueries({ queryKey: leagueKeys.games(game.season_id) })
+    },
+  })
+}

@@ -3,18 +3,19 @@
  * running total). TD and conversions also add the points to the score, with the same id, so Undo
  * takes back both. Game-screen rule: press scale only, every button at least 56 px tall.
  */
-import { useMemo, useState, type FormEvent } from 'react'
+import { Fragment, useMemo, useState, type FormEvent } from 'react'
 import { useMutationState } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { displayName, useAddGuest } from '../league'
-import type { Game, Player, ScoreEvent, StatType, StatTypeId, Team } from '../../types/db'
+import type { Game, Player, ScoreEvent, StatGroup, StatType, StatTypeId, Team } from '../../types/db'
 import { Button } from '../../ui/Button'
 import { Icon, type IconName } from '../../ui/Icon'
 import { Sheet } from '../../ui/Sheet'
 import { teamStyle } from '../../ui/team'
-import { type GameStat, useAddScore, useLogStat, useVoidScore, useVoidStat } from './api'
+import { type GameStat, StatLimitError, useAddScore, useLogStat, useVoidScore, useVoidStat } from './api'
 import { BenchPicker } from './KickoffSheet'
 import { currentLineup, type Lineup } from './lineup'
+import { groupsFor } from './statGroups'
 
 const ICONS: Partial<Record<StatTypeId, IconName>> = {
   rec: 'check', target: 'target', drop: 'minus', td: 'games', fumble: 'error',
@@ -25,13 +26,16 @@ const SHORT: Partial<Record<StatTypeId, string>> = {
   rec: 'Catches', target: 'Targets', drop: 'Drops', td: 'TD', fumble: 'Fumbles',
   int: 'INT', pick6: 'Pick 6', conv1: '1-point', conv2: '2-point', block: 'Blocks',
 }
+const GROUP_NAME: Partial<Record<StatGroup, string>> = {
+  qb: 'Quarterback', receiving: 'Receiving', line: 'Line', defense: 'Defense', kicks: 'Kicks', team: 'Team', legacy: 'Older stats',
+}
 /** These also put points on the scoreboard. */
 const SCORING = new Set<StatTypeId>(['td', 'conv1', 'conv2'])
 
 interface LastAction { id: string; who: string; label: string; scoring: boolean; teamId: string; playerId: string | null }
 
 export function LiveStatsPanel({
-  game, home, away, half, players, statTypes, stats, rosterOf, onTeam, lineups, halfSeconds, onField, onLineup,
+  game, home, away, half, players, statTypes, stats, rosterOf, onTeam, lineups, halfSeconds, onField, onLineup, clockNow,
 }: {
   game: Game
   home: Team
@@ -92,17 +96,20 @@ export function LiveStatsPanel({
     return [...roster.map((p) => ({ p, sub: p.is_guest })), ...subs.map((p) => ({ p, sub: true }))]
   }
 
-  const fail = () => toast.error("Couldn't save that. Check your signal; it will try again.")
+  const fail = (e: unknown) =>
+    toast.error(e instanceof StatLimitError ? e.message : "Couldn't save that. Check your signal; it will try again.")
 
   function record(team: Team, player: Player | null, type: StatType, value = 1) {
     const id = crypto.randomUUID()
     const who = player ? displayName(player) : team.short_name
     // A final game's score is typed by hand, so its TD/conversion taps are plain stat lines.
     const scoring = SCORING.has(type.id) && value === 1 && !!player && game.status !== 'final'
+    // The game time of this tap, read now (null when the game is not running).
+    const clock_seconds = clockNow()
     if (scoring) {
-      addScore.mutate({ id, teamId: team.id, type: type.id as 'td' | 'conv1' | 'conv2', playerId: player.id, half }, { onError: fail })
+      addScore.mutate({ id, teamId: team.id, type: type.id as 'td' | 'conv1' | 'conv2', playerId: player.id, half, clockSeconds: clock_seconds }, { onError: fail })
     } else {
-      logStat.mutate({ id, team_id: team.id, player_id: player?.id ?? null, stat_type_id: type.id, value, half }, { onError: fail })
+      logStat.mutate({ id, team_id: team.id, player_id: player?.id ?? null, stat_type_id: type.id, value, half, clock_seconds }, { onError: fail })
     }
     setLast({ id, who, label: `${type.label} ${value > 0 ? '+' : ''}${value}`, scoring, teamId: team.id, playerId: player?.id ?? null })
   }
@@ -121,6 +128,8 @@ export function LiveStatsPanel({
 
   // No team picker: both teams always show (spec C2.3).
   const teams = [home, away]
+  /** A QB is the game's QB for their own side. */
+  const isQb = (team: Team, player: Player) => player.id === (team.id === game.home_team_id ? game.home_qb_id : game.away_qb_id)
 
   return (
     <div className="flex flex-col gap-4">
@@ -265,6 +274,7 @@ export function LiveStatsPanel({
         target={padFor}
         onClose={() => setPadFor(null)}
         types={padTypes}
+        groups={padFor ? groupsFor(padFor.player.positions, isQb(padFor.team, padFor.player)) : []}
         totals={padFor ? totals.get(padFor.player.id) ?? {} : {}}
         last={last}
         onRecord={(type, value) => padFor && record(padFor.team, padFor.player, type, value)}
@@ -292,13 +302,15 @@ export function LiveStatsPanel({
 
 /** The stat pad: stays open while you tap. Tap a count to type a new total instead. */
 function StatPad({
-  target, onClose, types, totals, last, onRecord, onUndo, final,
+  target, onClose, types, groups, totals, last, onRecord, onUndo, final,
 }: {
   target: { player: Player; team: Team } | null
   /** The game is over: stat taps never change its typed final score. */
   final: boolean
   onClose(): void
   types: StatType[]
+  /** The player's own stat groups, shown first. */
+  groups: StatGroup[]
   totals: Partial<Record<StatTypeId, number>>
   last: LastAction | null
   onRecord(type: StatType, value?: number): void
@@ -306,6 +318,16 @@ function StatPad({
 }) {
   const [typing, setTyping] = useState<StatType | null>(null)
   const [draft, setDraft] = useState('')
+  const [showAll, setShowAll] = useState(false)
+
+  // The player's own groups first (in group order), then the rest; the legacy touchdown and
+  // pick-six stay on the pad because they are still scored. "All stats" shows everything.
+  const rank = (s: StatType) => {
+    const i = groups.indexOf(s.stat_group)
+    return i === -1 ? groups.length : i
+  }
+  const own = (s: StatType) => groups.includes(s.stat_group) || s.stat_group === 'legacy'
+  const shown = [...types.filter((s) => showAll || own(s))].sort((a, b) => rank(a) - rank(b))
 
   function saveTotal(e: FormEvent) {
     e.preventDefault()
@@ -367,35 +389,48 @@ function StatPad({
           </form>
         ) : (
           <div className="grid grid-cols-2 gap-2">
-            {types.map((s) => {
+            {shown.map((s, i) => {
               const n = totals[s.id] ?? 0
               const canType = !SCORING.has(s.id)
+              const before = shown[i - 1]
+              const newGroup = showAll && !own(s) && (!before || before.stat_group !== s.stat_group)
               return (
-                <div key={s.id} className="flex min-h-(--tap-score) overflow-hidden rounded-panel glass-list">
-                  <button
-                    type="button"
-                    onClick={() => onRecord(s)}
-                    className="pressable flex min-w-0 flex-1 items-center gap-1.5 pl-2.5 pr-1 text-left"
-                    aria-label={`${s.label}, add 1`}
-                  >
-                    <Icon name={ICONS[s.id] ?? 'stats'} size="sm" className="shrink-0 text-(--team-light)" />
-                    <span className="min-w-0 truncate font-strong">{SHORT[s.id] ?? s.label}</span>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!canType}
-                    onClick={() => {
-                      setDraft(String(n))
-                      setTyping(s)
-                    }}
-                    aria-label={canType ? `${s.label}: ${n}. Type a new total` : `${s.label}: ${n}`}
-                    className="pressable min-w-(--tap-min) border-l border-divider px-2 numeral text-title disabled:opacity-100"
-                  >
-                    {n}
-                  </button>
-                </div>
+                <Fragment key={s.id}>
+                  {newGroup && <p className="col-span-2 caps-label text-text-2">{GROUP_NAME[s.stat_group] ?? s.stat_group}</p>}
+                  <div className="flex min-h-(--tap-score) overflow-hidden rounded-panel glass-list">
+                    <button
+                      type="button"
+                      onClick={() => onRecord(s)}
+                      className="pressable flex min-w-0 flex-1 items-center gap-1.5 pl-2.5 pr-1 text-left"
+                      aria-label={`${s.label}, add 1`}
+                    >
+                      <Icon name={ICONS[s.id] ?? 'stats'} size="sm" className="shrink-0 text-(--team-light)" />
+                      <span className="min-w-0 truncate font-strong">{SHORT[s.id] ?? s.label}</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!canType}
+                      onClick={() => {
+                        setDraft(String(n))
+                        setTyping(s)
+                      }}
+                      aria-label={canType ? `${s.label}: ${n}. Type a new total` : `${s.label}: ${n}`}
+                      className="pressable min-w-(--tap-min) border-l border-divider px-2 numeral text-title disabled:opacity-100"
+                    >
+                      {n}
+                    </button>
+                  </div>
+                </Fragment>
               )
             })}
+            <button
+              type="button"
+              aria-pressed={showAll}
+              onClick={() => setShowAll((v) => !v)}
+              className="pressable col-span-2 min-h-(--tap-game) rounded-panel surface-inset px-3 font-strong"
+            >
+              All stats
+            </button>
           </div>
         )}
         <p className="text-small text-text-2">

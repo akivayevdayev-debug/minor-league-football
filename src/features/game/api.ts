@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { supabase } from '../../lib/supabase'
 import { keys as leagueKeys, rows } from '../league/api'
 import type { Game, GameClock, GameStatus, ScoreEvent, ScoringTypeId, StatTypeId } from '../../types/db'
+import { limitMessage } from './statGroups'
 
 export const gameKeys = {
   game: (id: string) => ['game', id] as const,
@@ -126,7 +127,19 @@ export interface GameStat {
   stat_type_id: StatTypeId
   value: number
   half: number | null
+  /** Seconds left in that half when the stat was tapped (null when the game was not running). */
+  clock_seconds: number | null
   created_at: string
+}
+
+/** The database refused a stat line for going over its per-game limit. The message is ready to show. */
+export class StatLimitError extends Error {}
+
+/** Turns a stat-write error from the database into an Error the screen can show. */
+function statWriteError(error: { message: string; code?: string }): Error {
+  const limit = error.code === '23514' ? limitMessage(error.message) : null
+  if (limit) return new StatLimitError(limit)
+  return new Error(error.code === '22023' ? error.message : 'Request failed')
 }
 
 export function useGameStats(gameId: string | undefined) {
@@ -137,7 +150,7 @@ export function useGameStats(gameId: string | undefined) {
       rows<GameStat[]>(
         supabase
           .from('stat_events')
-          .select('id, team_id, player_id, stat_type_id, value, half, created_at')
+          .select('id, team_id, player_id, stat_type_id, value, half, clock_seconds, created_at')
           .eq('game_id', gameId!)
           .is('voided_at', null)
           .order('created_at', { ascending: true }),
@@ -180,7 +193,8 @@ export function useLogStat(game: Game | undefined) {
     mutationKey: ['game-write', 'stat'],
     mutationFn: async (line: Omit<GameStat, 'created_at'>) => {
       if (!game) throw new Error('Request failed')
-      await rows<null>(supabase.from('stat_events').upsert({ ...line, season_id: game.season_id, game_id: game.id }))
+      const { error } = await supabase.from('stat_events').upsert({ ...line, season_id: game.season_id, game_id: game.id })
+      if (error) throw statWriteError(error)
     },
     onMutate: (line) => o.apply((lines) => [...lines, { ...line, created_at: new Date().toISOString() }]),
     onError: (_e, _v, ctx) => o.rollback(ctx),
@@ -240,13 +254,16 @@ export function useAddScore(game: Game | undefined) {
   const qc = useQueryClient()
   return useMutation({
     mutationKey: ['game-write', 'score'],
-    mutationFn: async ({ id, teamId, type, playerId, half }: { id: string; teamId: string; type: keyof typeof POINTS; playerId: string | null; half: number }) => {
+    mutationFn: async ({ id, teamId, type, playerId, half, clockSeconds }: { id: string; teamId: string; type: keyof typeof POINTS; playerId: string | null; half: number; clockSeconds?: number | null }) => {
       if (!game) throw new Error('Request failed')
-      await rows<null>(supabase.from('score_events').insert({ id, game_id: game.id, team_id: teamId, scoring_type_id: type, points: POINTS[type], player_id: playerId }))
+      await rows<null>(
+        supabase.from('score_events').insert({ id, game_id: game.id, team_id: teamId, scoring_type_id: type, points: POINTS[type], player_id: playerId, clock_seconds: clockSeconds ?? null }),
+      )
       if (playerId) {
-        await rows<null>(
-          supabase.from('stat_events').insert({ id, season_id: game.season_id, game_id: game.id, team_id: teamId, player_id: playerId, stat_type_id: type, value: 1, half }),
-        )
+        const { error } = await supabase
+          .from('stat_events')
+          .insert({ id, season_id: game.season_id, game_id: game.id, team_id: teamId, player_id: playerId, stat_type_id: type, value: 1, half, clock_seconds: clockSeconds ?? null })
+        if (error) throw statWriteError(error)
       }
     },
     onMutate: async ({ id, teamId, type, playerId }) => {

@@ -12,6 +12,7 @@ import { teamStyle } from '../../ui/team'
 import { useGameClock, useGameHistory, type GameHistoryRow, type GameStat } from './api'
 import { gameElapsed, minutesText, playingTime, trackedFromKickoff, useGameLineups } from './lineup'
 import { GameStatSheet } from './GameStatSheet'
+import { statTimeLabel } from './statGroups'
 
 const ABBR: Partial<Record<StatTypeId, string>> = {
   rec: 'REC',
@@ -96,6 +97,9 @@ function TeamBox({
 
   const teamTotals = teamCols.filter((s) => t.team.has(s.id))
   const headingId = `box-team-${team.id}`
+  const labelById = useMemo(() => new Map(statTypes.map((s) => [s.id, s.label])), [statTypes])
+  // Every player's stat line in the order they happened, each with the game time it was tapped.
+  const log = useMemo(() => stats.filter((s) => s.team_id === team.id && s.player_id !== null), [stats, team.id])
 
   return (
     <section aria-labelledby={headingId} style={teamStyle(team.color_key)} className="glass-list team-glow flex flex-col overflow-hidden rounded-panel">
@@ -160,6 +164,27 @@ function TeamBox({
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {log.length > 0 && (
+        <div className="flex flex-col gap-2 border-t border-divider px-4 py-3">
+          <span className="caps-label text-text-2">Game log</span>
+          <ol className="flex flex-col gap-1.5 text-small">
+            {log.map((s) => {
+              const player = s.player_id ? playersById.get(s.player_id) : undefined
+              const label = labelById.get(s.stat_type_id) ?? s.stat_type_id
+              return (
+                <li key={s.id} className="flex items-center justify-between gap-3">
+                  <span className="min-w-0 truncate">
+                    <span className="font-strong">{player ? displayName(player) : 'Unknown player'}</span> · {label}
+                    {s.value !== 1 && ` ${s.value > 0 ? '+' : ''}${s.value}`}
+                  </span>
+                  <span className="nums shrink-0 text-text-2">{statTimeLabel(s.half, s.clock_seconds) ?? '–'}</span>
+                </li>
+              )
+            })}
+          </ol>
         </div>
       )}
     </section>

@@ -468,3 +468,245 @@ end $$;
 drop trigger if exists mark_owner on public.member_logins;
 create trigger mark_owner before insert on public.member_logins
   for each row execute function app_private.mark_owner();
+
+-- ===== Section 3: trades and captains (Task 12) =====
+-- • A team can have two captains (David's team: David and Ilan while David can't play).
+-- • A captain changes their own team's name, short name and logo. Akiva changes any team.
+-- • A captain proposes a trade between their own team and another. It waits as "pending" until
+--   Eddie or Maurice answers: the first answer decides (approve moves the players, veto cancels).
+--   Akiva can do anything. Vetoed trades stay in the history.
+-- • Rosters change only through an approved trade, or by Akiva or Eddie directly.
+
+alter table public.teams add column if not exists co_captain_player_id uuid references public.players (id);
+
+alter table public.trades
+  add column if not exists status text not null default 'approved',
+  add column if not exists proposed_by uuid references public.players (id),
+  add column if not exists decided_by uuid references public.players (id),
+  add column if not exists decided_at timestamptz;
+alter table public.trades alter column status set default 'pending';
+alter table public.trades drop constraint if exists trades_status_check;
+alter table public.trades add constraint trades_status_check check (status in ('pending', 'approved', 'vetoed'));
+
+-- True when this login captains that team (either captain slot).
+create or replace function app_private.is_captain_of(p_team_id uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select app_private.my_player_id() is not null and exists (
+    select 1 from public.teams
+     where id = p_team_id and voided_at is null
+       and app_private.my_player_id() in (captain_player_id, co_captain_player_id))
+$$;
+
+-- Eddie (the league manager) and Maurice answer trades.
+create or replace function app_private.can_decide_trades() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (
+    select 1 from public.member_logins ml join public.players p on p.id = ml.player_id
+     where ml.user_id = auth.uid() and (ml.is_league_manager or p.login_name = 'maurice'))
+$$;
+
+revoke all on function app_private.is_captain_of(uuid), app_private.can_decide_trades() from public, anon;
+grant execute on function app_private.is_captain_of(uuid), app_private.can_decide_trades() to authenticated;
+
+-- ── Teams ───────────────────────────────────────────────────────────────────
+drop policy if exists members_add on public.teams;
+drop policy if exists members_change on public.teams;
+create policy members_add on public.teams for insert to authenticated
+  with check (app_private.is_admin());
+create policy members_change on public.teams for update to authenticated
+  using (app_private.is_owner() or app_private.is_captain_of(id))
+  with check (app_private.is_owner() or app_private.is_captain_of(id));
+
+-- A captain may change only the name, short name, logo and team photo.
+create or replace function app_private.guard_team_fields() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  if auth.uid() is not null and not app_private.is_owner()
+     and (new.season_id is distinct from old.season_id
+          or new.color_key is distinct from old.color_key
+          or new.captain_player_id is distinct from old.captain_player_id
+          or new.co_captain_player_id is distinct from old.co_captain_player_id
+          or new.voided_at is distinct from old.voided_at) then
+    raise exception 'Captains can change the team name, short name and logo. Ask Akiva for anything else.'
+      using errcode = '42501';
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists guard_team_fields on public.teams;
+create trigger guard_team_fields before update on public.teams
+  for each row execute function app_private.guard_team_fields();
+
+-- ── Rosters: only Akiva or Eddie directly; everyone else through a trade ────
+drop policy if exists members_add on public.roster_memberships;
+drop policy if exists members_change on public.roster_memberships;
+create policy members_add on public.roster_memberships for insert to authenticated
+  with check (app_private.is_admin());
+create policy members_change on public.roster_memberships for update to authenticated
+  using (app_private.is_admin()) with check (app_private.is_admin());
+
+-- ── Trades: written only through the functions below (Akiva may also fix a row) ──
+drop policy if exists members_add on public.trades;
+drop policy if exists members_change on public.trades;
+drop policy if exists owner_add on public.trades;
+drop policy if exists owner_change on public.trades;
+create policy owner_add on public.trades for insert to authenticated
+  with check (app_private.is_owner());
+create policy owner_change on public.trades for update to authenticated
+  using (app_private.is_owner()) with check (app_private.is_owner());
+
+-- Checks a trade's teams and players. Every player must be on that team right now.
+create or replace function app_private.check_trade(
+  p_team_a uuid, p_players_a uuid[], p_team_b uuid, p_players_b uuid[]
+) returns void
+language plpgsql stable security definer set search_path = '' as $$
+declare
+  v_wrong int;
+begin
+  if p_team_a is null or p_team_b is null or p_team_a = p_team_b then
+    raise exception 'Pick two different teams.' using errcode = '22023';
+  end if;
+  if cardinality(coalesce(p_players_a, '{}')) + cardinality(coalesce(p_players_b, '{}')) = 0 then
+    raise exception 'Pick at least one player to trade.' using errcode = '22023';
+  end if;
+  if (select count(distinct season_id) from public.teams
+       where id in (p_team_a, p_team_b) and voided_at is null) <> 1
+     or (select count(*) from public.teams where id in (p_team_a, p_team_b) and voided_at is null) <> 2 then
+    raise exception 'Both teams must be in the same season.' using errcode = '22023';
+  end if;
+  select count(*) into v_wrong from (
+    select unnest(coalesce(p_players_a, '{}')) as player_id, p_team_a as team_id
+    union all
+    select unnest(coalesce(p_players_b, '{}')), p_team_b
+  ) want
+  where not exists (
+    select 1 from public.roster_memberships rm
+     where rm.player_id = want.player_id and rm.team_id = want.team_id
+       and rm.ends_on is null and rm.voided_at is null);
+  if v_wrong > 0 then
+    raise exception 'Someone in this trade is not on that team any more.' using errcode = '22023';
+  end if;
+end $$;
+
+-- Moves the players of an approved trade. The move date is never before anyone's current roster line.
+create or replace function app_private.apply_trade(p_trade_id uuid) returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  t public.trades;
+  v_on date;
+  v_moving uuid[];
+begin
+  select * into t from public.trades where id = p_trade_id;
+  perform app_private.check_trade(t.team_a_id, t.players_a, t.team_b_id, t.players_b);
+  v_moving := t.players_a || t.players_b;
+  select greatest(t.traded_on, coalesce(max(starts_on), t.traded_on)) into v_on
+    from public.roster_memberships
+   where player_id = any (v_moving) and ends_on is null and voided_at is null;
+  update public.roster_memberships set ends_on = v_on
+   where player_id = any (v_moving) and ends_on is null and voided_at is null;
+  insert into public.roster_memberships (player_id, team_id, starts_on, note)
+    select unnest(t.players_a), t.team_b_id, v_on, 'Trade'
+    union all
+    select unnest(t.players_b), t.team_a_id, v_on, 'Trade';
+  update public.trades set traded_on = v_on where id = p_trade_id;
+end $$;
+
+-- A captain (or Akiva) proposes a trade. It waits for Eddie or Maurice.
+create or replace function public.propose_trade(
+  p_team_a uuid, p_players_a uuid[], p_team_b uuid, p_players_b uuid[], p_note text default null
+) returns uuid
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_id uuid;
+begin
+  if not app_private.is_member() then
+    raise exception 'Not allowed.' using errcode = '42501';
+  end if;
+  if not (app_private.is_owner() or app_private.is_captain_of(p_team_a)) then
+    raise exception 'Only a team''s captain can offer a trade for that team.' using errcode = '42501';
+  end if;
+  perform app_private.check_trade(p_team_a, p_players_a, p_team_b, p_players_b);
+  if length(p_note) > 500 then
+    raise exception 'Keep the note under 500 characters.' using errcode = '22023';
+  end if;
+  insert into public.trades (team_a_id, team_b_id, players_a, players_b, note, status, proposed_by)
+    values (p_team_a, p_team_b, coalesce(p_players_a, '{}'), coalesce(p_players_b, '{}'),
+            nullif(trim(p_note), ''), 'pending', app_private.my_player_id())
+    returning id into v_id;
+  return v_id;
+end $$;
+
+-- Eddie, Maurice or Akiva answers a pending trade. The first answer decides.
+create or replace function public.decide_trade(p_trade_id uuid, p_approve boolean) returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  t public.trades;
+begin
+  if not (app_private.can_decide_trades() or app_private.is_owner()) then
+    raise exception 'Only Eddie or Maurice can approve or veto a trade.' using errcode = '42501';
+  end if;
+  select * into t from public.trades where id = p_trade_id and voided_at is null for update;
+  if t.id is null then
+    raise exception 'That trade was not found.' using errcode = '22023';
+  end if;
+  if t.status <> 'pending' then
+    raise exception 'This trade was already %.', t.status using errcode = '22023';
+  end if;
+  if p_approve then
+    -- Players move from the day it is approved, not the day it was offered.
+    update public.trades set traded_on = greatest(traded_on, current_date) where id = p_trade_id;
+    perform app_private.apply_trade(p_trade_id);
+  end if;
+  update public.trades
+     set status = case when p_approve then 'approved' else 'vetoed' end,
+         decided_by = app_private.my_player_id(), decided_at = now()
+   where id = p_trade_id;
+end $$;
+
+-- Akiva's direct trade: happens at once, no approval needed. Same arguments as before.
+create or replace function public.make_trade(
+  p_team_a uuid, p_players_a uuid[], p_team_b uuid, p_players_b uuid[], p_on date default current_date, p_note text default null
+) returns uuid
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_id uuid;
+begin
+  if not app_private.is_owner() then
+    raise exception 'Trades go through a captain and need Eddie or Maurice to approve them.' using errcode = '42501';
+  end if;
+  perform app_private.check_trade(p_team_a, p_players_a, p_team_b, p_players_b);
+  insert into public.trades (traded_on, team_a_id, team_b_id, players_a, players_b, note, status, proposed_by, decided_by, decided_at)
+    values (coalesce(p_on, current_date), p_team_a, p_team_b, coalesce(p_players_a, '{}'), coalesce(p_players_b, '{}'),
+            nullif(trim(p_note), ''), 'pending', app_private.my_player_id(), null, null)
+    returning id into v_id;
+  perform app_private.apply_trade(v_id);
+  update public.trades set status = 'approved', decided_by = app_private.my_player_id(), decided_at = now() where id = v_id;
+  return v_id;
+end $$;
+
+-- Akiva or Eddie moves one player (or takes them off a team). Before a season starts the move
+-- happens on the first day of their roster line, so the line never ends before it began.
+create or replace function public.move_player(p_player_id uuid, p_team_id uuid, p_on date default current_date)
+returns void
+language plpgsql security invoker set search_path = '' as $$
+declare
+  v_on date;
+begin
+  if not app_private.is_admin() then
+    raise exception 'Only Akiva or Eddie can move a player. Captains can offer a trade instead.' using errcode = '42501';
+  end if;
+  select greatest(coalesce(p_on, current_date), coalesce(max(starts_on), p_on)) into v_on
+    from public.roster_memberships
+   where player_id = p_player_id and ends_on is null and voided_at is null;
+  update public.roster_memberships set ends_on = v_on
+   where player_id = p_player_id and ends_on is null and voided_at is null;
+  if p_team_id is not null then
+    insert into public.roster_memberships (player_id, team_id, starts_on) values (p_player_id, p_team_id, v_on);
+  end if;
+end $$;
+
+revoke all on function app_private.check_trade(uuid, uuid[], uuid, uuid[]), app_private.apply_trade(uuid) from public, anon, authenticated;
+revoke all on function public.propose_trade(uuid, uuid[], uuid, uuid[], text), public.decide_trade(uuid, boolean),
+  public.make_trade(uuid, uuid[], uuid, uuid[], date, text) from public, anon;
+grant execute on function public.propose_trade(uuid, uuid[], uuid, uuid[], text), public.decide_trade(uuid, boolean),
+  public.make_trade(uuid, uuid[], uuid, uuid[], date, text) to authenticated;

@@ -329,6 +329,7 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
     picks={qbPicks}
     onPick={(side, pid) => setQbPicks((p) => ({ ...p, [side]: pid }))}
     onConfirm={saveQbs}
+    onSkip={() => { setPickQbs(false); start(true) }}
     busy={setQbs.isPending}
   />
     </>

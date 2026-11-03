@@ -14,7 +14,7 @@ export interface QbPicks {
   away?: string
 }
 
-export function QbPickSheet({ open, onOpenChange, home, away, candidates, defaults, picks, onPick, onConfirm, busy }: {
+export function QbPickSheet({ open, onOpenChange, home, away, candidates, defaults, picks, onPick, onConfirm, onSkip, busy }: {
   open: boolean
   onOpenChange(open: boolean): void
   home: Team
@@ -25,6 +25,8 @@ export function QbPickSheet({ open, onOpenChange, home, away, candidates, defaul
   picks: QbPicks
   onPick(side: keyof QbPicks, playerId: string): void
   onConfirm(home: string, away: string): void
+  /** Starts the game without quarterbacks: only offered when Maurice and Eddie can't be found. */
+  onSkip(): void
   busy: boolean
 }) {
   const sides = [
@@ -35,6 +37,8 @@ export function QbPickSheet({ open, onOpenChange, home, away, candidates, defaul
   const homeQb = value('home')
   const awayQb = value('away')
   const ready = !!homeQb && !!awayQb
+  // No one to pick (players still loading or a login changed): never block the game over it.
+  const none = candidates.length === 0
   return (
     <Sheet
       open={open}
@@ -42,13 +46,20 @@ export function QbPickSheet({ open, onOpenChange, home, away, candidates, defaul
       title="Who plays QB?"
       description="Maurice and Eddie play for no team. Pick one for each side."
       footer={
-        <Button variant="primary" size="xl" className="flex-1" disabled={!ready} loading={busy} onClick={() => ready && onConfirm(homeQb, awayQb)}>
-          {ready ? 'Go live' : 'Pick a QB for each team'}
-        </Button>
+        none ? (
+          <Button variant="primary" size="xl" className="flex-1" onClick={onSkip}>
+            Go live without a QB
+          </Button>
+        ) : (
+          <Button variant="primary" size="xl" className="flex-1" disabled={!ready} loading={busy} onClick={() => ready && onConfirm(homeQb, awayQb)}>
+            {ready ? 'Go live' : 'Pick a QB for each team'}
+          </Button>
+        )
       }
     >
       <div className="flex flex-col gap-5">
-        {sides.map(({ side, team }) => {
+        {none && <p className="text-body">Couldn't find Maurice or Eddie in the player list. You can start now and fix the QBs later.</p>}
+        {!none && sides.map(({ side, team }) => {
           const current = value(side)
           return (
             <fieldset key={side} style={teamStyle(team.color_key)} className="flex flex-col gap-2">

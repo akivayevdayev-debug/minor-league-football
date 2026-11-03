@@ -291,6 +291,7 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
           halfSeconds={halfSeconds}
           onField={onField}
           onLineup={saveLineup}
+          clockNow={() => (status === 'live' && c ? leftNow() : null)}
         />
       )}
 

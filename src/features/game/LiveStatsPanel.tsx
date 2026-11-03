@@ -48,6 +48,8 @@ export function LiveStatsPanel({
   onField: number
   /** Save who is on the field for a team from now on. */
   onLineup(teamId: string, onField: string[]): void
+  /** Seconds left in the half at this moment while the game is live, else null (read at the tap). */
+  clockNow(): number | null
 }) {
   const [subIn, setSubIn] = useState<{ team: Team; player: Player } | null>(null)
   const [nowSits, setNowSits] = useState<Record<string, string>>({})

@@ -21,6 +21,7 @@ const GameTabPage = lazy(() => import('../features/game/GameTabPage'))
 const PlayerProfile = lazy(() => import('../features/players/PlayerProfile'))
 const MePage = lazy(() => import('../features/me/MePage'))
 const LiveGamePage = lazy(() => import('../features/game/LiveGamePage'))
+const DevToolsPage = lazy(() => import('../features/dev/DevToolsPage'))
 
 function Screen({ children }: { children: ReactNode }) {
   return <Suspense fallback={<Skeleton rows={4} />}>{children}</Suspense>
@@ -46,6 +47,8 @@ export function App() {
                   <Route path="players" element={<Navigate to="/roster" replace />} />
                   <Route path="players/:id" element={<Screen><PlayerProfile /></Screen>} />
                   <Route path="me" element={<Screen><MePage /></Screen>} />
+                  {/* Owner only: the page itself sends everyone else home. */}
+                  <Route path="dev" element={<Screen><DevToolsPage /></Screen>} />
                   {/* Old links keep working. */}
                   <Route path="games" element={<Navigate to="/schedule" replace />} />
                   <Route path="settings" element={<Navigate to="/me" replace />} />

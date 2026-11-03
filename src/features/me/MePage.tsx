@@ -74,6 +74,7 @@ export default function MePage() {
         <Row icon="lock" label="Change password" onClick={() => setPassword(true)} />
         <Row icon="export" label={exporting ? 'Saving backup…' : 'Export everything'} hint="Every list in one file" onClick={runExport} />
         <Row icon="device" label="Put MLF on your phone" onClick={() => setInstall(true)} />
+        {member.isOwner && <Row icon="tools" label="Developer tools" hint="For Akiva only" to="/dev" />}
       </ul>
 
       <ul className="rise glass-panel overflow-hidden rounded-panel" style={{ '--i': 3 } as CSSProperties}>

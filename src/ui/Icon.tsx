@@ -56,6 +56,12 @@ import {
   BroadcastIcon,
   UserListIcon,
   KeyboardIcon,
+  WrenchIcon,
+  CopyIcon,
+  KeyIcon,
+  DatabaseIcon,
+  WifiHighIcon,
+  PowerIcon,
   type Icon as PhosphorIcon,
 } from '@phosphor-icons/react'
 
@@ -113,6 +119,12 @@ const icons = {
   live: BroadcastIcon,
   roster: UserListIcon,
   type: KeyboardIcon,
+  tools: WrenchIcon,
+  copy: CopyIcon,
+  key: KeyIcon,
+  database: DatabaseIcon,
+  online: WifiHighIcon,
+  power: PowerIcon,
 } satisfies Record<string, PhosphorIcon>
 
 export type IconName = keyof typeof icons

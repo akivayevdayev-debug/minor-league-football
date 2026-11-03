@@ -219,6 +219,10 @@ export interface GameClock {
   seconds_left: number
   started_at: string | null
   half: 1 | 2 | 3
+  /** Set by the database on every change; used to refuse a change made from an out-of-date screen. */
+  updated_at?: string
+  /** Login that made the last change (null when changed in the SQL editor). */
+  updated_by?: string | null
 }
 
 export interface Trade {

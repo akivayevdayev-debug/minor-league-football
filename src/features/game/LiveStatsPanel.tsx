@@ -10,7 +10,6 @@ import { displayName, useAddGuest } from '../league'
 import type { Game, Player, ScoreEvent, StatType, StatTypeId, Team } from '../../types/db'
 import { Button } from '../../ui/Button'
 import { Icon, type IconName } from '../../ui/Icon'
-import { Segmented } from '../../ui/motion'
 import { Sheet } from '../../ui/Sheet'
 import { teamStyle } from '../../ui/team'
 import { type GameStat, useAddScore, useLogStat, useVoidScore, useVoidStat } from './api'
@@ -29,7 +28,6 @@ const SHORT: Partial<Record<StatTypeId, string>> = {
 /** These also put points on the scoreboard. */
 const SCORING = new Set<StatTypeId>(['td', 'conv1', 'conv2'])
 
-type Side = 'home' | 'away' | 'both'
 interface LastAction { id: string; who: string; label: string; scoring: boolean; teamId: string; playerId: string | null }
 
 export function LiveStatsPanel({
@@ -53,7 +51,6 @@ export function LiveStatsPanel({
 }) {
   const [subIn, setSubIn] = useState<{ team: Team; player: Player } | null>(null)
   const [nowSits, setNowSits] = useState<Record<string, string>>({})
-  const [side, setSide] = useState<Side>('both')
   const [padFor, setPadFor] = useState<{ player: Player; team: Team } | null>(null)
   const [subFor, setSubFor] = useState<Team | null>(null)
   const [addedSubs, setAddedSubs] = useState<Record<string, string[]>>({})
@@ -120,21 +117,11 @@ export function LiveStatsPanel({
     setLast(null)
   }
 
-  const teams = side === 'home' ? [home] : side === 'away' ? [away] : [home, away]
+  // No team picker: both teams always show (spec C2.3).
+  const teams = [home, away]
 
   return (
     <div className="flex flex-col gap-4">
-      <Segmented<Side>
-        label="Which team"
-        value={side}
-        onChange={setSide}
-        options={[
-          { value: 'home', label: home.short_name },
-          { value: 'both', label: 'Both' },
-          { value: 'away', label: away.short_name },
-        ]}
-      />
-
       {waiting > 0 && (
         <p role="status" className="inline-flex items-center gap-2 self-start rounded-pill surface-inset px-3 py-1 text-small text-text-2-strong">
           <Icon name="offline" size="xs" /> {waiting} waiting to send

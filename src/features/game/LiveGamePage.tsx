@@ -5,9 +5,10 @@
  */
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { useAuth } from '../auth'
 import { toast } from 'sonner'
 import { currentTeams, displayName, seasonRules, seasonTeams, useSeasons, usePlayers, useRosters, useSettings, useStatTypes, useTeams } from '../league'
-import { remainingMs } from '../../lib/clock'
+import { clockPhase, remainingMs, secondsLeftAt, type ClockState } from '../../lib/clock'
 import { gameScore } from '../../lib/score'
 import type { ScoreEvent, Team } from '../../types/db'
 import { Button } from '../../ui/Button'
@@ -21,7 +22,7 @@ import { StadiumBackdrop } from '../../ui/StadiumBackdrop'
 import { TeamBadge } from '../../ui/TeamBadge'
 import { teamStyle } from '../../ui/team'
 import {
-  useAddScore, useCreditScorer, useFinishGame, useGame, useGameClock, useGameStats, useLiveGame, useScoreEvents, useServerOffset, useSetClock, useVoidScore,
+  ClockConflictError, useAddScore, useCreditScorer, useFinishGame, useGame, useGameClock, useGameStats, useLiveGame, useScoreEvents, useServerOffset, useSetClock, useVoidScore,
 } from './api'
 import { BoxScorePanel } from './BoxScorePanel'
 import { LiveStatsPanel } from './LiveStatsPanel'
@@ -52,6 +53,9 @@ function useNow(running: boolean, offset: number) {
   }, [running])
   return now + offset
 }
+
+/** Now on the server's clock, in ms (read at the moment of a tap). */
+const serverNowMs = (offset: number) => Date.now() + offset
 
 /** Now on the server's clock, as a timestamp. */
 const serverNowIso = (offset: number) => new Date(Date.now() + offset).toISOString()
@@ -91,7 +95,8 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
   const rosters = useRosters()
   const offset = useServerOffset()
   const lineups = useGameLineups(id)
-  useLiveGame(id)
+  const auth = useAuth()
+  useLiveGame(id, auth.state.status === 'member' ? auth.state.session.user.id : null)
 
   const g = game.data
   const addScore = useAddScore(g)
@@ -115,7 +120,20 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
   const rules = gameSeason ? seasonRules(gameSeason) : null
   const halfSeconds = rules?.halfSeconds ?? (settings.data?.half_minutes ?? 10) * 60
   const onField = rules?.onField ?? 2
-  const left = c ? remainingMs({ running: c.running, secondsLeft: c.seconds_left, startedAt: c.started_at ? Date.parse(c.started_at) : null }, now) : halfSeconds * 1000
+  const clockState: ClockState | null = c ? { running: c.running, secondsLeft: c.seconds_left, startedAt: c.started_at ? Date.parse(c.started_at) : null } : null
+  const left = clockState ? remainingMs(clockState, now) : halfSeconds * 1000
+  /** Seconds left right now, read at the moment of a tap (the last redraw can be minutes old after the phone slept). */
+  const leftNow = () => (clockState ? secondsLeftAt(clockState, serverNowMs(offset)) : halfSeconds)
+  const phase = c ? clockPhase(left, c.running) : 'paused'
+
+  // At 0:00 the clock stops itself, once: whichever phone sees it first saves "stopped at 0".
+  // A second phone's save is refused by the compare-and-set, quietly.
+  const saveClock = setClock.mutate
+  const ranOut = !!c?.running && phase === 'expired' && game.data?.status === 'live'
+  useEffect(() => {
+    if (!ranOut || !c) return
+    saveClock({ clock: { running: false, started_at: null, seconds_left: 0, half: c.half }, seen: c }, { onError: () => {} })
+  }, [ranOut, c, saveClock])
 
   // Only this game's season's teams: a Season 1 game shows Season 1 teams even when Season 2 is active.
   const gameTeams = useMemo(() => seasonTeams(teams.data ?? [], g?.season_id ?? ''), [teams.data, g?.season_id])
@@ -140,15 +158,16 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
   const half = c?.half ?? 1
   const busy = setClock.isPending || finish.isPending
   const fail = () => toast.error("Couldn't save that. Check your signal and try again.")
-
-  const clockSecondsNow = c ? Math.ceil(left / 1000) : halfSeconds
+  const failClock = (e: Error) =>
+    e instanceof ClockConflictError ? toast.error('The clock was just changed on another phone. Check the time, then tap again.') : fail()
+  const overtimeSeconds = rules?.overtimeSeconds ?? null
   /** Teams with a sub that have no lineup yet: they pick who sits first. */
   const needLineup = [home, away]
     .map((team) => ({ team, roster: rosterOf(team.id) }))
     .filter(({ team, roster }) => roster.length > onField && !currentLineup(lineups.data ?? [], team.id, halfSeconds))
   /** Saves who is on the field for a team from this clock moment on (kickoff or a sub). */
   const saveLineup = (teamId: string, onField: string[]) =>
-    setLineup.mutate({ id: crypto.randomUUID(), team_id: teamId, on_field: onField, half, clock_seconds: clockSecondsNow }, { onError: fail })
+    setLineup.mutate({ id: crypto.randomUUID(), team_id: teamId, on_field: onField, half, clock_seconds: leftNow() }, { onError: fail })
 
   const start = () => {
     if (status === 'scheduled' && needLineup.length > 0 && !kickoff) {
@@ -163,14 +182,22 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
       setKickoff(false)
     }
     setClock.mutate(
-      { clock: { running: true, started_at: serverNowIso(offset), seconds_left: c ? Math.ceil(left / 1000) : halfSeconds, half }, status: 'live' },
-      { onError: fail },
+      { clock: { running: true, started_at: serverNowIso(offset), seconds_left: leftNow(), half }, status: 'live', seen: c },
+      { onError: failClock },
     )
   }
-  const pause = () => setClock.mutate({ clock: { running: false, started_at: null, seconds_left: Math.ceil(left / 1000), half } }, { onError: fail })
-  const halftime = () => setClock.mutate({ clock: { running: false, started_at: null, seconds_left: halfSeconds, half: 2 }, status: 'halftime' }, { onError: fail })
+  const pause = () => setClock.mutate({ clock: { running: false, started_at: null, seconds_left: leftNow(), half }, seen: c }, { onError: failClock })
+  const halftime = () =>
+    setClock.mutate({ clock: { running: false, started_at: null, seconds_left: halfSeconds, half: 2 }, status: 'halftime', seen: c }, { onError: failClock })
+  /** Overtime starts running straight away, with the season's overtime length. */
+  const overtime = () =>
+    overtimeSeconds &&
+    setClock.mutate(
+      { clock: { running: true, started_at: serverNowIso(offset), seconds_left: overtimeSeconds, half: 3 }, status: 'live', seen: c },
+      { onError: failClock },
+    )
   const end = () =>
-    finish.mutate(Math.ceil(left / 1000), {
+    finish.mutate(leftNow(), {
       onSuccess: () => {
         setConfirmEnd(false)
         toast.success(`Final: ${home.short_name} ${score.home}, ${away.short_name} ${score.away}`)
@@ -194,7 +221,13 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
     if (askScorer?.id === last.id) setAskScorer(null)
   }
 
-  const statusLabel = status === 'final' ? 'Final' : status === 'halftime' ? 'Halftime' : status === 'live' ? (half === 3 ? 'Overtime' : `${half === 1 ? '1st' : '2nd'} half`) : 'Not started'
+  const expired = status === 'live' && phase === 'expired'
+  const statusLabel =
+    status === 'final' ? 'Final'
+    : status === 'halftime' ? 'Halftime'
+    : expired ? (half === 1 ? 'End of half' : 'End of game')
+    : status === 'live' ? (half === 3 ? 'Overtime' : `${half === 1 ? '1st' : '2nd'} half`)
+    : 'Not started'
 
   return (
     <main className={`still mx-auto flex w-full max-w-(--content-max) flex-col gap-4 ${embedded ? '' : 'safe-top min-h-dvh px-4 pb-8'}`}>
@@ -278,24 +311,45 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
       {status !== 'final' && clockDown && <ErrorState what="the clock" onRetry={() => void clock.refetch()} />}
       {status !== 'final' && !clockDown && (
         <div className="grid grid-cols-2 gap-2">
-          {c?.running ? (
-            <Button size="xl" variant="primary" onClick={pause} disabled={busy} className="col-span-2">
-              <Icon name="pause" size="sm" filled /> Pause clock
-            </Button>
+          {expired ? (
+            half === 1 ? (
+              <Button size="xl" variant="primary" onClick={halftime} disabled={busy} className="col-span-2">
+                <Icon name="clock" size="sm" /> Start halftime
+              </Button>
+            ) : (
+              <>
+                {half === 2 && overtimeSeconds && (
+                  <Button size="xl" variant="secondary" onClick={overtime} disabled={busy} className="col-span-2">
+                    <Icon name="play" size="sm" filled /> Start overtime
+                  </Button>
+                )}
+                <Button size="xl" variant="primary" onClick={() => setConfirmEnd(true)} disabled={busy} className="col-span-2">
+                  <Icon name="finish" size="sm" /> End game
+                </Button>
+              </>
+            )
           ) : (
-            <Button size="xl" variant="primary" onClick={start} disabled={busy} className="col-span-2">
-              <Icon name="play" size="sm" filled />
-              {status === 'scheduled' ? 'Start game' : status === 'halftime' ? 'Start 2nd half' : 'Resume clock'}
-            </Button>
+            <>
+              {c?.running ? (
+                <Button size="xl" variant="primary" onClick={pause} disabled={busy} className="col-span-2">
+                  <Icon name="pause" size="sm" filled /> Pause clock
+                </Button>
+              ) : (
+                <Button size="xl" variant="primary" onClick={start} disabled={busy} className="col-span-2">
+                  <Icon name="play" size="sm" filled />
+                  {status === 'scheduled' ? 'Start game' : status === 'halftime' ? 'Start 2nd half' : 'Resume clock'}
+                </Button>
+              )}
+              {half === 1 && status !== 'halftime' && (
+                <Button size="xl" variant="secondary" onClick={halftime} disabled={busy || status === 'scheduled'}>
+                  <Icon name="clock" size="sm" /> Halftime
+                </Button>
+              )}
+              <Button size="xl" variant="secondary" onClick={() => setConfirmEnd(true)} disabled={busy} className={half === 1 && status !== 'halftime' ? '' : 'col-span-2'}>
+                <Icon name="finish" size="sm" /> End game
+              </Button>
+            </>
           )}
-          {half === 1 && status !== 'halftime' && (
-            <Button size="xl" variant="secondary" onClick={halftime} disabled={busy || status === 'scheduled'}>
-              <Icon name="clock" size="sm" /> Halftime
-            </Button>
-          )}
-          <Button size="xl" variant="secondary" onClick={() => setConfirmEnd(true)} disabled={busy} className={half === 1 && status !== 'halftime' ? '' : 'col-span-2'}>
-            <Icon name="finish" size="sm" /> End game
-          </Button>
         </div>
       )}
 

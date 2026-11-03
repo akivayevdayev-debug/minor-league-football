@@ -5,6 +5,7 @@
  */
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { supabase } from '../../lib/supabase'
 import { keys as leagueKeys, rows } from '../league/api'
 import type { Game, GameClock, GameStatus, ScoreEvent, ScoringTypeId, StatTypeId } from '../../types/db'
@@ -67,8 +68,19 @@ export function useServerOffset(): number {
   return offset
 }
 
+/**
+ * What to tell this phone when the clock row changes, or null to say nothing:
+ * only when another login started or paused it (not this phone, not the stop at 0:00).
+ */
+export function clockChangeMessage(shown: GameClock | null | undefined, next: Partial<GameClock> | undefined, myUserId: string | null): string | null {
+  if (!next || next.running === undefined || !next.updated_by || next.updated_by === myUserId) return null
+  if (shown && shown.running === next.running) return null
+  if (next.running) return 'Clock started on another phone'
+  return next.seconds_left === 0 ? null : 'Clock paused on another phone'
+}
+
 /** Every open game screen hears score, clock and status changes the moment they happen. */
-export function useLiveGame(gameId: string | undefined) {
+export function useLiveGame(gameId: string | undefined, myUserId: string | null = null) {
   const qc = useQueryClient()
   useEffect(() => {
     if (!gameId) return
@@ -86,9 +98,14 @@ export function useLiveGame(gameId: string | undefined) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lineups', filter: `game_id=eq.${gameId}` }, () =>
         qc.invalidateQueries({ queryKey: ['game', gameId, 'lineups'] }),
       )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_clocks', filter: `game_id=eq.${gameId}` }, () =>
-        qc.invalidateQueries({ queryKey: gameKeys.clock(gameId) }),
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_clocks', filter: `game_id=eq.${gameId}` }, (payload) => {
+        // Say so when another phone starts or pauses the clock, so it never seems to stop by itself.
+        const next = payload.new as Partial<GameClock> | undefined
+        const shown = qc.getQueryData<GameClock | null>(gameKeys.clock(gameId))
+        const message = clockChangeMessage(shown, next, myUserId)
+        if (message) toast(message)
+        void qc.invalidateQueries({ queryKey: gameKeys.clock(gameId) })
+      })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` }, () => {
         void qc.invalidateQueries({ queryKey: gameKeys.game(gameId) })
         // League prefix: the games list for the season.
@@ -98,7 +115,7 @@ export function useLiveGame(gameId: string | undefined) {
     return () => {
       void supabase.removeChannel(channel)
     }
-  }, [gameId, qc])
+  }, [gameId, qc, myUserId])
 }
 
 /** One stat line logged during a game (the live stat pad and the box score read these). */
@@ -286,22 +303,55 @@ export function useVoidScore(game: Game | undefined) {
 
 export type ClockChange = Pick<GameClock, 'running' | 'seconds_left' | 'started_at' | 'half'>
 
-/** Saves a clock state change (start, pause, new half) and, if given, the game's status. */
+/** Another phone changed the clock after this screen last saw it, so this change was not saved. */
+export class ClockConflictError extends Error {
+  constructor() {
+    super('The clock was just changed on another phone.')
+  }
+}
+
+/**
+ * Saves a clock state change (start, pause, new half) and, if given, the game's status.
+ * Compare-and-set: the change only lands if the clock is still the one this screen saw
+ * (same `updated_at`), so an out-of-date phone can't rewind or stop a newer clock.
+ */
 export function useSetClock(game: Game | undefined) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ clock, status }: { clock: ClockChange; status?: GameStatus }) => {
+    mutationFn: async ({ clock, status, seen }: { clock: ClockChange; status?: GameStatus; seen: GameClock | null | undefined }) => {
       if (!game) throw new Error('Request failed')
-      await rows<null>(supabase.from('game_clocks').upsert({ game_id: game.id, ...clock }))
+      let saved: GameClock
+      if (seen?.updated_at) {
+        const { data, error } = await supabase
+          .from('game_clocks')
+          .update(clock)
+          .eq('game_id', game.id)
+          .eq('updated_at', seen.updated_at)
+          .select('*')
+        if (error) throw new Error('Request failed')
+        if (!data || data.length === 0) throw new ClockConflictError()
+        saved = data[0] as GameClock
+      } else {
+        const { data, error } = await supabase.from('game_clocks').insert({ game_id: game.id, ...clock }).select('*')
+        // 23505: another phone made the first clock row a moment ago.
+        if (error?.code === '23505') throw new ClockConflictError()
+        if (error || !data?.[0]) throw new Error('Request failed')
+        saved = data[0] as GameClock
+      }
       if (status && status !== game.status) await rows<null>(supabase.from('games').update({ status }).eq('id', game.id))
+      return saved
     },
-    onMutate: async ({ clock }) => {
+    onMutate: async ({ clock, seen }) => {
       if (!game) return
       const key = gameKeys.clock(game.id)
       await qc.cancelQueries({ queryKey: key })
       const before = qc.getQueryData<GameClock | null>(key)
-      qc.setQueryData<GameClock>(key, { game_id: game.id, ...clock })
+      qc.setQueryData<GameClock>(key, { ...(seen ?? {}), game_id: game.id, ...clock })
       return { before }
+    },
+    onSuccess: (saved) => {
+      // The saved row carries the new updated_at, so the next tap compares against it.
+      if (game) qc.setQueryData(gameKeys.clock(game.id), saved)
     },
     onError: (_e, _v, ctx) => {
       if (game && ctx) qc.setQueryData(gameKeys.clock(game.id), ctx.before)

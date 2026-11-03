@@ -27,6 +27,8 @@ export interface Team {
   color_key: TeamColor
   logo_path: string | null
   photo_path: string | null
+  season_id: string
+  captain_player_id: string | null
   voided_at: string | null
 }
 
@@ -46,6 +48,10 @@ export interface Season {
   counts_for_standings: boolean
   games_planned: number | null
   starts_on: string | null
+  half_minutes: number | null
+  halftime_minutes: number | null
+  overtime_minutes: number | null
+  on_field: number | null
   voided_at: string | null
 }
 
@@ -61,6 +67,8 @@ export interface Game {
   away_team_id: string | null
   status: GameStatus
   kind: 'regular' | 'playoff'
+  home_qb_id: string | null
+  away_qb_id: string | null
   voided_at: string | null
 }
 
@@ -93,6 +101,8 @@ export interface StatTotalRow {
   total: number
 }
 
+export type StatGroup = 'qb' | 'receiving' | 'line' | 'defense' | 'kicks' | 'team' | 'legacy'
+
 export interface StatType {
   id: StatTypeId
   label: string
@@ -100,6 +110,43 @@ export interface StatType {
   active: boolean
   team_level: boolean
   fantasy_points: number
+  stat_group: StatGroup
+  max_per_game: number | null
+}
+
+/** One stat line (database table stat_events). Totals are worked out from these, never stored. */
+export interface StatEvent {
+  id: string
+  season_id: string
+  game_id: string | null
+  team_id: string | null
+  player_id: string | null
+  stat_type_id: StatTypeId
+  value: number
+  half: 1 | 2 | 3 | null
+  clock_seconds: number | null
+  voided_at: string | null
+  created_at: string
+}
+
+/** Who came into the game for a player (database table game_subs). */
+export interface GameSub {
+  id: string
+  game_id: string
+  team_id: string
+  player_id: string
+  voided_at: string | null
+  created_at: string
+}
+
+/** Minutes one player was on the field in one game (database table player_minutes). */
+export interface PlayerMinutes {
+  id: string
+  game_id: string
+  player_id: string
+  minutes: number
+  voided_at: string | null
+  created_at: string
 }
 
 export interface Settings {
@@ -118,6 +165,7 @@ export interface ScoreEvent {
   scoring_type_id: ScoringTypeId
   points: number
   player_id: string | null
+  clock_seconds?: number | null // newer column; optional so existing writers still type-check
   voided_at: string | null
   created_at: string
 }

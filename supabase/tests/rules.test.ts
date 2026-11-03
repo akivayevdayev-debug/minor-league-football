@@ -3,32 +3,9 @@
  * Proves: logged out = nothing, unlinked = nothing, no deletes, history fills itself,
  * only confirmed logins link, only the league manager reorders stats, standings add up.
  */
-import { readFileSync } from 'node:fs'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { PGlite } from '@electric-sql/pglite'
-
-const sql = (file: string) => readFileSync(new URL(`../changes/${file}`, import.meta.url), 'utf8')
-
-// The bits of Supabase that our schema leans on: roles, auth.users, auth.uid(), and its
-// default "expose everything to anon" grants (the worst case our revokes must undo).
-const SUPABASE_STUB = `
-  create role anon nologin;
-  create role authenticated nologin;
-  create schema auth;
-  create table auth.users (id uuid primary key, email text, email_confirmed_at timestamptz);
-  create function auth.uid() returns uuid language sql stable as
-    $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
-  grant usage on schema auth to anon, authenticated;
-  grant usage on schema public to anon, authenticated;
-  alter default privileges in schema public grant all on tables to anon, authenticated;
-  alter default privileges in schema public grant all on functions to anon, authenticated;
-  create schema storage;
-  create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
-  create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text, owner uuid);
-  alter table storage.objects enable row level security;
-  grant usage on schema storage to anon, authenticated;
-  grant select, insert, update, delete on storage.objects to anon, authenticated;
-`
+import { SUPABASE_STUB, runAs, sql } from './helpers'
 
 const AKIVA = '00000000-0000-0000-0000-00000000000a'
 const EDDIE = '00000000-0000-0000-0000-00000000000e'
@@ -36,16 +13,7 @@ const STRANGER = '00000000-0000-0000-0000-000000000005'
 
 let db: PGlite
 
-async function as<T>(user: string | 'anon', query: string, params: unknown[] = []): Promise<T[]> {
-  const role = user === 'anon' ? 'anon' : 'authenticated'
-  const sub = user === 'anon' ? '' : user
-  return db.transaction(async (tx) => {
-    await tx.query(`select set_config('request.jwt.claim.sub', $1, true)`, [sub])
-    await tx.exec(`set local role ${role}`)
-    const res = await tx.query<T>(query, params)
-    return res.rows
-  })
-}
+const as = <T>(user: string | 'anon', query: string, params: unknown[] = []) => runAs<T>(db, user, query, params)
 
 beforeAll(async () => {
   db = new PGlite()

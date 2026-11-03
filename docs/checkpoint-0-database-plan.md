@@ -28,6 +28,8 @@ This is written in plain language. A "list" is a table (like one tab of a spread
 
 ---
 
+**Season 2 change (2026-11-03, migration 008):** the rule "any logged-in friend can edit anything" no longer holds for player profiles or for stats entered outside a live game. That part is enforced by the permissions in migration 008, section 2 (added in a later step), so this section describes the target until then.
+
 ## 3. How logging in works (**please check this section**)
 
 You asked to choose the passwords yourself and give them to me to hardcode. I won't hardcode passwords in the site, because anyone could read them in the page source and they would sit forever in GitHub. This plan gives you the same control without that:
@@ -80,6 +82,14 @@ Tell friends to pick a password they don't use anywhere else, because you will k
 
 ---
 
+**Season 2 changes (2026-11-03, migration 008, section 1):**
+- **Seasons** carry their own rules: `half_minutes`, `halftime_minutes`, `overtime_minutes` (null = no overtime) and `on_field`. Season 1 is 10 / 7 / null / 2; Season 2 is 12 / 7 / 8 / 3. The "2026 season" is renamed **Season 1** and finished. Season 2 starts 2026-11-08 and ends 2027-01-03.
+- **Teams** belong to one season (`season_id`), and team names are unique within a season. An optional `captain_player_id` is added.
+- **Stat types** have a `stat_group` (qb, receiving, line, defense, kicks, team, legacy) and a `max_per_game` limit. Old stat types stay for history; only `td` and `pick6` stay active from the old list.
+- **Scoring:** `safety` is worth 2 points.
+- **Games** record `home_qb_id` and `away_qb_id`. **Score and stat lines** can record `clock_seconds` (0 to 3600).
+- **Game subs and playing time:** `game_subs` (who came in) and `player_minutes` (minutes on the field per player per game). Both follow the same safety as lineups: nothing deleted, every change recorded.
+
 ## 5. The automatic calculations (views)
 
 - **Game score and result:** sum of non-voided score lines per team, then win, loss or tie.
@@ -94,6 +104,8 @@ Tell friends to pick a password they don't use anywhere else, because you will k
 - **Playoff final:** rank 1 vs rank 2, filled in from the standings. If it ends tied it goes to **overtime** (regular-season games can still end in a tie). The overtime format is still to be confirmed with you.
 
 ---
+
+**Season 2 change (2026-11-03):** `current_season` now also returns the season's `name`, and it still means the newest season that counts and is not finished (Season 2 from 2026-11-08).
 
 ## 6. The actions (one press, many safe steps)
 

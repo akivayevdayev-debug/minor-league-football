@@ -1,6 +1,6 @@
 import { useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import { toast } from 'sonner'
-import { currentTeams, displayName, useMakeTrade, usePlayers, useRosters, useTeams } from '../league'
+import { currentTeams, displayName, useMakeTrade, usePlayers, useProposeTrade, useRosters, useTeams } from '../league'
 import { cn } from '../../lib/utils'
 import { LEAGUE_ZONE } from '../../lib/time'
 import { Button } from '../../ui/Button'
@@ -68,23 +68,29 @@ function PickList({
 }
 
 /**
- * Swap players between two teams from a date. Old teams stay in history.
- * `initialTeamId` preselects the giving team. Remount (key) to change it.
+ * Swap players between two teams.
+ * A captain (`lockedTeamId` = their own team) offers the trade for approval; Eddie or Maurice answers it.
+ * The owner (`canTradeNow`) can also trade now, with no approval. Remount (key) to change the locked team.
  */
 export function TradeSheet({
   open,
   onOpenChange,
   initialTeamId = '',
+  lockedTeamId,
+  canTradeNow = false,
 }: {
   open: boolean
   onOpenChange(open: boolean): void
   initialTeamId?: string
+  lockedTeamId?: string
+  canTradeNow?: boolean
 }) {
   const players = usePlayers()
   const teams = useTeams()
   const rosters = useRosters()
-  const trade = useMakeTrade()
-  const [teamA, setTeamA] = useState(initialTeamId)
+  const propose = useProposeTrade()
+  const tradeNow = useMakeTrade()
+  const [teamPick, setTeamPick] = useState(initialTeamId)
   const [teamB, setTeamB] = useState('')
   const [picksA, setPicksA] = useState<Picks>({ team: '', ids: [] })
   const [picksB, setPicksB] = useState<Picks>({ team: '', ids: [] })
@@ -92,9 +98,13 @@ export function TradeSheet({
   const [note, setNote] = useState('')
 
   const teamList = teams.data ?? []
+  const teamA = lockedTeamId ?? teamPick
   const giving = teamList.find((t) => t.id === teamA)
+  // Trades stay inside one season, so the other side only offers teams from the giving team's season.
+  const sameSeason = (t: Team) => !giving || t.season_id === giving.season_id
+  const otherTeams = teamList.filter((t) => t.id !== teamA && sameSeason(t))
   // The other side defaults to the first team that is not the giving team.
-  const effB = teamB && teamB !== teamA ? teamB : (teamList.find((t) => t.id !== teamA)?.id ?? '')
+  const effB = teamB && teamB !== teamA && otherTeams.some((t) => t.id === teamB) ? teamB : (otherTeams[0]?.id ?? '')
   const receiving = teamList.find((t) => t.id === effB)
 
   // Current (open-line) members per team, guests excluded. Players list is already sorted by name.
@@ -110,21 +120,36 @@ export function TradeSheet({
   const selA = picksA.team === teamA ? picksA.ids : []
   const selB = picksB.team === effB ? picksB.ids : []
   const nothingPicked = selA.length === 0 && selB.length === 0
+  const ready = !!teamA && !!effB && !nothingPicked
+  const busy = propose.isPending || tradeNow.isPending
   const summary = `${giving?.short_name ?? 'No team'} send ${selA.length} · ${receiving?.short_name ?? 'No team'} send ${selB.length}`
 
-  async function submit(e: FormEvent) {
+  function failed(err: unknown, fallback: string) {
+    toast.error(err instanceof Error && err.message !== 'Request failed' ? err.message : fallback)
+  }
+
+  // Captains and the owner: offer the trade. Eddie or Maurice approve or veto it.
+  async function sendForApproval(e: FormEvent) {
     e.preventDefault()
-    if (!teamA || !effB || nothingPicked) return
+    if (!ready || busy) return
     try {
-      await trade.mutateAsync({ teamA, playersA: selA, teamB: effB, playersB: selB, on, note: note.trim() })
+      await propose.mutateAsync({ teamA, playersA: selA, teamB: effB, playersB: selB, note: note.trim() })
+      toast.success('Trade sent. Eddie or Maurice will approve or veto it.')
+      onOpenChange(false)
+    } catch (err) {
+      failed(err, "Couldn't send the trade. Check your signal and try again.")
+    }
+  }
+
+  // Owner only: the trade happens now, with no approval.
+  async function doTradeNow() {
+    if (!ready || busy) return
+    try {
+      await tradeNow.mutateAsync({ teamA, playersA: selA, teamB: effB, playersB: selB, on, note: note.trim() })
       toast.success(`Trade done: ${summary}`)
       onOpenChange(false)
     } catch (err) {
-      toast.error(
-        err instanceof Error && err.message !== 'Request failed'
-          ? err.message
-          : "Couldn't make the trade. Check your signal and try again.",
-      )
+      failed(err, "Couldn't make the trade. Check your signal and try again.")
     }
   }
 
@@ -133,26 +158,37 @@ export function TradeSheet({
       open={open}
       onOpenChange={onOpenChange}
       title="Make a trade"
-      description="Players swap teams from the date you pick. Old teams stay in their history."
+      description={
+        lockedTeamId
+          ? 'Pick players from both teams. Eddie or Maurice must approve the trade before anyone moves.'
+          : 'Send it for approval, or trade now. Old teams stay in their history.'
+      }
     >
-      <form onSubmit={submit} className="flex flex-col gap-3">
-        <Select
-          label="Team giving"
-          value={teamA}
-          onChange={(e) => {
-            setTeamA(e.target.value)
-            setPicksA({ team: '', ids: [] })
-          }}
-        >
-          <option value="">Choose a team</option>
-          {teamList
-            .filter((t) => t.id !== effB)
-            .map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-        </Select>
+      <form onSubmit={sendForApproval} className="flex flex-col gap-3">
+        {lockedTeamId && giving ? (
+          <p className="text-small text-text-2">
+            <span className="caps-label">Team giving</span>
+            <span className="block text-body font-strong text-text">{giving.name}</span>
+          </p>
+        ) : (
+          <Select
+            label="Team giving"
+            value={teamA}
+            onChange={(e) => {
+              setTeamPick(e.target.value)
+              setPicksA({ team: '', ids: [] })
+            }}
+          >
+            <option value="">Choose a team</option>
+            {teamList
+              .filter((t) => t.id !== effB)
+              .map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+          </Select>
+        )}
         {giving && (
           <PickList
             team={giving}
@@ -171,13 +207,11 @@ export function TradeSheet({
           }}
         >
           <option value="">Choose a team</option>
-          {teamList
-            .filter((t) => t.id !== teamA)
-            .map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
+          {otherTeams.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
         </Select>
         {receiving && (
           <PickList
@@ -191,11 +225,21 @@ export function TradeSheet({
         <p className="text-small text-text-2" aria-live="polite">
           {summary}
         </p>
-        <Field label="From" type="date" className="gap-1" value={on} onChange={(e) => setOn(e.target.value)} required />
+        {canTradeNow && (
+          <Field label="Trade now: from" type="date" className="gap-1" value={on} onChange={(e) => setOn(e.target.value)} />
+        )}
         <Field label="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
-        <Button type="submit" variant="primary" className="w-full" loading={trade.isPending} disabled={!teamA || !effB || nothingPicked}>
-          Make trade
-        </Button>
+
+        <div className="flex flex-col gap-2">
+          <Button type="submit" variant="primary" className="w-full" loading={propose.isPending} disabled={!ready || busy}>
+            Send for approval
+          </Button>
+          {canTradeNow && (
+            <Button variant="secondary" className="w-full" loading={tradeNow.isPending} disabled={!ready || busy} onClick={() => void doTradeNow()}>
+              Trade now
+            </Button>
+          )}
+        </div>
       </form>
     </Sheet>
   )

@@ -29,6 +29,7 @@ export interface Team {
   photo_path: string | null
   season_id: string
   captain_player_id: string | null
+  co_captain_player_id: string | null
   voided_at: string | null
 }
 
@@ -225,6 +226,8 @@ export interface GameClock {
   updated_by?: string | null
 }
 
+export type TradeStatus = 'pending' | 'approved' | 'vetoed'
+
 export interface Trade {
   id: string
   traded_on: string
@@ -233,7 +236,12 @@ export interface Trade {
   players_a: string[]
   players_b: string[]
   note: string | null
+  status: TradeStatus
+  proposed_by: string | null
+  decided_by: string | null
+  decided_at: string | null
   voided_at: string | null
+  created_at: string
 }
 
 /** Estimates (database view player_projections): per game, from career totals. */

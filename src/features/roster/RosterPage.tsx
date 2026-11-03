@@ -36,6 +36,8 @@ import { MovePlayerSheet } from '../players/MovePlayerSheet'
 import { AddStatsSheet } from './AddStatsSheet'
 import { TeamPhotosSheet } from './TeamPhotosSheet'
 import { TradeSheet } from './TradeSheet'
+import { TradesSection } from './TradesSection'
+import { canDecideTrades, canEditTeam, canMovePlayers, isCaptainOf } from './permissions'
 
 type Open = 'stats' | 'trade' | 'guest' | 'move' | 'score' | 'edit' | 'photos' | null
 
@@ -90,13 +92,21 @@ export default function RosterPage() {
   const nextTeams = next ? { home: snap.teamById.get(next.home_team_id!), away: snap.teamById.get(next.away_team_id!) } : null
   const nextScore = next ? scores.data?.get(next.id) : undefined
 
+  // Who can do what. The database checks each action too; these only hide buttons.
+  const me = players.data?.find((p) => p.id === member.playerId)
+  const captainTeam = snap.teams.find((t) => isCaptainOf(t, member.playerId))
+  const canTrade = member.isOwner || !!captainTeam
+  const canEdit = canEditTeam(member, team)
+  const canDecide = canDecideTrades(member, me)
+  const canMove = canMovePlayers(member)
+
   const ACTIONS: { id: Exclude<Open, 'edit' | null>; label: string; icon: IconName; hidden?: boolean }[] = [
     { id: 'score', label: 'Enter score', icon: 'finish', hidden: !next },
     { id: 'stats', label: 'Add stats', icon: 'stats' },
-    { id: 'trade', label: 'Make a trade', icon: 'trade' },
-    { id: 'move', label: 'Move player', icon: 'players' },
+    { id: 'trade', label: 'Make a trade', icon: 'trade', hidden: !canTrade },
+    { id: 'move', label: 'Move player', icon: 'players', hidden: !canMove },
     { id: 'guest', label: 'Add guest', icon: 'add-guest' },
-    { id: 'photos', label: 'Edit team', icon: 'edit' },
+    { id: 'photos', label: 'Edit team', icon: 'edit', hidden: !canEdit },
   ]
 
   return (
@@ -202,6 +212,8 @@ export default function RosterPage() {
         </section>
       )}
 
+      <TradesSection seasonId={snap.season?.id} teams={snap.teams} canDecide={canDecide} />
+
       {recent.length > 0 && (
         <section aria-labelledby="recent-title" className="rise flex flex-col gap-2" style={{ '--i': 5 } as CSSProperties}>
           <div className="flex items-center justify-between">
@@ -227,7 +239,7 @@ export default function RosterPage() {
             <ActionRow icon="me" label="View profile" onClick={() => navigate(`/players/${actionsFor.id}`)} />
             <ActionRow icon="stats" label="Add stats" onClick={() => show('stats', actionsFor)} />
             <ActionRow icon="edit" label="Edit details" onClick={() => show('edit', actionsFor)} />
-            {!actionsFor.is_guest && <ActionRow icon="players" label="Move to another team" onClick={() => show('move', actionsFor)} />}
+            {!actionsFor.is_guest && canMove && <ActionRow icon="players" label="Move to another team" onClick={() => show('move', actionsFor)} />}
           </ul>
         )}
       </Sheet>
@@ -243,7 +255,17 @@ export default function RosterPage() {
           teamOf={teamOf}
         />
       )}
-      <TradeSheet key={`trade-${sheetKey}`} open={open === 'trade'} onOpenChange={(o) => !o && setOpen(null)} initialTeamId={teamId} />
+      {/* A captain offers trades for their own team only; the owner picks any team and can trade now. */}
+      {canTrade && (
+        <TradeSheet
+          key={`trade-${sheetKey}`}
+          open={open === 'trade'}
+          onOpenChange={(o) => !o && setOpen(null)}
+          initialTeamId={teamId}
+          lockedTeamId={member.isOwner ? undefined : captainTeam?.id}
+          canTradeNow={member.isOwner}
+        />
+      )}
       <MovePlayerSheet key={`move-${sheetKey}`} open={open === 'move'} onOpenChange={(o) => !o && setOpen(null)} initialPlayerId={focus?.id} />
       <AddGuestSheet open={open === 'guest'} onOpenChange={(o) => !o && setOpen(null)} />
       <TeamPhotosSheet key={`photos-${team.id}`} team={team} open={open === 'photos'} onOpenChange={(o) => !o && setOpen(null)} />

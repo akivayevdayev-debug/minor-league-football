@@ -50,6 +50,7 @@ const team = (id: string, season_id: string): Team => ({
   photo_path: null,
   season_id,
   captain_player_id: null,
+  co_captain_player_id: null,
   voided_at: null,
 })
 

@@ -50,7 +50,7 @@ describe('whole-number boxes (weight, birth year)', () => {
  * Season 1 data is run through the same helpers before and after Season 2 teams, rosters and games are added.
  */
 const team = (id: string, season_id: string, color_key: Team['color_key']): Team => ({
-  id, name: id, short_name: id, color_key, logo_path: null, photo_path: null, season_id, captain_player_id: null, voided_at: null,
+  id, name: id, short_name: id, color_key, logo_path: null, photo_path: null, season_id, captain_player_id: null, co_captain_player_id: null, voided_at: null,
 })
 const line = (id: string, player_id: string, team_id: string, starts_on: string): RosterMembership => ({
   id, player_id, team_id, starts_on, ends_on: null, voided_at: null,

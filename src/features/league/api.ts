@@ -5,7 +5,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import type {
-  Game, GameProjection, GameScoreRow, Player, PlayerProjection, RosterMembership, Season, Settings, StandingRow, StatTotalRow, StatType, StatTypeId, Team,
+  Game, GameProjection, GameScoreRow, Player, PlayerProjection, RosterMembership, Season, Settings, StandingRow, StatTotalRow, StatType, StatTypeId, Team, Trade,
 } from '../../types/db'
 import { splitPositions } from '../players/positions'
 
@@ -36,6 +36,7 @@ export const keys = {
   settings: ['settings'] as const,
   playerProjections: ['player-projections'] as const,
   gameProjections: (seasonId: string) => ['game-projections', seasonId] as const,
+  trades: ['trades'] as const,
 }
 
 export function useTeams() {
@@ -305,7 +306,65 @@ export function useAddStats() {
   })
 }
 
-/** Swap players between two teams from a date, and keep a record of the trade. */
+/** Trades between teams of one season, newest first. Pending, approved and vetoed all show (history). */
+export function useTrades(seasonId: string | undefined) {
+  const teams = useTeams()
+  const seasonTeamIds = (teams.data ?? []).filter((t) => t.season_id === seasonId).map((t) => t.id)
+  return useQuery({
+    queryKey: [...keys.trades, seasonId ?? ''],
+    enabled: !!seasonId && teams.isSuccess,
+    queryFn: () => {
+      if (seasonTeamIds.length === 0) return Promise.resolve([] as Trade[])
+      return rows<Trade[]>(
+        supabase
+          .from('trades')
+          .select('*')
+          .in('team_a_id', seasonTeamIds)
+          .is('voided_at', null)
+          .order('created_at', { ascending: false }),
+      )
+    },
+  })
+}
+
+/** Offer a trade for approval. Captains offer for their own team; the database checks it. Returns the trade id. */
+export function useProposeTrade() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (t: { teamA: string; playersA: string[]; teamB: string; playersB: string[]; note: string }) =>
+      rows<string>(
+        supabase.rpc('propose_trade', { p_team_a: t.teamA, p_players_a: t.playersA, p_team_b: t.teamB, p_players_b: t.playersB, p_note: t.note || null }),
+      ),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: keys.trades })
+      void qc.invalidateQueries({ queryKey: keys.rosters })
+    },
+  })
+}
+
+/** Eddie, Maurice or Akiva approves (moves the players) or vetoes a pending trade. The first answer decides. */
+export function useDecideTrade() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ tradeId, approve }: { tradeId: string; approve: boolean }) => {
+      try {
+        return await rows<null>(supabase.rpc('decide_trade', { p_trade_id: tradeId, p_approve: approve }))
+      } catch (err) {
+        if (err instanceof Error && err.message.startsWith('This trade was already')) {
+          throw new Error('Someone already answered this trade.', { cause: err })
+        }
+        throw err
+      }
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: keys.trades })
+      void qc.invalidateQueries({ queryKey: keys.rosters })
+      void qc.invalidateQueries({ queryKey: keys.playerProjections })
+    },
+  })
+}
+
+/** Owner only: swap players between two teams from a date now, with no approval. Keeps a record of the trade. */
 export function useMakeTrade() {
   const qc = useQueryClient()
   return useMutation({
@@ -315,6 +374,7 @@ export function useMakeTrade() {
       ),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: keys.rosters })
+      void qc.invalidateQueries({ queryKey: keys.trades })
       void qc.invalidateQueries({ queryKey: keys.playerProjections })
     },
   })

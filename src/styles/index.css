@@ -29,6 +29,9 @@
   --color-danger: var(--danger);
   --color-warn: var(--warn);
   --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger-soft: var(--danger-soft);
   --color-live: var(--live);
   --color-gold: var(--gold);
   --color-gold-soft: var(--gold-soft);

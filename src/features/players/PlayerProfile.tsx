@@ -16,6 +16,7 @@ import { TeamName } from '../../ui/TeamStripe'
 import { teamStyle } from '../../ui/team'
 import { EditPlayerSheet } from './EditPlayerSheet'
 import { MovePlayerSheet } from './MovePlayerSheet'
+import { canMovePlayers } from '../roster/permissions'
 
 const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 const formatDay = (d: string) => dateFmt.format(new Date(`${d}T00:00:00Z`))
@@ -108,7 +109,7 @@ export default function PlayerProfile() {
             Edit
           </Button>
         )}
-        {!player.is_guest && (
+        {!player.is_guest && canMovePlayers(member) && (
           <Button variant="outline" size="sm" onClick={() => setMoving(true)}>
             <Icon name="history" size="xs" />
             Move

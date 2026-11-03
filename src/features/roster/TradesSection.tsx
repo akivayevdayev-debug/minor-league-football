@@ -37,17 +37,20 @@ export function TradesSection({ seasonId, teams, canDecide }: { seasonId: string
   const playerById = new Map((players.data ?? []).map((p) => [p.id, p]))
   const list = trades.data ?? []
   const pending = list.filter((t) => t.status === 'pending')
-  const history = list.filter((t) => t.status !== 'pending')
+  // The history is short: the latest decisions only.
+  const history = list.filter((t) => t.status !== 'pending').slice(0, 8)
   if (list.length === 0) return null
 
   async function answer(trade: Trade, approve: boolean) {
     try {
       await decide.mutateAsync({ tradeId: trade.id, approve })
       toast.success(approve ? 'Trade approved. The players have moved.' : 'Trade vetoed. Nobody moves.')
-      setVetoing(null)
     } catch (err) {
       const plain = err instanceof Error && err.message !== 'Request failed'
       toast.error(plain ? err.message : "Couldn't save the answer. Check your signal and try again.")
+    } finally {
+      // Close the veto sheet whatever the answer was; the list refreshes so a decided trade stops showing buttons.
+      setVetoing(null)
     }
   }
 

@@ -9,6 +9,8 @@ import { PlayerBadge } from '../../ui/PlayerBadge'
 import { Skeleton } from '../../ui/Skeleton'
 import { TeamBadge } from '../../ui/TeamBadge'
 import { teamStyle } from '../../ui/team'
+import { useMember } from '../auth'
+import { canMovePlayers } from '../roster/permissions'
 import { MovePlayerSheet } from './MovePlayerSheet'
 
 /** Each team's current roster, with past players kept as history. */
@@ -22,6 +24,7 @@ export function TeamsPanel() {
   // Only the viewed season's teams: Season 1 teams do not show up in Season 2.
   const teamList = useMemo(() => seasonTeams(teams.data ?? [], season?.id ?? ''), [teams.data, season?.id])
   const [moving, setMoving] = useState(false)
+  const member = useMember()
 
   const playerById = useMemo(() => new Map((players.data ?? []).map((p) => [p.id, p])), [players.data])
   const rowByTeam = useMemo(() => new Map((standings.data ?? []).map((r) => [r.team_id, r])), [standings.data])
@@ -32,12 +35,14 @@ export function TeamsPanel() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex justify-end">
-        <Button variant="outline" size="sm" onClick={() => setMoving(true)}>
-          <Icon name="history" size="xs" />
-          Move a player
-        </Button>
-      </div>
+      {canMovePlayers(member) && (
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" onClick={() => setMoving(true)}>
+            <Icon name="history" size="xs" />
+            Move a player
+          </Button>
+        </div>
+      )}
 
       {teamList.map((team, i) => {
         const lines = rosters.data.filter((r) => r.team_id === team.id)
@@ -105,7 +110,7 @@ export function TeamsPanel() {
         )
       })}
 
-      <MovePlayerSheet open={moving} onOpenChange={setMoving} />
+      {canMovePlayers(member) && <MovePlayerSheet open={moving} onOpenChange={setMoving} />}
     </div>
   )
 }

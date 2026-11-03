@@ -226,7 +226,14 @@ export function TradeSheet({
           {summary}
         </p>
         {canTradeNow && (
-          <Field label="Trade now: from" type="date" className="gap-1" value={on} onChange={(e) => setOn(e.target.value)} />
+          <Field
+            label="Trade now: date"
+            hint="Only used by Trade now. Send for approval ignores it."
+            type="date"
+            className="gap-1"
+            value={on}
+            onChange={(e) => setOn(e.target.value)}
+          />
         )}
         <Field label="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
 

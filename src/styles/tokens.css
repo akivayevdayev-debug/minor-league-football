@@ -33,9 +33,10 @@
   --danger: #ff6b7a;
   --warn: #ffb347;
   --ok: #3ddc97;
-  --ok-soft: rgb(61 220 151 / 0.16); /* status pills: soft fill behind the text label */
-  --warn-soft: rgb(255 179 71 / 0.16);
-  --danger-soft: rgb(255 107 122 / 0.16);
+  /* Status pills: soft fill behind the text label. Derived from the colours above, so they follow them. */
+  --ok-soft: color-mix(in srgb, var(--ok) 16%, transparent);
+  --warn-soft: color-mix(in srgb, var(--warn) 16%, transparent);
+  --danger-soft: color-mix(in srgb, var(--danger) 16%, transparent);
   --live: #d81e33; /* the LIVE pill, broadcast red (white text 4.7:1) */
 
   /* Team colours. --team-x is the brand colour (fills, crests, glows).

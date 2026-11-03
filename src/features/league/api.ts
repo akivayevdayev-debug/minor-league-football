@@ -356,8 +356,9 @@ export function useDecideTrade() {
         throw err
       }
     },
+    // Trades refresh even on error, so an already-answered trade stops showing live buttons.
+    onSettled: () => void qc.invalidateQueries({ queryKey: keys.trades }),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: keys.trades })
       void qc.invalidateQueries({ queryKey: keys.rosters })
       void qc.invalidateQueries({ queryKey: keys.playerProjections })
     },

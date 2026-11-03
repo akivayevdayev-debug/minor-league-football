@@ -252,7 +252,10 @@ A "Developer tools" screen that only Akiva's login can open (hidden for everyone
 - A team's captain can change that team's name, short name and logo. Akiva can change any team. Nobody else can.
 - A team can have two captains. David's team has David and Ilan while David can't play. Stored as a second captain on the team.
 
-### G4. One-time password for everyone (Akiva, 2026-11-03)
-- At launch, every login except Akiva's is marked "must choose a new password". Each person signs in once with the password they have, and the app makes them pick their own (8+ characters) before anything else.
-- New players get a temporary password from the owner tools (G2.1), which also marks them.
-- This is one line Akiva pastes once at launch (in his click steps), not part of change 008, so re-running 008 never re-marks anyone.
+### G4. New password for everyone (Akiva, 2026-11-03: passwords were leaked in the group chat)
+- Because old passwords are known to others, just asking people to change them is not safe: someone who saw a leaked password could sign in first and lock the real person out.
+- So the owner tools get **Reset everyone**: every login except Akiva's gets a fresh random temporary password, is marked "must choose a new password", and every phone is signed out.
+- The temporary passwords show **only on Akiva's screen, once**, so he can send each one privately to that person (not in the group chat). They are never stored in the app, in git or in chat with Claude.
+- At next sign-in each person must pick their own password (8+ characters) before anything else.
+- Reset everyone asks Akiva to confirm first. New players later get a temporary password the same way, one at a time (G2.1).
+- This runs as a server function that uses the secret key held by Supabase, and only Akiva's login can call it.

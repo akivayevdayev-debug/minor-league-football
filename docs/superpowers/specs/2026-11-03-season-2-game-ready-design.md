@@ -229,3 +229,20 @@ Routine pieces (stat type rows, tests, the import file) go to Haiku 5.5 subagent
 4. New login names (B5) and team short names (A2).
 5. Details for Ben and Joseph Cohen (coming later; Ilan and Michael received 2026-11-03).
 6. On-field count: QB plus 3 team players, with the fourth subbing in (A7).
+
+## G. Trades and owner tools (added by Akiva, 2026-11-03)
+
+### G1. Trades
+- **Who proposes:** a team's captain, for a trade between **their own team** and another team. David's team has two captains for now: David and Ilan (David can't play for a while).
+- **Who decides:** Eddie or Maurice. A proposed trade waits as "Pending". The **first** of them to answer decides: Approve makes it happen (rosters change), Veto cancels it. Neither of them needs the other.
+- **Akiva** can do anything (propose, approve, veto, edit or undo a trade).
+- Nothing is deleted: a vetoed trade stays in the history as "Vetoed".
+- The database enforces all of this, not just the screens.
+
+### G2. Owner tools (Akiva only)
+A "Developer tools" screen that only Akiva's login can open (hidden for everyone else; the database refuses everyone else too). "In case something is wrong."
+1. **Logins:** every player's login name, with "Set a new password" (a temporary one; the player must pick their own at next sign-in). Passwords can never be read back by anyone: the login system keeps only a scrambled version. This runs as a server function using the secret key held by Supabase, never in the app or in git.
+2. **Edit any record:** fix any game, score, stat line, roster line or player.
+3. **Edit history:** who changed what and when, with Undo for a change.
+4. **Sign everyone out:** asks Akiva to confirm first.
+5. **App info:** app version, database status, recent errors.

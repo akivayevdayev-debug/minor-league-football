@@ -398,7 +398,8 @@ create trigger guard_stat_rules before update on public.stat_types
 -- ── Limits ──────────────────────────────────────────────────────────────────
 -- The app reads "MLF_LIMIT:<label>:<max>" and shows a friendly message.
 -- Two phones adding the same stat at the same moment wait for each other (advisory lock), so
--- both cannot slip past a limit. Game lines from a login must be positive: mistakes are voided.
+-- both cannot slip past a limit. A player's total for a stat in a game stays between 0 and the
+-- limit, so a negative correction ("type a new total") works but cannot cancel out the limit.
 create or replace function app_private.check_stat_limit() returns trigger
 language plpgsql security definer set search_path = '' as $$
 declare
@@ -409,13 +410,7 @@ begin
   if new.voided_at is not null or new.game_id is null then
     return new;
   end if;
-  if auth.uid() is not null and new.value < 1 then
-    raise exception 'Stat lines must be 1 or more. Remove a wrong line instead.' using errcode = '22023';
-  end if;
   select max_per_game, label into v_max, v_label from public.stat_types where id = new.stat_type_id;
-  if v_max is null then
-    return new;
-  end if;
   perform pg_advisory_xact_lock(hashtextextended(
     'stat:' || new.game_id::text || ':' || coalesce(new.player_id::text, 'team:' || new.team_id::text)
     || ':' || new.stat_type_id, 0));
@@ -425,8 +420,11 @@ begin
      and voided_at is null and id <> new.id
      and (case when new.player_id is not null then player_id = new.player_id
                else player_id is null and team_id = new.team_id end);
-  if v_total + new.value > v_max then
+  if v_max is not null and v_total + new.value > v_max then
     raise exception 'MLF_LIMIT:%:%', v_label, v_max using errcode = '23514';
+  end if;
+  if auth.uid() is not null and v_total + new.value < 0 then
+    raise exception 'A total cannot go below 0.' using errcode = '22023';
   end if;
   return new;
 end $$;

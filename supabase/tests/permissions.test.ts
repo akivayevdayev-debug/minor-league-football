@@ -210,8 +210,16 @@ describe('stat rules', () => {
 })
 
 describe('limits', () => {
-  it('a negative game line is refused, so it cannot cancel out the limit', async () => {
-    await expect(addStat(MAIR, LIVE, 'rec_td', -999)).rejects.toThrow(/1 or more/)
+  it('a correction can lower a total, but never below 0, so it cannot cancel out the limit', async () => {
+    const g = await uuid()
+    await db.query(
+      `insert into public.games (id, season_id, home_team_id, away_team_id, status) values ($1, $2, $3, $4, 'live')`,
+      [g, season2, HOME, AWAY],
+    )
+    await addStat(MAIR, g, 'pass_td', 3)
+    expect(await addStat(MAIR, g, 'pass_td', -1)).toHaveLength(1)
+    await expect(addStat(MAIR, g, 'pass_td', -999)).rejects.toThrow(/below 0/)
+    await expect(addStat(MAIR, g, 'pass_td', 14)).rejects.toThrow(/MLF_LIMIT/)
   })
 
   it('team-only lines are limited too', async () => {

@@ -41,9 +41,24 @@ export function useKeepAwakeSetting(gameId: string): [boolean, () => void] {
   return [wanted, toggle]
 }
 
-/** Holds the screen awake while `shouldHoldWakeLock` says so, and marks the page while a game is live. */
-export function useKeepAwake(wanted: boolean, status: GameStatus) {
+/** The button's words: what the coach asked for, and whether the phone went along with it. */
+export function keepAwakeLabel(on: boolean, state: KeepAwakeState): string {
+  if (!on) return 'Keep screen on'
+  if (state === 'refused') return "Phone won't keep the screen on"
+  return 'Screen stays on'
+}
+
+/** What happened to the keep-awake request: not asked for right now, held, or refused by the browser. */
+export type KeepAwakeState = 'off' | 'held' | 'refused'
+
+/**
+ * Holds the screen awake while `shouldHoldWakeLock` says so, and marks the page while a game is live.
+ * If the browser lets go of the lock while the page is still visible, it is asked for again once.
+ */
+export function useKeepAwake(wanted: boolean, status: GameStatus): KeepAwakeState {
   const [visible, setVisible] = useState(() => typeof document === 'undefined' || document.visibilityState !== 'hidden')
+  const [state, setState] = useState<KeepAwakeState>('off')
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     const onChange = () => setVisible(document.visibilityState !== 'hidden')
@@ -56,24 +71,37 @@ export function useKeepAwake(wanted: boolean, status: GameStatus) {
     if (!hold || !('wakeLock' in navigator)) return
     let sentinel: WakeLockSentinel | null = null
     let cancelled = false
+    const onRelease = () => {
+      // The browser let go while we still want it (and the page is visible): ask again.
+      if (!cancelled && document.visibilityState !== 'hidden') setAttempt((n) => n + 1)
+    }
     navigator.wakeLock.request('screen').then(
       (s) => {
-        if (cancelled) void s.release().catch(() => {})
-        else sentinel = s
+        if (cancelled) {
+          void s.release().catch(() => {})
+          return
+        }
+        sentinel = s
+        s.addEventListener('release', onRelease)
+        setState('held')
       },
       () => {
         // Refused (low battery, not allowed): the game still works, the screen may just sleep.
+        if (!cancelled) setState('refused')
       },
     )
     return () => {
       cancelled = true
+      sentinel?.removeEventListener('release', onRelease)
       void sentinel?.release().catch(() => {})
     }
-  }, [hold])
+  }, [hold, attempt])
 
   useEffect(() => {
     const live = status === 'live'
     document.documentElement.toggleAttribute('data-live', live)
     return () => document.documentElement.removeAttribute('data-live')
   }, [status])
+
+  return hold ? state : 'off'
 }

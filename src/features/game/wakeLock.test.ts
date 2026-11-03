@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { shouldHoldWakeLock } from './wakeLock'
+import { keepAwakeLabel, shouldHoldWakeLock } from './wakeLock'
 
 // The screen is held awake only while the game is live, the phone is on and the page is visible.
 describe('shouldHoldWakeLock', () => {
@@ -20,5 +20,17 @@ describe('shouldHoldWakeLock', () => {
   })
   it('does nothing while the page is hidden', () => {
     expect(shouldHoldWakeLock(true, 'live', false)).toBe(false)
+  })
+})
+
+describe('keepAwakeLabel', () => {
+  it('offers the toggle when it is off', () => {
+    expect(keepAwakeLabel(false, 'off')).toBe('Keep screen on')
+  })
+  it('says the screen stays on once the phone holds it', () => {
+    expect(keepAwakeLabel(true, 'held')).toBe('Screen stays on')
+  })
+  it('owns up when the phone refuses', () => {
+    expect(keepAwakeLabel(true, 'refused')).toBe("Phone won't keep the screen on")
   })
 })

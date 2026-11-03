@@ -106,7 +106,7 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
   const auth = useAuth()
   useLiveGame(id, auth.state.status === 'member' ? auth.state.session.user.id : null)
   const [keepAwake, toggleKeepAwake] = useKeepAwakeSetting(id ?? '')
-  useKeepAwake(keepAwake, game.data?.status ?? 'scheduled')
+  const keepAwakeState = useKeepAwake(keepAwake, game.data?.status ?? 'scheduled')
 
   const g = game.data
   const addScore = useAddScore(g)
@@ -378,7 +378,7 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
         </>
       )}
     </div>
-    <KeepAwakeButton on={keepAwake} onToggle={toggleKeepAwake} />
+    <KeepAwakeButton on={keepAwake} state={keepAwakeState} onToggle={toggleKeepAwake} />
     </div>
   )
 

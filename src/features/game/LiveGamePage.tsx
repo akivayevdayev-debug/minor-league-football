@@ -28,6 +28,8 @@ import { BoxScorePanel } from './BoxScorePanel'
 import { LiveStatsPanel } from './LiveStatsPanel'
 import { EnterScoreSheet } from './EnterScoreSheet'
 import { KickoffSheet } from './KickoffSheet'
+import { LandscapeClock } from './LandscapeClock'
+import { useLandscape } from './landscape'
 import { currentLineup, useGameLineups, useSetLineup } from './lineup'
 
 const SCORES = [
@@ -86,6 +88,7 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
   const stats = useGameStats(id)
   const statTypes = useStatTypes()
   const [tab, setTab] = useState<Tab>('score')
+  const landscape = useLandscape()
   const lines = useScoreEvents(id)
   const clock = useGameClock(id)
   const settings = useSettings()
@@ -229,6 +232,140 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
     : status === 'live' ? (half === 3 ? 'Overtime' : `${half === 1 ? '1st' : '2nd'} half`)
     : 'Not started'
 
+  /** "Who scored?" after a score button, in either layout. */
+  const whoScored = askScorer && status !== 'final' && (
+    <section aria-label="Who scored?" style={teamStyle(teamById.get(askScorer.team_id)?.color_key)} className="glass-subtle flex flex-col gap-3 rounded-panel p-3">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-body">
+          Who scored the {TYPE_LABEL[askScorer.scoring_type_id]?.toLowerCase()} for {teamById.get(askScorer.team_id)?.short_name}?
+        </h2>
+        <button type="button" onClick={() => setAskScorer(null)} className="pressable min-h-(--tap-min) px-2 text-small text-text-2-strong">
+          Skip
+        </button>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {rosterOf(askScorer.team_id).map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            className="pressable min-h-(--tap-game) rounded-pill surface-inset px-4 font-strong hover-fine:bg-(--row-hover)"
+            onClick={() => {
+              const line = askScorer
+              setAskScorer(null)
+              credit.mutate({ line, playerId: p.id, half }, { onSuccess: () => toast.success(`${displayName(p)} credited`), onError: fail })
+            }}
+          >
+            {p.jersey !== null && <span className="nums text-(--team-light)">#{p.jersey} </span>}
+            {displayName(p)}
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+
+  /** Sheets that open over either layout. */
+  const sheets = (
+    <>
+  <Sheet
+    open={confirmEnd}
+    onOpenChange={setConfirmEnd}
+    title="End this game?"
+    description={`The final score will be ${home.short_name} ${score.home}, ${away.short_name} ${score.away}. You can still fix it afterwards.`}
+    footer={
+      <>
+        <Button size="xl" variant="ghost" className="flex-1" onClick={() => setConfirmEnd(false)}>
+          Keep playing
+        </Button>
+        <Button size="xl" variant="primary" className="flex-1" loading={finish.isPending} onClick={end}>
+          End game
+        </Button>
+      </>
+    }
+  >
+    <span />
+  </Sheet>
+
+  <KickoffSheet
+    open={kickoff}
+    onOpenChange={setKickoff}
+    gameId={g.id}
+    teams={needLineup}
+    picks={benchPicks}
+    onPick={(teamId, pid) => setBenchPicks((b) => (b[teamId] === pid ? b : { ...b, [teamId]: pid }))}
+    onStart={start}
+    busy={busy}
+  />
+
+  <EnterScoreSheet open={typing} onOpenChange={setTyping} game={g} home={home} away={away} current={score} />
+    </>
+  )
+
+  /** Start, pause, halftime, overtime and end: shared by the upright and sideways layouts. */
+  const clockControls = (
+    <div className="grid grid-cols-2 gap-2">
+      {expired ? (
+        half === 1 ? (
+          <Button size="xl" variant="primary" onClick={halftime} disabled={busy} className="col-span-2">
+            <Icon name="clock" size="sm" /> Start halftime
+          </Button>
+        ) : (
+          <>
+            {half === 2 && overtimeSeconds && (
+              <Button size="xl" variant="secondary" onClick={overtime} disabled={busy} className="col-span-2">
+                <Icon name="play" size="sm" filled /> Start overtime
+              </Button>
+            )}
+            <Button size="xl" variant="primary" onClick={() => setConfirmEnd(true)} disabled={busy} className="col-span-2">
+              <Icon name="finish" size="sm" /> End game
+            </Button>
+          </>
+        )
+      ) : (
+        <>
+          {c?.running ? (
+            <Button size="xl" variant="primary" onClick={pause} disabled={busy} className="col-span-2">
+              <Icon name="pause" size="sm" filled /> Pause clock
+            </Button>
+          ) : (
+            <Button size="xl" variant="primary" onClick={start} disabled={busy} className="col-span-2">
+              <Icon name="play" size="sm" filled />
+              {status === 'scheduled' ? 'Start game' : status === 'halftime' ? 'Start 2nd half' : 'Resume clock'}
+            </Button>
+          )}
+          {half === 1 && status !== 'halftime' && (
+            <Button size="xl" variant="secondary" onClick={halftime} disabled={busy || status === 'scheduled'}>
+              <Icon name="clock" size="sm" /> Halftime
+            </Button>
+          )}
+          <Button size="xl" variant="secondary" onClick={() => setConfirmEnd(true)} disabled={busy} className={half === 1 && status !== 'halftime' ? '' : 'col-span-2'}>
+            <Icon name="finish" size="sm" /> End game
+          </Button>
+        </>
+      )}
+    </div>
+  )
+
+  // Sideways phone on the score tab: the clock fills the middle, each team's score and buttons on its side.
+  if (landscape && tab === 'score' && status !== 'final' && !clockDown) {
+    return (
+      <>
+        <LandscapeClock
+          home={home}
+          away={away}
+          score={score}
+          time={mmss(left)}
+          expired={left === 0}
+          statusLabel={statusLabel}
+          scores={SCORES}
+          onScore={add}
+          controls={clockControls}
+        />
+        {whoScored && <div className="px-4 pb-4">{whoScored}</div>}
+        {sheets}
+      </>
+    )
+  }
+
   return (
     <main className={`still mx-auto flex w-full max-w-(--content-max) flex-col gap-4 ${embedded ? '' : 'safe-top min-h-dvh px-4 pb-8'}`}>
       <header className="flex min-h-(--header-height) items-center justify-between gap-2">
@@ -310,49 +447,7 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
       {tab === 'score' && <>
       {/* Clock controls */}
       {status !== 'final' && clockDown && <ErrorState what="the clock" onRetry={() => void clock.refetch()} />}
-      {status !== 'final' && !clockDown && (
-        <div className="grid grid-cols-2 gap-2">
-          {expired ? (
-            half === 1 ? (
-              <Button size="xl" variant="primary" onClick={halftime} disabled={busy} className="col-span-2">
-                <Icon name="clock" size="sm" /> Start halftime
-              </Button>
-            ) : (
-              <>
-                {half === 2 && overtimeSeconds && (
-                  <Button size="xl" variant="secondary" onClick={overtime} disabled={busy} className="col-span-2">
-                    <Icon name="play" size="sm" filled /> Start overtime
-                  </Button>
-                )}
-                <Button size="xl" variant="primary" onClick={() => setConfirmEnd(true)} disabled={busy} className="col-span-2">
-                  <Icon name="finish" size="sm" /> End game
-                </Button>
-              </>
-            )
-          ) : (
-            <>
-              {c?.running ? (
-                <Button size="xl" variant="primary" onClick={pause} disabled={busy} className="col-span-2">
-                  <Icon name="pause" size="sm" filled /> Pause clock
-                </Button>
-              ) : (
-                <Button size="xl" variant="primary" onClick={start} disabled={busy} className="col-span-2">
-                  <Icon name="play" size="sm" filled />
-                  {status === 'scheduled' ? 'Start game' : status === 'halftime' ? 'Start 2nd half' : 'Resume clock'}
-                </Button>
-              )}
-              {half === 1 && status !== 'halftime' && (
-                <Button size="xl" variant="secondary" onClick={halftime} disabled={busy || status === 'scheduled'}>
-                  <Icon name="clock" size="sm" /> Halftime
-                </Button>
-              )}
-              <Button size="xl" variant="secondary" onClick={() => setConfirmEnd(true)} disabled={busy} className={half === 1 && status !== 'halftime' ? '' : 'col-span-2'}>
-                <Icon name="finish" size="sm" /> End game
-              </Button>
-            </>
-          )}
-        </div>
-      )}
+      {status !== 'final' && !clockDown && clockControls}
 
       {/* Score buttons: one column per team */}
       {status !== 'final' ? (
@@ -382,36 +477,7 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
         </div>
       )}
 
-      {/* Who scored? */}
-      {askScorer && status !== 'final' && (
-        <section aria-label="Who scored?" style={teamStyle(teamById.get(askScorer.team_id)?.color_key)} className="glass-subtle flex flex-col gap-3 rounded-panel p-3">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-body">
-              Who scored the {TYPE_LABEL[askScorer.scoring_type_id]?.toLowerCase()} for {teamById.get(askScorer.team_id)?.short_name}?
-            </h2>
-            <button type="button" onClick={() => setAskScorer(null)} className="pressable min-h-(--tap-min) px-2 text-small text-text-2-strong">
-              Skip
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {rosterOf(askScorer.team_id).map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                className="pressable min-h-(--tap-game) rounded-pill surface-inset px-4 font-strong hover-fine:bg-(--row-hover)"
-                onClick={() => {
-                  const line = askScorer
-                  setAskScorer(null)
-                  credit.mutate({ line, playerId: p.id, half }, { onSuccess: () => toast.success(`${displayName(p)} credited`), onError: fail })
-                }}
-              >
-                {p.jersey !== null && <span className="nums text-(--team-light)">#{p.jersey} </span>}
-                {displayName(p)}
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
+      {whoScored}
 
       {/* Score log */}
       <section aria-label="Scoring" className="flex flex-col gap-2">
@@ -451,37 +517,7 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
       </section>
       </>}
 
-      <Sheet
-        open={confirmEnd}
-        onOpenChange={setConfirmEnd}
-        title="End this game?"
-        description={`The final score will be ${home.short_name} ${score.home}, ${away.short_name} ${score.away}. You can still fix it afterwards.`}
-        footer={
-          <>
-            <Button size="xl" variant="ghost" className="flex-1" onClick={() => setConfirmEnd(false)}>
-              Keep playing
-            </Button>
-            <Button size="xl" variant="primary" className="flex-1" loading={finish.isPending} onClick={end}>
-              End game
-            </Button>
-          </>
-        }
-      >
-        <span />
-      </Sheet>
-
-      <KickoffSheet
-        open={kickoff}
-        onOpenChange={setKickoff}
-        gameId={g.id}
-        teams={needLineup}
-        picks={benchPicks}
-        onPick={(teamId, pid) => setBenchPicks((b) => (b[teamId] === pid ? b : { ...b, [teamId]: pid }))}
-        onStart={start}
-        busy={busy}
-      />
-
-      <EnterScoreSheet open={typing} onOpenChange={setTyping} game={g} home={home} away={away} current={score} />
+      {sheets}
     </main>
   )
 }

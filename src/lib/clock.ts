@@ -16,3 +16,16 @@ export function remainingMs(state: ClockState, now: number): number {
   const elapsed = Math.max(0, now - state.startedAt)
   return Math.max(0, saved - elapsed)
 }
+
+export type ClockPhase = 'running' | 'paused' | 'expired'
+
+/** Expired at 0:00 whether or not the clock still says it is running. */
+export function clockPhase(remaining: number, running: boolean): ClockPhase {
+  if (remaining <= 0) return 'expired'
+  return running ? 'running' : 'paused'
+}
+
+/** Whole seconds left at `now` (rounded up, like the display). Read `now` at the moment of a tap, never from the last redraw. */
+export function secondsLeftAt(state: ClockState, now: number): number {
+  return Math.ceil(remainingMs(state, now) / 1000)
+}

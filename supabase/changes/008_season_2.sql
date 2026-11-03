@@ -710,3 +710,19 @@ revoke all on function public.propose_trade(uuid, uuid[], uuid, uuid[], text), p
   public.make_trade(uuid, uuid[], uuid, uuid[], date, text) from public, anon;
 grant execute on function public.propose_trade(uuid, uuid[], uuid, uuid[], text), public.decide_trade(uuid, boolean),
   public.make_trade(uuid, uuid[], uuid, uuid[], date, text) to authenticated;
+
+-- ===== Section 4: owner tools (Task 13) =====
+-- Signs logins out on every phone by ending their sessions. Only the "owner-tools" server function
+-- can call this (it runs with the secret key Supabase holds); no app login can.
+create or replace function public.owner_end_sessions(p_user_ids uuid[]) returns integer
+language plpgsql security definer set search_path = '' as $$
+declare
+  n integer;
+begin
+  delete from auth.sessions where user_id = any (p_user_ids);
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
+revoke all on function public.owner_end_sessions(uuid[]) from public, anon, authenticated;
+grant execute on function public.owner_end_sessions(uuid[]) to service_role;

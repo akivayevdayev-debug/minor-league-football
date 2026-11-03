@@ -259,3 +259,25 @@ describe('captains and team details', () => {
     expect(changed).toHaveLength(1)
   })
 })
+
+describe('owner tools: signing people out', () => {
+  const asRole = async (role: string, sub: string, query: string, params: unknown[] = []) =>
+    db.transaction(async (tx) => {
+      await tx.query(`select set_config('request.jwt.claim.sub', $1, true)`, [sub])
+      await tx.exec(`set local role ${role}`)
+      return (await tx.query<{ n: number }>(query, params)).rows
+    })
+
+  it('no app login can end sessions, not even Akiva', async () => {
+    await db.exec(`insert into auth.sessions (user_id) values ('${U.david}'), ('${U.leo}')`)
+    await expect(asRole('authenticated', U.akiva, `select public.owner_end_sessions($1::uuid[]) as n`, [[U.david]])).rejects.toThrow()
+    await expect(asRole('anon', '', `select public.owner_end_sessions($1::uuid[]) as n`, [[U.david]])).rejects.toThrow()
+  })
+
+  it('the server function (secret key) ends only the sessions it names', async () => {
+    const [{ n }] = await asRole('service_role', '', `select public.owner_end_sessions($1::uuid[]) as n`, [[U.david]])
+    expect(n).toBe(1)
+    const left = (await db.query<{ user_id: string }>(`select user_id from auth.sessions`)).rows.map((r) => r.user_id)
+    expect(left).toEqual([U.leo])
+  })
+})

@@ -257,3 +257,152 @@ begin
 end $$;
 
 -- ===== Section 2: permissions and limits (Task 2) =====
+-- Who can change what from Season 2 on:
+--   • Profiles: you edit your own; Akiva (the owner) edits anyone's. Anyone can still add a guest.
+--   • Game lines (stats, score, lineups, subs, minutes): anyone while the game is live or at
+--     halftime; otherwise only Akiva and Eddie.
+--   • A final game can only be reopened by Akiva or Eddie.
+--   • Limits: no player can pass a stat's per-game limit; at most 30 score lines per team per game.
+-- The SQL editor (no login) is never blocked, so the owner can always fix things by hand.
+
+alter table public.member_logins
+  add column if not exists is_owner boolean not null default false,
+  add column if not exists must_change_password boolean not null default false;
+
+update public.member_logins set is_owner = true
+ where player_id in (select id from public.players where login_name = 'akiva') and not is_owner;
+
+create or replace function app_private.is_owner() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select coalesce((select is_owner from public.member_logins where user_id = auth.uid()), false)
+$$;
+
+create or replace function app_private.my_player_id() returns uuid
+language sql stable security definer set search_path = '' as $$
+  select player_id from public.member_logins where user_id = auth.uid()
+$$;
+
+create or replace function app_private.is_admin() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select app_private.is_owner() or app_private.is_league_manager()
+$$;
+
+-- True when this login may add or change lines for this game.
+create or replace function app_private.can_edit_game(p_game_id uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select app_private.is_admin()
+      or exists (select 1 from public.games
+                  where id = p_game_id and status in ('live', 'halftime') and voided_at is null)
+$$;
+
+-- Clears the "pick a new password" flag for the signed-in login only.
+create or replace function public.clear_my_password_flag() returns void
+language sql security definer set search_path = '' as $$
+  update public.member_logins set must_change_password = false where user_id = auth.uid()
+$$;
+
+revoke all on function app_private.is_owner(), app_private.my_player_id(), app_private.is_admin(),
+  app_private.can_edit_game(uuid), public.clear_my_password_flag() from public, anon;
+grant execute on function app_private.is_owner(), app_private.my_player_id(), app_private.is_admin(),
+  app_private.can_edit_game(uuid), public.clear_my_password_flag() to authenticated;
+
+-- ── Profiles ────────────────────────────────────────────────────────────────
+drop policy if exists members_add on public.players;
+drop policy if exists members_change on public.players;
+create policy members_add on public.players for insert to authenticated
+  with check (app_private.is_member() and (app_private.is_owner() or (is_guest and login_name is null)));
+create policy members_change on public.players for update to authenticated
+  using (app_private.is_member() and (id = app_private.my_player_id() or app_private.is_owner()))
+  with check (app_private.is_member() and (id = app_private.my_player_id() or app_private.is_owner()));
+
+create or replace function app_private.guard_player_fields() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  if auth.uid() is not null and not app_private.is_owner()
+     and (new.is_guest is distinct from old.is_guest
+          or new.login_name is distinct from old.login_name
+          or new.voided_at is distinct from old.voided_at) then
+    raise exception 'Only Akiva can change logins, guest status or remove a player.' using errcode = '42501';
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists guard_player_fields on public.players;
+create trigger guard_player_fields before update on public.players
+  for each row execute function app_private.guard_player_fields();
+
+-- ── Game lines ──────────────────────────────────────────────────────────────
+do $$
+declare
+  t text;
+  rule text := 'app_private.is_member() and (case when game_id is null then app_private.is_admin()'
+            || ' else app_private.can_edit_game(game_id) end)';
+begin
+  foreach t in array array['stat_events', 'score_events', 'lineups', 'game_subs', 'player_minutes'] loop
+    execute format('drop policy if exists members_add on public.%I', t);
+    execute format('drop policy if exists members_change on public.%I', t);
+    execute format('create policy members_add on public.%I for insert to authenticated with check (%s)', t, rule);
+    execute format('create policy members_change on public.%I for update to authenticated using (%s) with check (%s)', t, rule, rule);
+  end loop;
+end $$;
+
+-- ── Reopening a final game ─────────────────────────────────────────────────
+create or replace function app_private.guard_final_game() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  if auth.uid() is not null and old.status = 'final' and new.status is distinct from 'final'
+     and not app_private.is_admin() then
+    raise exception 'Only Akiva or Eddie can reopen a finished game.' using errcode = '42501';
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists guard_final_game on public.games;
+create trigger guard_final_game before update on public.games
+  for each row execute function app_private.guard_final_game();
+
+-- ── Limits ──────────────────────────────────────────────────────────────────
+-- The app reads "MLF_LIMIT:<label>:<max>" and shows a friendly message.
+create or replace function app_private.check_stat_limit() returns trigger
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_max smallint;
+  v_label text;
+  v_total bigint;
+begin
+  if new.voided_at is not null or new.game_id is null or new.player_id is null then
+    return new;
+  end if;
+  select max_per_game, label into v_max, v_label from public.stat_types where id = new.stat_type_id;
+  if v_max is null then
+    return new;
+  end if;
+  select coalesce(sum(value), 0) into v_total
+    from public.stat_events
+   where game_id = new.game_id and player_id = new.player_id and stat_type_id = new.stat_type_id
+     and voided_at is null and id <> new.id;
+  if v_total + new.value > v_max then
+    raise exception 'MLF_LIMIT:%:%', v_label, v_max using errcode = '23514';
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists check_stat_limit on public.stat_events;
+create trigger check_stat_limit before insert or update on public.stat_events
+  for each row execute function app_private.check_stat_limit();
+
+create or replace function app_private.check_score_line_limit() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if new.voided_at is null and (tg_op = 'INSERT' or old.voided_at is not null) and (
+    select count(*) from public.score_events
+     where game_id = new.game_id and team_id = new.team_id and voided_at is null and id <> new.id
+  ) >= 30 then
+    raise exception 'MLF_LIMIT:Score lines:30' using errcode = '23514';
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists check_score_line_limit on public.score_events;
+create trigger check_score_line_limit before insert or update on public.score_events
+  for each row execute function app_private.check_score_line_limit();

@@ -246,3 +246,8 @@ A "Developer tools" screen that only Akiva's login can open (hidden for everyone
 3. **Edit history:** who changed what and when, with Undo for a change.
 4. **Sign everyone out:** asks Akiva to confirm first.
 5. **App info:** app version, database status, recent errors.
+
+### G3. Profiles and teams (Akiva, 2026-11-03)
+- Everyone can change their own profile, and only their own. Akiva can change anyone's. (Already built in section 2 of change 008.)
+- A team's captain can change that team's name, short name and logo. Akiva can change any team. Nobody else can.
+- A team can have two captains. David's team has David and Ilan while David can't play. Stored as a second captain on the team.

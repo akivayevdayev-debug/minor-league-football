@@ -38,10 +38,13 @@ export function teamListWithSubs(
   subs: GameSub[],
   statPlayerIds: string[],
   allPlayers: Player[],
+  /** This side's QB for the game (Maurice or Eddie): on no roster, so added first, not as a sub. */
+  qbId?: string | null,
 ): { p: Player; sub: boolean }[] {
-  const onRoster = new Set(roster.map((p) => p.id))
   const byId = new Map(allPlayers.map((p) => [p.id, p]))
-  const out: { p: Player; sub: boolean }[] = roster.map((p) => ({ p, sub: p.is_guest }))
+  const qb = qbId && !roster.some((p) => p.id === qbId) ? byId.get(qbId) : undefined
+  const onRoster = new Set([...roster.map((p) => p.id), ...(qb ? [qb.id] : [])])
+  const out: { p: Player; sub: boolean }[] = [...(qb ? [{ p: qb, sub: false }] : []), ...roster.map((p) => ({ p, sub: p.is_guest }))]
   const subIds = new Set([...subs.filter((s) => !s.voided_at).map((s) => s.player_id), ...statPlayerIds])
   for (const id of subIds) {
     if (onRoster.has(id)) continue

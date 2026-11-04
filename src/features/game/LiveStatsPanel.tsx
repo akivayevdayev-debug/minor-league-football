@@ -94,7 +94,8 @@ export function LiveStatsPanel({
   const lineup = (team: Team) => {
     const statIds = [...new Set(stats.filter((s) => s.team_id === team.id && s.player_id).map((s) => s.player_id!))]
     const teamSubs = (subs.data ?? []).filter((s) => s.team_id === team.id)
-    return teamListWithSubs(rosterOf(team.id), teamSubs, statIds, players)
+    const qbId = team.id === game.home_team_id ? game.home_qb_id : game.away_qb_id
+    return teamListWithSubs(rosterOf(team.id), teamSubs, statIds, players, qbId)
   }
 
   const fail = (e: unknown) =>

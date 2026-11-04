@@ -26,6 +26,11 @@ describe('team list with subs', () => {
     expect(list.map((r) => r.p.id)).toEqual(['a', 'b', 'y', 'z'])
     expect(list.find((r) => r.p.id === 'z')?.sub).toBe(true)
   })
+
+  it("puts this side's QB first, not as a sub, and never twice", () => {
+    const list = teamListWithSubs(roster, [], ['x'], everyone, 'x')
+    expect(list.map((r) => [r.p.id, r.sub])).toEqual([['x', false], ['a', false], ['b', true]])
+  })
 })
 
 describe('typed minutes', () => {

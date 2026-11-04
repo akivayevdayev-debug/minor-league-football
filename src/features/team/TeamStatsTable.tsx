@@ -289,7 +289,7 @@ function PlayerRows({
               }}
               aria-expanded={open}
               aria-label={`${name}: ${pts} points. ${open ? 'Hide' : 'Show'} how they were scored`}
-              className="pressable lit numeral text-body-lg nums flex min-h-(--tap-min) w-full items-center justify-end bg-transparent"
+              className="pressable lit numeral text-body-lg nums -my-1 flex min-h-(--tap-min) w-full items-center justify-end bg-transparent"
             >
               {pts}
             </button>
@@ -297,7 +297,7 @@ function PlayerRows({
             <button
               type="button"
               disabled
-              className="numeral text-body-lg nums flex min-h-(--tap-min) w-full items-center justify-end bg-transparent text-text-3"
+              className="numeral text-body-lg nums -my-1 flex min-h-(--tap-min) w-full items-center justify-end bg-transparent text-text-3"
             >
               {pts}
             </button>

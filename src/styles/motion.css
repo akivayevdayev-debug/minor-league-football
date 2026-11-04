@@ -71,9 +71,13 @@
   /* A table row that lights up edge to edge (not just the cell under the finger): a soft glow
      from the touch point (pointer.ts sets --px/--py) over a light press fill. */
   .row-lit {
-    transition: background-color var(--dur-fast) var(--ease-hover);
+    transition:
+      transform var(--dur-press) var(--ease-out),
+      background-color var(--dur-fast) var(--ease-hover);
   }
+  /* transform, not the scale property: table rows ignore scale. */
   .row-lit:active {
+    transform: scale(var(--press-scale));
     background-color: var(--press-fill);
     background-image: radial-gradient(var(--spotlight-size) circle at var(--px, 50%) var(--py, 50%), var(--spotlight), transparent 70%);
   }
@@ -364,6 +368,9 @@
   .lift:active,
   .magnetic:active:not(:disabled) {
     scale: none;
+  }
+  .row-lit:active {
+    transform: none;
   }
   .lift:hover {
     translate: none;

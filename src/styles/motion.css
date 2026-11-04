@@ -209,9 +209,10 @@
 
   /* Final whistle (spec 5.5): the winning score lifts once and one light sweeps across it.
      Set by LiveGamePage, once per game on each phone. Transform only. Reduced motion: opacity pulse (below). */
+  /* No overflow here: it would clip the score-lead text-shadow glow. The sweep stays inside the number instead:
+     its visible band only travels across the middle of the number (final-sweep, +/-30%). */
   .final-shine {
     position: relative;
-    overflow: hidden;
     animation: final-shine var(--dur-shine) var(--ease-out) both;
   }
   .final-shine::after {
@@ -238,10 +239,10 @@
 
 @keyframes final-sweep {
   from {
-    transform: translateX(-110%);
+    transform: translateX(-30%);
   }
   to {
-    transform: translateX(110%);
+    transform: translateX(30%);
   }
 }
 

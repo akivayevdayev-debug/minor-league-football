@@ -71,6 +71,7 @@ export default function MePage() {
 
       <ul className="rise glass-panel flex flex-col overflow-hidden rounded-panel" style={{ '--i': 2 } as CSSProperties}>
         <Row icon="me" label="My profile" to={`/players/${member.playerId}`} />
+        <Row icon="rules" label="Rulebook" hint="Every league rule, searchable" to="/rules" />
         <Row icon="lock" label="Change password" onClick={() => setPassword(true)} />
         <Row icon="export" label={exporting ? 'Saving backup…' : 'Export everything'} hint="Every list in one file" onClick={runExport} />
         <Row icon="device" label="Put MLF on your phone" onClick={() => setInstall(true)} />

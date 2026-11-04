@@ -160,7 +160,7 @@ function NextUp({ game, teamById, score, projection, onEditTime, onScore, locked
       <StadiumBackdrop photo="field" team={home?.color_key} />
       <section
         aria-label="Next up"
-        className="glass-hero glass-appear relative flex flex-col gap-4 rounded-hero px-4 pt-5 pb-4"
+        className="hero-photo glass-appear relative flex flex-col gap-4 rounded-hero px-4 pt-5 pb-4"
       >
         <p className="caps-label text-center text-accent">Next up{game.week !== null ? ` · Week ${game.week}` : ''}</p>
 

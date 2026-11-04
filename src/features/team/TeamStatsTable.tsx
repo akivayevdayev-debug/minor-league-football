@@ -16,7 +16,6 @@ type View = 'week' | 'season'
 interface Props {
   side: TeamSide
   team: Team
-  opponent: Team | undefined
   seasonId: string | undefined
   playerById: Map<string, Player>
   onOpenPlayer(p: Player): void
@@ -25,16 +24,12 @@ interface Props {
 /** Right-edge fade that hints at more columns. Same idea as .scroll-edge-top: currentColor fading out. */
 const MORE_MASK = 'linear-gradient(to right, currentColor calc(100% - var(--space-unit) * 8), transparent)'
 
-/** Breakdown clip reveal: closed is the top edge only, open is the full box. */
-const CLIP_CLOSED = 'inset(0% 0% 100% 0%)'
-const CLIP_OPEN = 'inset(0% 0% 0% 0%)'
-
 /**
  * Yahoo-style stats table for one team: this week's numbers, or the season's. The Player column is
  * pinned while the stat columns slide sideways. Tap a name for the player card. In the week view,
  * tap Pts to see how the points were scored, under the row (one row open at a time).
  */
-export function TeamStatsTable({ side, team, opponent, seasonId, playerById, onOpenPlayer }: Props) {
+export function TeamStatsTable({ side, team, seasonId, playerById, onOpenPlayer }: Props) {
   const [view, setView] = useState<View>('week')
   const [openId, setOpenId] = useState<string | null>(null)
   const scroller = useRef<HTMLDivElement>(null)
@@ -76,7 +71,7 @@ export function TeamStatsTable({ side, team, opponent, seasonId, playerById, onO
   // Breakdown motion: clip reveal from the top plus a fade; fades only when reduced motion is on.
   const openT = useMemo(() => ({ duration: durationToken('--dur-base'), ease: easeToken('--ease-out') }), [])
   const closeT = useMemo(() => ({ duration: durationToken('--dur-fast'), ease: easeToken('--ease-out') }), [])
-  const colSpan = columns.length + 5
+  const colSpan = columns.length + (view === 'week' ? 4 : 5)
 
   return (
     <div className="flex flex-col gap-3">
@@ -95,31 +90,32 @@ export function TeamStatsTable({ side, team, opponent, seasonId, playerById, onO
         className="glass-list overflow-x-auto rounded-panel"
         style={more ? ({ maskImage: MORE_MASK, WebkitMaskImage: MORE_MASK } as CSSProperties) : undefined}
       >
-        <table className="w-max min-w-full border-collapse text-left text-small nums">
+        <motion.table
+          key={view}
+          initial={reduce ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={openT}
+          className="w-max min-w-full border-collapse text-left text-small nums">
           <caption className="sr-only">{view === 'week' ? 'This week’s stats' : 'Season stats'}</caption>
           <thead>
             <tr className="caps-label">
-              <th scope="col" className="py-2 pl-3 pr-2 font-strong">
+              <th scope="col" className="w-14 py-2 pl-3 pr-2 font-strong">
                 <abbr title="Position" className="no-underline">
                   Pos
                 </abbr>
               </th>
-              <th scope="col" className="sticky left-0 z-1 w-44 bg-(--glass-fallback) py-2 pr-2 text-left font-strong">
+              <th scope="col" className="sticky-glass sticky left-0 z-1 w-44 py-2 pr-2 text-left font-strong">
                 <abbr title="Player" className="no-underline">
                   Player
                 </abbr>
               </th>
-              <th scope="col" className="py-2 pr-2 text-right font-strong">
-                {view === 'week' ? (
-                  <abbr title="Opponent" className="no-underline">
-                    Opp
-                  </abbr>
-                ) : (
+              {view === 'season' && (
+                <th scope="col" className="py-2 pr-2 text-right font-strong">
                   <abbr title="Games played" className="no-underline">
                     GP
                   </abbr>
-                )}
-              </th>
+                </th>
+              )}
               <th scope="col" className="py-2 pr-2 text-right font-strong">
                 <abbr title={view === 'week' ? 'Projected points' : 'Points per game'} className="no-underline">
                   Proj
@@ -146,7 +142,7 @@ export function TeamStatsTable({ side, team, opponent, seasonId, playerById, onO
               const started = r.actual !== null
               const weekView = view === 'week'
               const s = seasonByPlayer.get(r.playerId)
-              const cells = weekView ? weekCells(r, opponent) : seasonCells(s)
+              const cells = weekView ? weekCells(r) : seasonCells(s)
               const open = weekView && openId === r.playerId
               return (
                 <PlayerRows
@@ -176,16 +172,16 @@ export function TeamStatsTable({ side, team, opponent, seasonId, playerById, onO
               )
             })}
           </tbody>
-        </table>
+        </motion.table>
       </div>
     </div>
   )
 }
 
-/** Week view: opponent, projected and actual points (a dash until kickoff). */
-function weekCells(r: WeekRow, opponent: Team | undefined) {
+/** Week view: projected and actual points (a dash until kickoff). No opponent column: it is the same for every row. */
+function weekCells(r: WeekRow) {
   return {
-    opp: opponent?.short_name ?? '–',
+    opp: null,
     proj: r.projected !== null ? r.projected.toFixed(1) : '–',
     pts: r.actual !== null ? fmtPoints(r.actual) : '–',
   }
@@ -232,7 +228,7 @@ function PlayerRows({
   row: WeekRow
   captain: boolean
   onField: boolean
-  opp: string
+  opp: string | null
   proj: string
   pts: string
   /** Pts is a button (week view, game started). */
@@ -250,17 +246,24 @@ function PlayerRows({
   openT: Transition
   closeT: Transition
 }) {
-  const cellClass = 'h-(--tap-min) border-t border-(--glass-groove) py-2 pr-2 text-right align-middle'
+  const cellClass = `${CELL_BASE} pr-2 text-right`
   return (
     <>
-      <tr>
-        <td className={`${cellClass} pl-3 text-left`}>
+      {/* The whole row opens the player (the name button is the same action for keyboards and screen readers). */}
+      <tr onClick={onOpenPlayer} className="cursor-pointer transition-colors duration-(--dur-fast) hover-fine:bg-(--row-hover) active:bg-(--press-fill)">
+        <td className={`${CELL_BASE} w-14 pl-3 pr-2 text-left`}>
           <span className={`inline-block w-10 rounded-chip py-0.5 text-center caps-label ${row.isQb ? 'bg-gold-soft text-gold' : 'bg-(--press-fill) text-text'}`}>
             {row.position}
           </span>
         </td>
-        <td className={`${cellClass} sticky left-0 z-1 w-44 bg-(--glass-fallback) pr-2 text-left`}>
-          <button type="button" onClick={onOpenPlayer} className="pressable lit flex min-h-(--tap-min) w-full min-w-0 items-center gap-2 bg-transparent text-left">
+        <td className={`${CELL_BASE} sticky-glass sticky left-0 z-1 w-44 pr-2 text-left`}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onOpenPlayer()
+            }}
+            className="pressable lit flex min-h-(--tap-min) w-full min-w-0 items-center gap-2 bg-transparent text-left">
             <PlayerBadge jersey={player?.jersey ?? null} team={row.isQb ? undefined : team.color_key} photo={player?.photo_path ?? null} size="sm" />
             <span className="flex min-w-0 flex-1 flex-col items-start leading-tight">
               <span className="flex w-full items-center gap-1">
@@ -271,13 +274,16 @@ function PlayerRows({
             </span>
           </button>
         </td>
-        <td className={`${cellClass} whitespace-nowrap text-text-2-strong`}>{opp}</td>
+        {opp !== null && <td className={`${cellClass} whitespace-nowrap text-text-2-strong`}>{opp}</td>}
         <td className={`${cellClass} text-text-2-strong`}>{proj}</td>
         <td className={`${cellClass} font-strong`}>
           {canOpen ? (
             <button
               type="button"
-              onClick={onToggle}
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggle()
+              }}
               aria-expanded={open}
               aria-label={`${name}: ${pts} points. ${open ? 'Hide' : 'Show'} how they were scored`}
               className="pressable lit numeral text-body-lg nums flex min-h-(--tap-min) w-full items-center justify-end bg-transparent"
@@ -308,12 +314,13 @@ function PlayerRows({
           <tr key="breakdown">
             <td colSpan={colSpan} className="p-0">
               <motion.div
-                initial={reduce ? { opacity: 0 } : { opacity: 0, clipPath: CLIP_CLOSED }}
-                animate={reduce ? { opacity: 1 } : { opacity: 1, clipPath: CLIP_OPEN }}
-                exit={reduce ? { opacity: 0, transition: closeT } : { opacity: 0, clipPath: CLIP_CLOSED, transition: closeT }}
+                initial={reduce ? { opacity: 0 } : { opacity: 0, height: 0 }}
+                animate={reduce ? { opacity: 1 } : { opacity: 1, height: 'auto' }}
+                exit={reduce ? { opacity: 0, transition: closeT } : { opacity: 0, height: 0, transition: closeT }}
                 transition={openT}
-                className="surface-inset mx-3 mb-2 overflow-hidden rounded-panel"
+                className="overflow-hidden"
               >
+                <div className="surface-inset mx-3 mb-2 overflow-hidden rounded-panel">
                 {row.breakdown.length === 0 ? (
                   <p className="px-3 py-3 text-small text-text-2">No stats in this game yet.</p>
                 ) : (
@@ -330,6 +337,7 @@ function PlayerRows({
                     ))}
                   </ul>
                 )}
+                </div>
               </motion.div>
             </td>
           </tr>
@@ -338,5 +346,8 @@ function PlayerRows({
     </>
   )
 }
+
+/** Every body cell: one tap-height row with a dark groove line on top. */
+const CELL_BASE = 'h-(--tap-min) border-t border-(--glass-groove) py-2 align-middle'
 
 type Transition = { duration: number; ease: [number, number, number, number] }

@@ -119,7 +119,7 @@ export default function PlayerProfile() {
         <StadiumBackdrop photo="sunset" team={currentTeam?.color_key} />
         <header
           style={teamStyle(currentTeam?.color_key)}
-          className="glass-hero glass-appear relative flex items-center gap-4 rounded-hero p-4 pt-8"
+          className="hero-photo glass-appear relative flex items-center gap-4 rounded-hero p-4 pt-8"
         >
           <PlayerBadge jersey={player.jersey} team={currentTeam?.color_key} photo={player.photo_path} size="xl" />
           <div className="flex min-w-0 flex-1 flex-col gap-1">

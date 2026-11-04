@@ -14,6 +14,23 @@ const queryClient = new QueryClient({
 })
 
 // Each screen loads when first opened (only the shell and login are in the first download).
+// Once the app has loaded, the four tabs and the player card download quietly, so the first tap on each opens at once.
+function preloadScreens() {
+  void import('../features/roster/TeamPage')
+  void import('../features/schedule/SchedulePage')
+  void import('../features/mvp/MvpPage')
+  void import('../features/me/MePage')
+  void import('../features/players/PlayerProfile')
+  void import('../features/team/MatchupPage')
+}
+if (typeof window !== 'undefined') {
+  const later = () => {
+    if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(preloadScreens)
+    else setTimeout(preloadScreens, 1500)
+  }
+  if (document.readyState === 'complete') later()
+  else window.addEventListener('load', later, { once: true })
+}
 const TeamPage = lazy(() => import('../features/roster/TeamPage'))
 const MatchupPage = lazy(() => import('../features/team/MatchupPage'))
 const SchedulePage = lazy(() => import('../features/schedule/SchedulePage'))

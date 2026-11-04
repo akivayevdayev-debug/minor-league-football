@@ -1,6 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { useReducedMotion } from 'motion/react'
 import { usePhotoUrl } from '../../lib/photos'
+import { useNow } from '../../lib/useNow'
 import { secondsLeftAt, type ClockState } from '../../lib/clock'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useMember } from '../auth'
@@ -46,6 +47,9 @@ import { fmtPoints, opponentOf, weekGame } from '../team/week'
 import { remainingShare, winChance } from '../team/winChance'
 import { canDecideTrades, canEditTeam, canMovePlayers, isCaptainOf } from './permissions'
 
+/** How often the win chance catches up with the running clock. */
+const WIN_CHANCE_REFRESH_MS = 30_000
+
 type Open = 'stats' | 'trade' | 'guest' | 'move' | 'score' | 'edit' | 'photos' | null
 
 /**
@@ -82,6 +86,9 @@ export default function TeamPage() {
   }, [players.data, teamOf, teamId, projections.data])
   const playerById = useMemo(() => new Map((players.data ?? []).map((p) => [p.id, p])), [players.data])
   const freeAgents = useMemo(() => (players.data ?? []).filter((p) => !p.is_guest && !teamOf.get(p.id)), [players.data, teamOf])
+  // Players on no team: the league QBs (they play for any team) and everyone else (backups who sub in).
+  const leagueQbs = useMemo(() => freeAgents.filter(isQb), [freeAgents])
+  const backups = useMemo(() => freeAgents.filter((p) => !isQb(p)), [freeAgents])
 
   const teamGames = snap.games.filter((g) => g.home_team_id === teamId || g.away_team_id === teamId)
   const next = teamGames.find((g) => g.status !== 'final' && g.home_team_id && g.away_team_id)
@@ -98,13 +105,14 @@ export default function TeamPage() {
   const oppId = week ? opponentOf(week, teamId) : null
   const oppTeam = oppId ? snap.teamById.get(oppId) : undefined
   const opp = oppId ? gw.side(oppId) : null
-  const clock = useGameClock(weekLive ? week?.id : undefined)
+  const clock = useGameClock(week?.status === 'live' ? week.id : undefined)
   const offset = useServerOffset()
   const rules = useSeasonRules(week?.season_id)
   const settings = useSettings()
-  // The win chance is worked out as of the last clock change (when the clock data was fetched), so nothing ticks every second.
-  const readAt = clock.dataUpdatedAt
-  const halfMinutes = (rules?.halfSeconds ?? (settings.data?.half_minutes ?? 20) * 60) / 60
+  // While the clock runs, the win chance catches up with the time left every 30 seconds (nothing ticks every second).
+  const readAt = useNow(week?.status === 'live' && !!clock.data?.running, WIN_CHANCE_REFRESH_MS)
+  const halfSecondsRaw = rules?.halfSeconds ?? (settings.data?.half_minutes ?? 20) * 60
+  const halfMinutes = (halfSecondsRaw > 0 ? halfSecondsRaw : 20 * 60) / 60
   const c = clock.data
   const clockState: ClockState | null = c
     ? { running: c.running, secondsLeft: c.seconds_left, startedAt: c.started_at ? Date.parse(c.started_at) : null }
@@ -170,7 +178,7 @@ export default function TeamPage() {
       </header>
 
       {/* Hero: crest, record, points for and against, then this week's game with projected vs actual. */}
-      <section aria-label={`${team.name} summary`} className="rise glass-hero glass-appear relative isolate flex flex-col gap-3 overflow-hidden rounded-hero p-4" style={{ '--i': 1 } as CSSProperties}>
+      <section aria-label={`${team.name} summary`} className="rise hero-photo glass-appear relative isolate flex flex-col gap-3 overflow-hidden rounded-hero p-4" style={{ '--i': 1 } as CSSProperties}>
         <StadiumBackdrop photo="lights" team={team.color_key} src={teamPhoto} />
         <div className="flex items-center gap-3">
           <TeamBadge team={team} size="lg" />
@@ -184,7 +192,7 @@ export default function TeamPage() {
         </div>
 
         {week && weekTeams && (
-          <div className="surface-inset flex flex-col gap-2 rounded-panel p-3">
+          <div className="glass-score flex flex-col gap-3 rounded-panel p-3">
             <div className="flex items-center gap-2">
               <span className="caps-label">
                 {weekLabel}
@@ -199,13 +207,27 @@ export default function TeamPage() {
                 <span className="caps-label nums">{week.starts_at ? `${formatGameTime(week.starts_at)} ${ZONE_LABEL}` : 'Time not set'}</span>
               )}
             </div>
-            <NextLine game={week} home={weekTeams.home} away={weekTeams.away} score={weekScore} />
+            {/* One matchup row: each side's crest, name and big number, "vs" (or the live score) between. */}
+            <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+              <MatchupSide team={team} side={mine} align="start" />
+              <span className="pb-2 font-display text-small font-bold uppercase text-text-3 nums">
+                {weekLive && weekScore
+                  ? week.home_team_id === teamId
+                    ? `${weekScore.home_points}–${weekScore.away_points}`
+                    : `${weekScore.away_points}–${weekScore.home_points}`
+                  : 'vs'}
+              </span>
+              <MatchupSide team={oppTeam} side={opp} align="end" />
+            </div>
             {opp && (
-              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1fr)] items-center gap-2">
-                <MatchupSide team={team} side={mine} align="start" />
-                <WinBar chance={chance} leftName={team.short_name} rightName={oppTeam?.short_name ?? 'Opponent'} rightColor={oppTeam?.color_key} />
-                <MatchupSide team={oppTeam} side={opp} align="end" />
-              </div>
+              <WinBar
+                chance={chance}
+                final={week.status === 'final'}
+                leftName={team.short_name}
+                rightName={oppTeam?.short_name ?? 'Opponent'}
+                rightColor={oppTeam?.color_key}
+                leftColor={team.color_key}
+              />
             )}
             <div className="flex flex-wrap gap-2">
               <Button variant="secondary" size="sm" onClick={() => navigate(`/matchup/${week.id}`)}>
@@ -246,7 +268,6 @@ export default function TeamPage() {
           <TeamStatsTable
             side={mine}
             team={team}
-            opponent={week ? snap.teamById.get(opponentOf(week, teamId) ?? '') : undefined}
             seasonId={snap.season?.id}
             playerById={playerById}
             onOpenPlayer={(p) => setActionsFor(p)}
@@ -254,21 +275,24 @@ export default function TeamPage() {
         )}
       </section>
 
-      {freeAgents.length > 0 && (
-        <section aria-labelledby="league-title" className="rise glass-list overflow-hidden rounded-panel" style={{ '--i': 4 } as CSSProperties}>
-          <header className="flex items-center gap-2 px-3 py-2">
-            <h2 id="league-title" className="flex-1 text-body font-strong">
-              QB official
-            </h2>
-            <span className="caps-label">Plays for any team</span>
-          </header>
-          <ul className="divide-y divide-(--glass-groove) border-t border-(--glass-groove)">
-            {freeAgents.map((p) => (
-              <PlayerRow key={p.id} player={p} team={undefined} ppg={projections.data?.get(p.id)?.points_per_game} onOpen={() => setActionsFor(p)} />
-            ))}
-          </ul>
-        </section>
-      )}
+      <FreeAgentList
+        id="league-qbs"
+        title="League QBs"
+        hint="Play for any team"
+        players={leagueQbs}
+        projections={projections.data}
+        onOpen={setActionsFor}
+        index={4}
+      />
+      <FreeAgentList
+        id="backups"
+        title="Backups"
+        hint="Not on a team"
+        players={backups}
+        projections={projections.data}
+        onOpen={setActionsFor}
+        index={4}
+      />
 
       <TradesSection seasonId={snap.season?.id} teams={snap.teams} canDecide={canDecide} />
 
@@ -369,20 +393,44 @@ function PlayerRow({ player, team, ppg, onOpen }: { player: Player; team: Team |
   )
 }
 
-function NextLine({ game, home, away, score }: { game: Game; home?: Team; away?: Team; score?: { home_points: number; away_points: number } }) {
-  const live = game.status === 'live' || game.status === 'halftime'
+/** A QB on no team plays for whichever side needs one. */
+function isQb(p: Player) {
+  return p.positions.some((pos) => pos.trim().toUpperCase() === 'QB')
+}
+
+/** Players who belong to no team, as one titled list (hidden when empty). */
+function FreeAgentList({
+  id,
+  title,
+  hint,
+  players,
+  projections,
+  onOpen,
+  index,
+}: {
+  id: string
+  title: string
+  hint: string
+  players: Player[]
+  projections: Map<string, { points_per_game: number }> | undefined
+  onOpen(p: Player): void
+  index: number
+}) {
+  if (players.length === 0) return null
   return (
-    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-      <span className="flex min-w-0 items-center gap-2" style={teamStyle(home?.color_key)}>
-        <TeamBadge team={home} size="sm" />
-        <span className="truncate font-display font-bold uppercase">{home?.short_name ?? 'TBD'}</span>
-      </span>
-      <span className="numeral text-title nums text-text-2">{live && score ? `${score.home_points}–${score.away_points}` : 'vs'}</span>
-      <span className="flex min-w-0 flex-row-reverse items-center gap-2" style={teamStyle(away?.color_key)}>
-        <TeamBadge team={away} size="sm" />
-        <span className="truncate font-display font-bold uppercase">{away?.short_name ?? 'TBD'}</span>
-      </span>
-    </div>
+    <section aria-labelledby={`${id}-title`} className="rise glass-list overflow-hidden rounded-panel" style={{ '--i': index } as CSSProperties}>
+      <header className="flex items-center gap-2 px-3 py-2">
+        <h2 id={`${id}-title`} className="flex-1 text-body font-strong">
+          {title}
+        </h2>
+        <span className="caps-label">{hint}</span>
+      </header>
+      <ul className="divide-y divide-(--glass-groove) border-t border-(--glass-groove)">
+        {players.map((p) => (
+          <PlayerRow key={p.id} player={p} team={undefined} ppg={projections?.get(p.id)?.points_per_game} onOpen={() => onOpen(p)} />
+        ))}
+      </ul>
+    </section>
   )
 }
 
@@ -432,16 +480,19 @@ function ActionRow({ icon, label, onClick }: { icon: IconName; label: string; on
   )
 }
 
-/** One side of the matchup card: crest, name, and the big number (projected before kickoff, actual points after). */
-function MatchupSide({ team, side, align }: { team: Team | undefined; side: TeamSide; align: 'start' | 'end' }) {
-  const started = side.actual !== null
-  const proj = side.projected > 0 ? side.projected.toFixed(1) : '—'
+/** One side of the matchup card: crest and name on one line, then the big number (projected before kickoff, points after). */
+function MatchupSide({ team, side, align }: { team: Team | undefined; side: TeamSide | null; align: 'start' | 'end' }) {
+  const started = side?.actual != null
+  const proj = side && side.projected > 0 ? side.projected.toFixed(1) : '—'
+  const end = align === 'end'
   return (
-    <div className={`flex min-w-0 flex-col gap-1 ${align === 'end' ? 'items-end text-right' : 'items-start text-left'}`} style={teamStyle(team?.color_key)}>
-      <TeamBadge team={team} size="sm" />
-      <span className="max-w-full truncate font-display text-small font-bold uppercase">{team?.short_name ?? 'TBD'}</span>
-      <span className="numeral-xl nums leading-none">{started ? fmtPoints(side.actual ?? 0) : proj}</span>
-      {started && <span className="text-small text-text-2 nums">Proj {proj}</span>}
+    <div className={`flex min-w-0 flex-col gap-1 ${end ? 'items-end text-right' : 'items-start text-left'}`} style={teamStyle(team?.color_key)}>
+      <span className={`flex max-w-full min-w-0 items-center gap-2 ${end ? 'flex-row-reverse' : ''}`}>
+        <TeamBadge team={team} size="sm" />
+        <span className="truncate font-display font-bold uppercase">{team?.short_name ?? 'TBD'}</span>
+      </span>
+      <span className="numeral-xl nums leading-none">{started ? fmtPoints(side?.actual ?? 0) : proj}</span>
+      <span className="caps-label nums">{started ? `Proj ${proj}` : 'Projected'}</span>
     </div>
   )
 }
@@ -449,29 +500,35 @@ function MatchupSide({ team, side, align }: { team: Team | undefined; side: Team
 /** The middle of the matchup card: both win percentages (summing to 100) above a bar split in the two teams' colours. */
 function WinBar({
   chance,
+  final,
   leftName,
   rightName,
   rightColor,
+  leftColor,
 }: {
   chance: number
+  /** Before the final whistle nothing is certain, so the labels stay between 1% and 99%. */
+  final: boolean
   leftName: string
   rightName: string
   rightColor: Team['color_key'] | undefined
+  leftColor: Team['color_key'] | undefined
 }) {
   const reduce = useReducedMotion()
-  const left = Math.round(chance * 100)
+  const raw = Math.round(chance * 100)
+  const left = final ? raw : Math.min(99, Math.max(1, raw))
   const right = 100 - left
   // Only transform animates; the bar width is a scaleX. No transition when reduced motion is on.
   const motion = reduce ? undefined : { transition: 'transform var(--dur-base) var(--ease-out)' }
   return (
-    <div role="img" aria-label={`Win chance: ${leftName} ${left}%, ${rightName} ${right}%`} className="flex min-w-0 flex-col gap-1.5">
-      <div className="flex items-baseline justify-between nums">
+    <div role="img" aria-label={`Win chance: ${leftName} ${left}%, ${rightName} ${right}%`} className="flex flex-col gap-1.5">
+      <div className="flex items-baseline justify-between gap-2 nums">
         <span className="numeral text-body-lg">{left}%</span>
         <span className="caps-label">Win chance</span>
-        <span className="numeral text-body-lg text-text-2-strong">{right}%</span>
+        <span className="numeral text-body-lg">{right}%</span>
       </div>
       <div className="relative h-2 overflow-hidden rounded-chip bg-(--press-fill)">
-        <div className="absolute inset-0 origin-left bg-(--team)" style={{ transform: `scaleX(${chance})`, ...motion }} />
+        <div className="absolute inset-0 origin-left bg-(--team)" style={{ ...teamStyle(leftColor), transform: `scaleX(${chance})`, ...motion }} />
         <div className="absolute inset-0 origin-right bg-(--team)" style={{ ...teamStyle(rightColor), transform: `scaleX(${1 - chance})`, ...motion }} />
       </div>
     </div>

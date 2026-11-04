@@ -150,11 +150,46 @@
     border-bottom-color: var(--glass-rim-dim);
     box-shadow: var(--glass-specular), var(--glass-depth), var(--glass-shadow);
   }
+
+  /* A sticky table column on glass: no fill of its own (so no dark block), just a light blur so
+     numbers scrolling underneath soften instead of showing through. */
+  .sticky-glass {
+    background: transparent;
+    -webkit-backdrop-filter: blur(var(--glass-subtle-blur));
+    backdrop-filter: blur(var(--glass-subtle-blur));
+  }
   @media (prefers-reduced-transparency: reduce) {
     .glass-list { background: var(--glass-fallback); }
   }
   @media (prefers-contrast: more) {
     .glass-list { background: var(--glass-fallback); border-color: var(--glass-border-strong); }
+  }
+
+  /* A hero card with a photo inside: no blur and no fill over the photo, so the photo stays sharp.
+     Just the glass edge and the drop. The photo itself (ui/StadiumBackdrop) supplies the darkening. */
+  .hero-photo {
+    background: transparent;
+    border: var(--border-width) solid var(--glass-border);
+    border-top-color: var(--glass-rim);
+    box-shadow: inset 0 1px 0 var(--glass-inset-highlight), var(--glass-drop);
+  }
+
+  /* Clean liquid glass for a score box: clear fill, real blur, lit hairline edge, no sheen. */
+  .glass-score {
+    background-color: var(--glass-fallback);
+    border: var(--border-width) solid var(--glass-border);
+    border-top-color: var(--glass-edge);
+    box-shadow: var(--glass-specular);
+  }
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .glass-score {
+      background-color: var(--glass-score-fill);
+      -webkit-backdrop-filter: blur(var(--glass-score-blur)) saturate(var(--glass-saturate));
+      backdrop-filter: blur(var(--glass-score-blur)) saturate(var(--glass-saturate));
+    }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .glass-score { background-color: var(--glass-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
   }
 
   /* Small controls inside the page (secondary buttons, switchers): the glass-bar look with no blur.

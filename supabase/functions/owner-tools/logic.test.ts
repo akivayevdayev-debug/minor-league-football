@@ -52,12 +52,10 @@ describe('parseAction', () => {
 })
 
 describe('isResetTarget', () => {
-  it('skips the owner and Leo, resets everyone else', () => {
-    expect(KEEP_PASSWORD_LOGINS).toEqual(['leo'])
+  it('skips only the owner, resets everyone else (Leo too)', () => {
+    expect(KEEP_PASSWORD_LOGINS).toEqual([])
     expect(isResetTarget({ is_owner: true, login_name: 'akiva' })).toBe(false)
-    expect(isResetTarget({ is_owner: false, login_name: 'leo' })).toBe(false)
-    expect(isResetTarget({ is_owner: false, login_name: ' Leo ' })).toBe(false)
+    expect(isResetTarget({ is_owner: false, login_name: 'leo' })).toBe(true)
     expect(isResetTarget({ is_owner: false, login_name: 'david' })).toBe(true)
-    expect(isResetTarget({ is_owner: false, login_name: 'leonard' })).toBe(true)
   })
 })

@@ -2,7 +2,7 @@
  * owner-tools: Akiva's Developer tools that need the login system's secret key.
  *   list_logins        every login with its player and last sign-in (no passwords; they can't be read)
  *   set_password       a new temporary password for one player; they must pick their own at next sign-in
- *   reset_everyone     the same for every login except the owner and Leo, plus sign-out (after the leak)
+ *   reset_everyone     the same for every login except the owner, plus sign-out (after the leak)
  *   sign_out_everyone  ends every session except the owner's
  * Only the owner's login may call it: the caller's token is checked, then member_logins.is_owner.
  * The secret key comes from Supabase's own environment (SUPABASE_SECRET_KEYS); it is never in the

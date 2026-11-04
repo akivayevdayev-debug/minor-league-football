@@ -1,6 +1,6 @@
 /*
  * One delegated pointer listener for the whole app (installed once in main.tsx):
- *  - .lit elements get --px/--py so their spotlight follows the mouse.
+ *  - .lit elements (and .row-lit table rows) get --px/--py so their spotlight follows the mouse.
  *  - .magnetic elements lean a few pixels toward the mouse (limit: --magnet-max).
  *  - .ripple elements get a soft wave where the finger or mouse presses (touch too).
  * Light and lean are mouse only; all of it is off when the person asks for reduced motion.
@@ -13,7 +13,15 @@ function tokenNumber(name: string): number {
 }
 
 function onPress(e: PointerEvent) {
-  if (!(e.target instanceof Element) || window.matchMedia(reduced).matches) return
+  if (!(e.target instanceof Element)) return
+  // A tapped table row glows from the finger, across the whole row.
+  const row = e.target.closest<HTMLElement>('.row-lit')
+  if (row) {
+    const r = row.getBoundingClientRect()
+    row.style.setProperty('--px', `${e.clientX - r.left}px`)
+    row.style.setProperty('--py', `${e.clientY - r.top}px`)
+  }
+  if (window.matchMedia(reduced).matches) return
   const host = e.target.closest<HTMLElement>('.ripple')
   if (!host || host.closest('.still') || host.matches(':disabled, [aria-disabled="true"]')) return
   const r = host.getBoundingClientRect()
@@ -39,7 +47,7 @@ export function installPointerEffects(): () => void {
     frame = 0
     const e = last
     if (!e || !(e.target instanceof Element)) return
-    const lit = e.target.closest<HTMLElement>('.lit')
+    const lit = e.target.closest<HTMLElement>('.lit, .row-lit')
     if (lit) {
       const r = lit.getBoundingClientRect()
       lit.style.setProperty('--px', `${e.clientX - r.left}px`)

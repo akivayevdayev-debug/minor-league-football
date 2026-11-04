@@ -68,6 +68,23 @@
     opacity: 1;
   }
 
+  /* A table row that lights up edge to edge (not just the cell under the finger): a soft glow
+     from the touch point (pointer.ts sets --px/--py) over a light press fill. */
+  .row-lit {
+    transition: background-color var(--dur-fast) var(--ease-hover);
+  }
+  .row-lit:active {
+    background-color: var(--press-fill);
+    background-image: radial-gradient(var(--spotlight-size) circle at var(--px, 50%) var(--py, 50%), var(--spotlight), transparent 70%);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .row-lit:hover {
+      background-color: var(--row-hover);
+      background-image: radial-gradient(var(--spotlight-size) circle at var(--px, 50%) var(--py, 50%), var(--spotlight), transparent 70%);
+    }
+    .row-lit:active { background-color: var(--press-fill); }
+  }
+
   /* Diagonal sheen across a hero button on hover. */
   .sheen {
     position: relative;

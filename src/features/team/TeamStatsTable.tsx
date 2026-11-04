@@ -252,7 +252,7 @@ function PlayerRows({
   return (
     <>
       {/* The whole row opens the player (the name button is the same action for keyboards and screen readers). */}
-      <tr onClick={onOpenPlayer} className="cursor-pointer transition-colors duration-(--dur-fast) hover-fine:bg-(--row-hover) active:bg-(--press-fill)">
+      <tr onClick={onOpenPlayer} className="row-lit cursor-pointer">
         <td className={`${CELL_BASE} w-16 pl-3 pr-2 text-left`}>
           <span className={`inline-block min-w-10 whitespace-nowrap rounded-chip px-1.5 py-0.5 text-center caps-label ${row.isQb ? 'bg-gold-soft text-gold' : 'bg-(--press-fill) text-text'}`}>
             {row.position}
@@ -265,7 +265,7 @@ function PlayerRows({
               e.stopPropagation()
               onOpenPlayer()
             }}
-            className="pressable lit flex min-h-(--tap-min) w-full min-w-0 items-center gap-2 bg-transparent text-left">
+            className="flex w-full min-w-0 items-center gap-2 bg-transparent text-left">
             <PlayerBadge jersey={player?.jersey ?? null} team={row.isQb ? undefined : team.color_key} photo={player?.photo_path ?? null} size="sm" />
             <span className="flex min-w-0 flex-1 flex-col items-start leading-tight">
               <span className="flex w-full items-center gap-1">
@@ -351,7 +351,7 @@ function PlayerRows({
 }
 
 /** Every body cell: one tap-height row with a dark groove line on top. */
-const CELL_BASE = 'h-(--tap-min) border-t border-(--glass-groove) py-2 align-middle'
+const CELL_BASE = 'h-(--tap-min) border-t border-(--glass-groove) py-1 align-middle'
 
 /** "Right guard" → "RG": long position names shortened so a row never cuts off. */
 function shortPosition(p: string): string {

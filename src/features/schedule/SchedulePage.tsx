@@ -102,7 +102,7 @@ export default function SchedulePage() {
             </h2>
             <ul className="glass-list divide-y divide-divider overflow-hidden rounded-panel">
               {list.map((g, i) => (
-                <li key={g.id} className="rise px-3 py-3"style={{ '--i': Math.min(i, 8) } as CSSProperties}>
+                <li key={g.id} className="rise px-3 py-3" style={{ '--i': Math.min(i, 8) } as CSSProperties}>
                   <GameRow {...rowProps(g)} />
                 </li>
               ))}
@@ -171,7 +171,7 @@ function NextUp({ game, teamById, score, projection, onEditTime, onScore, locked
               <>
                 <Badge variant="live">{game.status === 'live' ? 'Live' : 'Halftime'}</Badge>
                 {score && (
-                  <span className="numeral-xl nums">
+                  <span className="numeral-xl nums whitespace-nowrap">
                     {score.home_points}–{score.away_points}
                   </span>
                 )}

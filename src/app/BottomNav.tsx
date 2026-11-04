@@ -14,7 +14,7 @@ export function BottomNav() {
 
   return (
     <nav aria-label="Main" className="pointer-events-none fixed inset-x-0 bottom-0 z-(--z-nav) px-(--nav-inset) pb-(--nav-gap)">
-      <ul className="glass-bar pointer-events-auto mx-auto grid h-(--nav-height) max-w-(--measure-form) grid-cols-5 rounded-pill p-1">
+      <ul className="glass-bar pointer-events-auto mx-auto grid h-(--nav-height) max-w-(--measure-form) grid-cols-4 rounded-pill p-1">
         {tabs.map((tab, i) => {
           const isActive = i === activeIndex
           return (

@@ -2,7 +2,7 @@ import { Select } from '../../ui/Select'
 import { useSeasons } from './api'
 import { selectableSeasons, useViewedSeason } from './season'
 
-/** The season switcher: a plain select at the top of League, Schedule and the player profile. */
+/** The season switcher: a plain select at the top of MVP, Schedule and the player profile. */
 export function SeasonSelect() {
   const seasons = useSeasons()
   const [season, setSeason] = useViewedSeason()

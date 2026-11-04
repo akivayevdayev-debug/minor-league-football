@@ -14,13 +14,18 @@ import { Select } from '../../ui/Select'
 import { Sheet } from '../../ui/Sheet'
 import { Skeleton } from '../../ui/Skeleton'
 import { teamStyle } from '../../ui/team'
+import { LeagueLeaders } from '../standings/LeagueLeaders'
+import { StandingsSection } from '../standings/StandingsSection'
 import { useGamePoints, useMvpPins, usePinPlayer, useUnpin, type PinRow } from './api'
 import { mvpRace, playersOfTheWeek, type RaceRow, type WeekStar } from './race'
 
 const one = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
-/** The Season 2 MVP race: the leader, player of the week, and everyone ranked by points per game. */
+/**
+ * MVP tab (it took in the old League tab): the MVP race (leader, player of the week, everyone by
+ * points per game), then the standings and the final, then league leaders.
+ */
 export default function MvpPage() {
   const member = useMember()
   const seasons = useSeasons()
@@ -67,7 +72,7 @@ export default function MvpPage() {
   const ctx = { ...data, sub }
 
   return (
-    <section className="flex flex-col gap-5">
+    <section className="flex flex-col gap-6">
       <header className="rise flex items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
           <h1 className="text-headline leading-none">MVP race</h1>
@@ -99,6 +104,10 @@ export default function MvpPage() {
       <p className="text-small text-text-3">
         To be ranked, a player needs at least half of their team’s games. Points come from the stat sheet: see the rulebook for how each stat scores.
       </p>
+
+      <StandingsSection />
+
+      <LeagueLeaders />
 
       {canPin && (
         <PinSheet

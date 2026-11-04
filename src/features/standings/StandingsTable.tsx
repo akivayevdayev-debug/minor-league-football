@@ -1,9 +1,11 @@
 import { Fragment, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
+import { motion } from 'motion/react'
 import type { StandingRow, Team } from '../../types/db'
 import { Icon } from '../../ui/Icon'
 import { TeamBadge } from '../../ui/TeamBadge'
 import { teamStyle } from '../../ui/team'
+import { houseSpring } from '../../ui/motion/spring'
 
 interface Props {
   rows: StandingRow[]
@@ -79,7 +81,9 @@ export function StandingsTable({ rows, teamById, streakOf, highlightTeamId, link
             }
             return (
               <Fragment key={r.team_id}>
-                <tr
+                <motion.tr
+                  layout
+                  transition={houseSpring()}
                   style={
                     {
                       ...teamStyle(team?.color_key),
@@ -126,7 +130,7 @@ export function StandingsTable({ rows, teamById, streakOf, highlightTeamId, link
                   >
                     {streak}
                   </td>
-                </tr>
+                </motion.tr>
                 {idx === 1 && ordered.length > 2 && anyPlayed && (
                   <tr aria-hidden="true">
                     <td colSpan={cols.length + 2} className="border-t-2 border-dashed border-gold px-3 py-1 text-center caps-label text-gold">

@@ -17,7 +17,7 @@ const queryClient = new QueryClient({
 const TeamPage = lazy(() => import('../features/roster/TeamPage'))
 const MatchupPage = lazy(() => import('../features/team/MatchupPage'))
 const SchedulePage = lazy(() => import('../features/schedule/SchedulePage'))
-const StandingsPage = lazy(() => import('../features/standings/StandingsPage'))
+const LeaguePage = lazy(() => import('../features/standings/LeaguePage'))
 const GameTabPage = lazy(() => import('../features/game/GameTabPage'))
 const PlayerProfile = lazy(() => import('../features/players/PlayerProfile'))
 const MePage = lazy(() => import('../features/me/MePage'))
@@ -47,7 +47,8 @@ export function App() {
                   <Route path="matchup/:id" element={<Screen><MatchupPage /></Screen>} />
                   <Route path="home" element={<Navigate to="/team" replace />} />
                   <Route path="schedule" element={<Screen><SchedulePage /></Screen>} />
-                  <Route path="standings" element={<Screen><StandingsPage /></Screen>} />
+                  <Route path="league" element={<Screen><LeaguePage /></Screen>} />
+                  <Route path="standings" element={<Navigate to="/league" replace />} />
                   <Route path="game" element={<Screen><GameTabPage /></Screen>} />
                   <Route path="players" element={<Navigate to="/team" replace />} />
                   <Route path="players/:id" element={<Screen><PlayerProfile /></Screen>} />

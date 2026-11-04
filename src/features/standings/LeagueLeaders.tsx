@@ -13,6 +13,10 @@ const STATS = [
   { value: 'td', label: 'Touchdowns' },
   { value: 'rec', label: 'Catches' },
   { value: 'int', label: 'Picks' },
+  { value: 'pass_td', label: 'Passing TDs' },
+  { value: 'pick6', label: 'Pick sixes' },
+  { value: 'sack', label: 'Sacks' },
+  { value: 'block', label: 'Blocks' },
 ] as const satisfies readonly { value: StatTypeId; label: string }[]
 
 interface Leader {

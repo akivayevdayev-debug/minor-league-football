@@ -1,6 +1,6 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { usePhotoUrl } from '../../lib/photos'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useMember } from '../auth'
 import {
   currentTeams,
@@ -57,7 +57,9 @@ export default function TeamPage() {
   const scores = useGameScores(snap.season?.id)
   const navigate = useNavigate()
 
-  const [picked, setPicked] = useState<string | null>(null)
+  // ?team= opens a given team (the League tab links here); otherwise your own team.
+  const [params] = useSearchParams()
+  const [picked, setPicked] = useState<string | null>(() => params.get('team'))
   const [open, setOpen] = useState<Open>(null)
   const [focus, setFocus] = useState<Player | null>(null)
   const [actionsFor, setActionsFor] = useState<Player | null>(null)
@@ -65,7 +67,7 @@ export default function TeamPage() {
   const [pointsFor, setPointsFor] = useState<WeekRow | null>(null)
 
   const teamOf = useMemo(() => currentTeams(rosters.data ?? [], snap.teams), [rosters.data, snap.teams])
-  const teamId = picked ?? snap.myTeam?.id ?? snap.teams[0]?.id ?? ''
+  const teamId = (picked && snap.teamById.has(picked) ? picked : null) ?? snap.myTeam?.id ?? snap.teams[0]?.id ?? ''
   const team = snap.teamById.get(teamId)
   const row = snap.standings.find((r) => r.team_id === teamId)
 

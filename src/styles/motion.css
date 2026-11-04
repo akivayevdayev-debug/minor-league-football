@@ -113,7 +113,7 @@
 
   /* Screen entrance: rise and fade, staggered by --i (set inline: style={{ '--i': n }}). Once per visit. */
   .rise {
-    animation: rise var(--dur-rise) var(--ease-out) both;
+    animation: rise var(--dur-rise) var(--ease-out) backwards;
     animation-delay: calc(var(--i, 0) * var(--stagger));
   }
 

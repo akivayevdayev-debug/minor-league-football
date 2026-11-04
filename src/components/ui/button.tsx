@@ -14,7 +14,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          'pressable sheen rounded-pill bg-(--accent-glass) border border-(--glass-border) border-t-(--glass-rim) text-text shadow-[var(--glass-inset-highlight),var(--glass-drop)] hover-fine:brightness-95',
+          'pressable sheen rounded-pill bg-(--accent-glass) border border-(--glass-border) border-t-(--glass-rim) text-text shadow-[inset_0_1px_0_var(--glass-inset-highlight),var(--glass-drop)] hover-fine:brightness-95',
         team: 'pressable rounded-pill bg-(--team,var(--primary)) text-primary-ink shadow-glass hover-fine:brightness-110',
         secondary: 'pressable lit glass-flat rounded-control text-text hover-fine:border-border-strong',
         outline:

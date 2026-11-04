@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { Session } from '@supabase/supabase-js'
 import { toast } from 'sonner'
 import { loginEmail, supabase } from '../../lib/supabase'
+import { clearSavedData } from '../../lib/queryCache'
 import { loginIsGone } from './loginGone'
 import { changeToNewPassword } from './changePassword'
 import { AuthContext, type Auth, type AuthState, type Member, type PasswordResult, type SignInResult } from './auth-context'
@@ -35,6 +36,26 @@ async function findMember(session: Session): Promise<MemberRead> {
   }
 }
 
+const MEMBER_KEY = 'mlf-member'
+
+/** The last answer to "who is this login?", so a reopen can show the app before the server replies. Only ids and role flags. */
+function savedMember(userId: string): Member | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(MEMBER_KEY) ?? 'null') as { userId: string; member: Member } | null
+    return saved?.userId === userId ? saved.member : null
+  } catch {
+    return null
+  }
+}
+function saveMember(userId: string, member: Member | null) {
+  try {
+    if (member) localStorage.setItem(MEMBER_KEY, JSON.stringify({ userId, member }))
+    else localStorage.removeItem(MEMBER_KEY)
+  } catch {
+    // Storage blocked: the app just waits for the server, as before.
+  }
+}
+
 /** How often a signed-in device asks the server "does my login still exist?". Also checked on focus and reconnect. */
 const LOGIN_CHECK_MS = 2 * 60 * 1000
 /** If the profile read fails (flaky signal), try again after this long. */
@@ -58,6 +79,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled && run === latestRead.current) setState({ status: 'signed-out' })
         return
       }
+      // Show the app at once with the saved answer; the server's answer below replaces it.
+      const known = savedMember(session.user.id)
+      if (known && !cancelled) setState((s) => (s.status === 'loading' ? { status: 'member', session, member: known } : s))
       const result = await findMember(session)
       if (cancelled || run !== latestRead.current) return
       if (result.kind === 'error') {
@@ -68,11 +92,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
       const member = result.member
+      saveMember(session.user.id, member)
       setState(member ? { status: 'member', session, member } : { status: 'unlinked', session })
     }
     supabase.auth.getSession().then(({ data }) => apply(data.session))
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       // Token refreshes keep the same person; only re-check on real changes.
+      if (event === 'SIGNED_OUT') {
+        clearSavedData()
+        saveMember('', null)
+      }
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
         // Deferred: Supabase advises against awaiting its own calls inside this callback.
         setTimeout(() => void apply(session), 0)

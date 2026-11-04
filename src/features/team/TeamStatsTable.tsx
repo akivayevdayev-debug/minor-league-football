@@ -104,7 +104,7 @@ export function TeamStatsTable({ side, team, seasonId, playerById, onOpenPlayer 
                   Pos
                 </abbr>
               </th>
-              <th scope="col" className="sticky-glass sticky left-0 z-1 w-44 py-2 pr-2 text-left font-strong">
+              <th scope="col" className="w-44 py-2 pr-2 text-left font-strong">
                 <abbr title="Player" className="no-underline">
                   Player
                 </abbr>
@@ -258,7 +258,7 @@ function PlayerRows({
             {row.position}
           </span>
         </td>
-        <td className={`${CELL_BASE} sticky-glass sticky left-0 z-1 w-44 pr-2 text-left`}>
+        <td className={`${CELL_BASE} w-44 pr-2 text-left`}>
           <button
             type="button"
             onClick={(e) => {

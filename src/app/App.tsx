@@ -1,6 +1,6 @@
 import { lazy, Suspense, type ReactNode } from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { MotionConfig } from 'motion/react'
 import { Toaster } from 'sonner'
 import { AuthGate, AuthProvider } from '../features/auth'
@@ -8,10 +8,7 @@ import { AppShell } from './AppShell'
 import { UpdatePrompt } from './UpdatePrompt'
 import { EmptyState } from '../ui/EmptyState'
 import { Skeleton } from '../ui/Skeleton'
-
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
-})
+import { persistOptions, queryClient } from '../lib/queryCache'
 
 // Each screen loads when first opened (only the shell and login are in the first download).
 // Once the app has loaded, the four tabs and the player card download quietly, so the first tap on each opens at once.
@@ -49,7 +46,8 @@ function Screen({ children }: { children: ReactNode }) {
 export function App() {
   return (
     <MotionConfig reducedMotion="user">
-      <QueryClientProvider client={queryClient}>
+      {/* Shows the last data saved on this phone at once, then refreshes it in the background. */}
+      <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
         <AuthProvider>
           <AuthGate>
             <HashRouter>
@@ -95,7 +93,7 @@ export function App() {
           toastOptions={{ classNames: { toast: 'glass-strong! rounded-panel! text-text! font-body!' } }}
         />
         <UpdatePrompt />
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </MotionConfig>
   )
 }

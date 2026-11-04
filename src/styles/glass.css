@@ -151,13 +151,6 @@
     box-shadow: var(--glass-specular), var(--glass-depth), var(--glass-shadow);
   }
 
-  /* A sticky table column on glass: no fill of its own (so no dark block), just a light blur so
-     numbers scrolling underneath soften instead of showing through. */
-  .sticky-glass {
-    background: transparent;
-    -webkit-backdrop-filter: blur(var(--glass-subtle-blur));
-    backdrop-filter: blur(var(--glass-subtle-blur));
-  }
   @media (prefers-reduced-transparency: reduce) {
     .glass-list { background: var(--glass-fallback); }
   }

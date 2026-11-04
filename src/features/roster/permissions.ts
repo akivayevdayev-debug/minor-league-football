@@ -19,6 +19,11 @@ export function canMovePlayers(member: Member): boolean {
   return member.isOwner || member.isLeagueManager
 }
 
+/** Only the owner and Eddie pin places in the MVP race (the database checks this too). */
+export function canPinMvp(member: Member): boolean {
+  return member.isOwner || member.isLeagueManager
+}
+
 /** The owner, or a captain of that team, can change its name, short name and logo. */
 export function canEditTeam(member: Member, team: Pick<Team, 'captain_player_id' | 'co_captain_player_id'>): boolean {
   return member.isOwner || isCaptainOf(team, member.playerId)

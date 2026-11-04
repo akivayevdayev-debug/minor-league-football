@@ -5,6 +5,7 @@ export const tabs: { to: string; label: string; icon: IconName }[] = [
   { to: '/roster', label: 'Roster', icon: 'roster' },
   { to: '/schedule', label: 'Schedule', icon: 'schedule' },
   { to: '/standings', label: 'Standings', icon: 'standings' },
+  { to: '/mvp', label: 'MVP', icon: 'trophy' },
   { to: '/me', label: 'Me', icon: 'me' },
 ]
 

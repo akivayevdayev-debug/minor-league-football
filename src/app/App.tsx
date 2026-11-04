@@ -22,6 +22,7 @@ const PlayerProfile = lazy(() => import('../features/players/PlayerProfile'))
 const MePage = lazy(() => import('../features/me/MePage'))
 const LiveGamePage = lazy(() => import('../features/game/LiveGamePage'))
 const DevToolsPage = lazy(() => import('../features/dev/DevToolsPage'))
+const MvpPage = lazy(() => import('../features/mvp/MvpPage'))
 const RulebookPage = lazy(() => import('../features/rules/RulebookPage'))
 
 function Screen({ children }: { children: ReactNode }) {
@@ -47,6 +48,7 @@ export function App() {
                   <Route path="game" element={<Screen><GameTabPage /></Screen>} />
                   <Route path="players" element={<Navigate to="/roster" replace />} />
                   <Route path="players/:id" element={<Screen><PlayerProfile /></Screen>} />
+                  <Route path="mvp" element={<Screen><MvpPage /></Screen>} />
                   <Route path="me" element={<Screen><MePage /></Screen>} />
                   <Route path="rules" element={<Screen><RulebookPage /></Screen>} />
                   {/* Owner only: the page itself sends everyone else home. */}

@@ -63,6 +63,9 @@ import {
   WifiHighIcon,
   PowerIcon,
   BookOpenTextIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
+  PushPinIcon,
   type Icon as PhosphorIcon,
 } from '@phosphor-icons/react'
 
@@ -127,6 +130,9 @@ const icons = {
   online: WifiHighIcon,
   power: PowerIcon,
   rules: BookOpenTextIcon,
+  up: ArrowUpIcon,
+  down: ArrowDownIcon,
+  pin: PushPinIcon,
 } satisfies Record<string, PhosphorIcon>
 
 export type IconName = keyof typeof icons

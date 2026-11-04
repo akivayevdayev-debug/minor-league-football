@@ -74,7 +74,9 @@ export function useServerOffset(): number {
  * only when another login started or paused it (not this phone, not the stop at 0:00).
  */
 export function clockChangeMessage(shown: GameClock | null | undefined, next: Partial<GameClock> | undefined, myUserId: string | null): string | null {
-  if (!next || next.running === undefined || !next.updated_by || next.updated_by === myUserId) return null
+  // The first Start inserts the row, so only created_by says who did it.
+  const by = next?.updated_by ?? next?.created_by
+  if (!next || next.running === undefined || !by || by === myUserId) return null
   if (shown && shown.running === next.running) return null
   if (next.running) return 'Clock started on another phone'
   return next.seconds_left === 0 ? null : 'Clock paused on another phone'
@@ -361,13 +363,12 @@ export function useSetClock(game: Game | undefined) {
     mutationFn: async ({ clock, status, seen }: { clock: ClockChange; status?: GameStatus; seen: GameClock | null | undefined }) => {
       if (!game) throw new Error('Request failed')
       let saved: GameClock
-      if (seen?.updated_at) {
-        const { data, error } = await supabase
-          .from('game_clocks')
-          .update(clock)
-          .eq('game_id', game.id)
-          .eq('updated_at', seen.updated_at)
-          .select('*')
+      if (seen) {
+        // A row that was only ever inserted has no updated_at yet (the database sets it on changes),
+        // so "still the one I saw" means "updated_at is still empty".
+        const base = supabase.from('game_clocks').update(clock).eq('game_id', game.id)
+        const matched = seen.updated_at ? base.eq('updated_at', seen.updated_at) : base.is('updated_at', null)
+        const { data, error } = await matched.select('*')
         if (error) throw new Error('Request failed')
         if (!data || data.length === 0) throw new ClockConflictError()
         saved = data[0] as GameClock

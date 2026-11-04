@@ -282,6 +282,22 @@ describe('game night, trades and projections (change 003)', () => {
     const [c] = await as<{ running: boolean }>(AKIVA, `select running from public.game_clocks where game_id = $1`, [game?.id])
     expect(c?.running).toBe(true)
   })
+
+  it('lets the first change after Start land once, and refuses a phone that saw the old clock', async () => {
+    // The app's compare-and-set: a brand-new clock row has no updated_at until its first change.
+    const [game] = await as<{ id: string }>(
+      AKIVA,
+      `insert into public.games (season_id, home_team_id, away_team_id) values ($1, $2, $3) returning id`,
+      [season, sd, day],
+    )
+    await as(AKIVA, `insert into public.game_clocks (game_id, seconds_left, running, started_at) values ($1, 600, true, public.server_now())`, [game?.id])
+    const [fresh] = await as<{ updated_at: string | null }>(AKIVA, `select updated_at from public.game_clocks where game_id = $1`, [game?.id])
+    expect(fresh?.updated_at).toBeNull()
+    const pause = `update public.game_clocks set running = false where game_id = $1 and updated_at is null returning game_id`
+    await expect(as(AKIVA, pause, [game?.id]).then((r) => r.length)).resolves.toBe(1)
+    // A second phone still holding the new-row view is refused instead of overwriting the pause.
+    await expect(as(AKIVA, pause, [game?.id]).then((r) => r.length)).resolves.toBe(0)
+  })
 })
 
 describe('playoffs', () => {

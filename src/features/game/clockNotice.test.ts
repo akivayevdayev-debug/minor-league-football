@@ -29,4 +29,10 @@ describe('clockChangeMessage', () => {
   it('says nothing when running did not change', () => {
     expect(clockChangeMessage({ ...base, running: false, seconds_left: 75 }, { running: false, seconds_left: 600, updated_by: OTHER }, ME)).toBeNull()
   })
+  it('names the phone that made the first Start (the row is new, so only created_by is set)', () => {
+    expect(clockChangeMessage(null, { running: true, seconds_left: 1500, updated_by: null, created_by: OTHER }, ME)).toBe('Clock started on another phone')
+  })
+  it('stays quiet about my own first Start', () => {
+    expect(clockChangeMessage(null, { running: true, seconds_left: 1500, updated_by: null, created_by: ME }, ME)).toBeNull()
+  })
 })

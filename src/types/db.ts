@@ -224,6 +224,8 @@ export interface GameClock {
   updated_at?: string
   /** Login that made the last change (null when changed in the SQL editor). */
   updated_by?: string | null
+  /** Login that made the row (the first Start). updated_at/updated_by stay null until the first change after it. */
+  created_by?: string | null
 }
 
 export type TradeStatus = 'pending' | 'approved' | 'vetoed'

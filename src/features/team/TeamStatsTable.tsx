@@ -25,6 +25,10 @@ interface Props {
 /** Right-edge fade that hints at more columns. Same idea as .scroll-edge-top: currentColor fading out. */
 const MORE_MASK = 'linear-gradient(to right, currentColor calc(100% - var(--space-unit) * 8), transparent)'
 
+/** Breakdown clip reveal: closed is the top edge only, open is the full box. */
+const CLIP_CLOSED = 'inset(0% 0% 100% 0%)'
+const CLIP_OPEN = 'inset(0% 0% 0% 0%)'
+
 /**
  * Yahoo-style stats table for one team: this week's numbers, or the season's. The Player column is
  * pinned while the stat columns slide sideways. Tap a name for the player card. In the week view,
@@ -70,10 +74,8 @@ export function TeamStatsTable({ side, team, opponent, seasonId, playerById, onO
   }
 
   // Breakdown motion: clip reveal from the top plus a fade; fades only when reduced motion is on.
-  const openT = { duration: durationToken('--dur-base'), ease: easeToken('--ease-out') }
-  const closeT = { duration: durationToken('--dur-fast'), ease: easeToken('--ease-out') }
-  const clipClosed = 'inset(0% 0% 100% 0%)'
-  const clipOpen = 'inset(0% 0% 0% 0%)'
+  const openT = useMemo(() => ({ duration: durationToken('--dur-base'), ease: easeToken('--ease-out') }), [])
+  const closeT = useMemo(() => ({ duration: durationToken('--dur-fast'), ease: easeToken('--ease-out') }), [])
   const colSpan = columns.length + 5
 
   return (
@@ -170,8 +172,6 @@ export function TeamStatsTable({ side, team, opponent, seasonId, playerById, onO
                   reduce={!!reduce}
                   openT={openT}
                   closeT={closeT}
-                  clipOpen={clipOpen}
-                  clipClosed={clipClosed}
                 />
               )
             })}
@@ -225,8 +225,6 @@ function PlayerRows({
   reduce,
   openT,
   closeT,
-  clipOpen,
-  clipClosed,
 }: {
   name: string
   player: Player | undefined
@@ -251,8 +249,6 @@ function PlayerRows({
   reduce: boolean
   openT: Transition
   closeT: Transition
-  clipOpen: string
-  clipClosed: string
 }) {
   const cellClass = 'h-(--tap-min) border-t border-(--glass-groove) py-2 pr-2 text-right align-middle'
   return (
@@ -288,8 +284,16 @@ function PlayerRows({
             >
               {pts}
             </button>
+          ) : dimPts ? (
+            <button
+              type="button"
+              disabled
+              className="numeral text-body-lg nums flex min-h-(--tap-min) w-full items-center justify-end bg-transparent text-text-3"
+            >
+              {pts}
+            </button>
           ) : (
-            <span className={`numeral text-body-lg nums ${dimPts ? 'text-text-3' : ''}`}>{pts}</span>
+            <span className="numeral text-body-lg nums">{pts}</span>
           )}
         </td>
         {columns.map((c) => (
@@ -298,15 +302,15 @@ function PlayerRows({
           </td>
         ))}
       </tr>
-      <tr>
-        <td colSpan={colSpan} className="p-0">
-          <AnimatePresence initial={false}>
-            {open && (
+      {/* The breakdown row exists only while it is open (or animating closed), so closed rows add no empty line. */}
+      <AnimatePresence initial={false}>
+        {open && (
+          <tr key="breakdown">
+            <td colSpan={colSpan} className="p-0">
               <motion.div
-                key="breakdown"
-                initial={reduce ? { opacity: 0 } : { opacity: 0, clipPath: clipClosed }}
-                animate={reduce ? { opacity: 1 } : { opacity: 1, clipPath: clipOpen }}
-                exit={reduce ? { opacity: 0, transition: closeT } : { opacity: 0, clipPath: clipClosed, transition: closeT }}
+                initial={reduce ? { opacity: 0 } : { opacity: 0, clipPath: CLIP_CLOSED }}
+                animate={reduce ? { opacity: 1 } : { opacity: 1, clipPath: CLIP_OPEN }}
+                exit={reduce ? { opacity: 0, transition: closeT } : { opacity: 0, clipPath: CLIP_CLOSED, transition: closeT }}
                 transition={openT}
                 className="surface-inset mx-3 mb-2 overflow-hidden rounded-panel"
               >
@@ -327,10 +331,10 @@ function PlayerRows({
                   </ul>
                 )}
               </motion.div>
-            )}
-          </AnimatePresence>
-        </td>
-      </tr>
+            </td>
+          </tr>
+        )}
+      </AnimatePresence>
     </>
   )
 }

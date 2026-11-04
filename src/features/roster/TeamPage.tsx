@@ -1,5 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
+import { useReducedMotion } from 'motion/react'
 import { usePhotoUrl } from '../../lib/photos'
+import { secondsLeftAt, type ClockState } from '../../lib/clock'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useMember } from '../auth'
 import {
@@ -11,7 +13,9 @@ import {
   usePlayerProjections,
   usePlayers,
   useRosters,
+  useSeasonRules,
   useSeasonSnapshot,
+  useSettings,
 } from '../league'
 import { formatGameTime, ZONE_LABEL } from '../../lib/time'
 import type { Game, Player, Team } from '../../types/db'
@@ -35,10 +39,11 @@ import { AddStatsSheet } from './AddStatsSheet'
 import { TeamPhotosSheet } from './TeamPhotosSheet'
 import { TradeSheet } from './TradeSheet'
 import { TradesSection } from './TradesSection'
-import { useLiveGame } from '../game/api'
+import { useGameClock, useLiveGame, useServerOffset } from '../game/api'
 import { TeamStatsTable } from '../team/TeamStatsTable'
-import { useGameWeek } from '../team/useTeamWeek'
+import { useGameWeek, type TeamSide } from '../team/useTeamWeek'
 import { fmtPoints, opponentOf, weekGame } from '../team/week'
+import { remainingShare, winChance } from '../team/winChance'
 import { canDecideTrades, canEditTeam, canMovePlayers, isCaptainOf } from './permissions'
 
 type Open = 'stats' | 'trade' | 'guest' | 'move' | 'score' | 'edit' | 'photos' | null
@@ -88,6 +93,31 @@ export default function TeamPage() {
   const mine = gw.side(teamId)
   const recent = teamGames.filter((g) => g.status === 'final').slice(-3).reverse()
   const teamPhoto = usePhotoUrl(team?.photo_path)
+
+  // Matchup card: the other side, and the chance each side wins. The clock is read only while the game is live.
+  const oppId = week ? opponentOf(week, teamId) : null
+  const oppTeam = oppId ? snap.teamById.get(oppId) : undefined
+  const opp = oppId ? gw.side(oppId) : null
+  const clock = useGameClock(weekLive ? week?.id : undefined)
+  const offset = useServerOffset()
+  const rules = useSeasonRules(week?.season_id)
+  const settings = useSettings()
+  // The win chance is worked out as of the last clock change (when the clock data was fetched), so nothing ticks every second.
+  const readAt = clock.dataUpdatedAt
+  const halfMinutes = (rules?.halfSeconds ?? (settings.data?.half_minutes ?? 20) * 60) / 60
+  const c = clock.data
+  const clockState: ClockState | null = c
+    ? { running: c.running, secondsLeft: c.seconds_left, startedAt: c.started_at ? Date.parse(c.started_at) : null }
+    : null
+  const share = week
+    ? remainingShare({
+        status: week.status,
+        half: c?.half ?? null,
+        secondsLeft: clockState ? secondsLeftAt(clockState, readAt + offset) : null,
+        halfMinutes,
+      })
+    : 1
+  const chance = mine && opp ? winChance(mine, opp, share) : 0.5
 
   if (snap.isPending || players.isPending) return <Skeleton rows={6} />
   if (snap.isError || players.isError) return <ErrorState what="the roster" onRetry={() => void (snap.refetch(), players.refetch())} />
@@ -154,7 +184,7 @@ export default function TeamPage() {
         </div>
 
         {week && weekTeams && (
-          <div className="glass-on-photo surface-inset flex flex-col gap-2 rounded-panel p-3">
+          <div className="surface-inset flex flex-col gap-2 rounded-panel p-3">
             <div className="flex items-center gap-2">
               <span className="caps-label">
                 {weekLabel}
@@ -170,18 +200,13 @@ export default function TeamPage() {
               )}
             </div>
             <NextLine game={week} home={weekTeams.home} away={weekTeams.away} score={weekScore} />
-            <div className="flex items-end gap-4 nums">
-              <span className="flex flex-col leading-tight">
-                <span className="caps-label">Projected</span>
-                <span className="numeral text-title text-text-2-strong">{mine.projected > 0 ? mine.projected.toFixed(1) : '—'}</span>
-              </span>
-              <span className="flex flex-col leading-tight">
-                <span className="caps-label">Actual</span>
-                <span className="numeral text-title">{mine.actual !== null ? fmtPoints(mine.actual) : '—'}</span>
-              </span>
-              <span className="flex-1" />
-              <span className="caps-label pb-1">Fantasy pts</span>
-            </div>
+            {opp && (
+              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1fr)] items-center gap-2">
+                <MatchupSide team={team} side={mine} align="start" />
+                <WinBar chance={chance} leftName={team.short_name} rightName={oppTeam?.short_name ?? 'Opponent'} rightColor={oppTeam?.color_key} />
+                <MatchupSide team={oppTeam} side={opp} align="end" />
+              </div>
+            )}
             <div className="flex flex-wrap gap-2">
               <Button variant="secondary" size="sm" onClick={() => navigate(`/matchup/${week.id}`)}>
                 <Icon name="trade" size="xs" />
@@ -404,6 +429,52 @@ function ActionRow({ icon, label, onClick }: { icon: IconName; label: string; on
         <Icon name="chevron" size="xs" className="text-text-3" />
       </button>
     </li>
+  )
+}
+
+/** One side of the matchup card: crest, name, and the big number (projected before kickoff, actual points after). */
+function MatchupSide({ team, side, align }: { team: Team | undefined; side: TeamSide; align: 'start' | 'end' }) {
+  const started = side.actual !== null
+  const proj = side.projected > 0 ? side.projected.toFixed(1) : '—'
+  return (
+    <div className={`flex min-w-0 flex-col gap-1 ${align === 'end' ? 'items-end text-right' : 'items-start text-left'}`} style={teamStyle(team?.color_key)}>
+      <TeamBadge team={team} size="sm" />
+      <span className="max-w-full truncate font-display text-small font-bold uppercase">{team?.short_name ?? 'TBD'}</span>
+      <span className="numeral-xl nums leading-none">{started ? fmtPoints(side.actual ?? 0) : proj}</span>
+      {started && <span className="text-small text-text-2 nums">Proj {proj}</span>}
+    </div>
+  )
+}
+
+/** The middle of the matchup card: both win percentages (summing to 100) above a bar split in the two teams' colours. */
+function WinBar({
+  chance,
+  leftName,
+  rightName,
+  rightColor,
+}: {
+  chance: number
+  leftName: string
+  rightName: string
+  rightColor: Team['color_key'] | undefined
+}) {
+  const reduce = useReducedMotion()
+  const left = Math.round(chance * 100)
+  const right = 100 - left
+  // Only transform animates; the bar width is a scaleX. No transition when reduced motion is on.
+  const motion = reduce ? undefined : { transition: 'transform var(--dur-base) var(--ease-out)' }
+  return (
+    <div role="img" aria-label={`Win chance: ${leftName} ${left}%, ${rightName} ${right}%`} className="flex min-w-0 flex-col gap-1.5">
+      <div className="flex items-baseline justify-between nums">
+        <span className="numeral text-body-lg">{left}%</span>
+        <span className="caps-label">Win chance</span>
+        <span className="numeral text-body-lg text-text-2-strong">{right}%</span>
+      </div>
+      <div className="relative h-2 overflow-hidden rounded-chip bg-(--press-fill)">
+        <div className="absolute inset-0 origin-left bg-(--team)" style={{ transform: `scaleX(${chance})`, ...motion }} />
+        <div className="absolute inset-0 origin-right bg-(--team)" style={{ ...teamStyle(rightColor), transform: `scaleX(${1 - chance})`, ...motion }} />
+      </div>
+    </div>
   )
 }
 

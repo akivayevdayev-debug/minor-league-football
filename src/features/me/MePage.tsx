@@ -42,7 +42,7 @@ export default function MePage() {
       <div className="rise relative isolate overflow-hidden rounded-hero">
         <StadiumBackdrop photo="sunset" team={team?.color_key} />
         <header
-          className="glass-hero glass-appear relative flex items-center gap-4 rounded-hero p-4"
+          className="hero-photo glass-appear relative flex items-center gap-4 rounded-hero p-4"
           style={teamStyle(team?.color_key)}
         >
           <PlayerBadge jersey={me?.jersey ?? null} team={team?.color_key} photo={me?.photo_path} size="md" />

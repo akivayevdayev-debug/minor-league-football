@@ -71,7 +71,7 @@ export default function MatchupPage() {
       </button>
 
       {/* Totals stay pinned under the app header while the player rows scroll. */}
-      <header className="rise glass-bar sticky top-[calc(var(--header-top)+var(--header-height))] z-(--z-raised) flex flex-col gap-2 rounded-panel p-3">
+      <header className="rise glass-hero sticky top-[calc(var(--header-top)+var(--header-height))] z-(--z-raised) flex flex-col gap-2 rounded-panel p-3">
         <div className="flex items-center gap-2">
           <span className="caps-label">Matchup{game.week !== null ? ` · Week ${game.week}` : ''}</span>
           <span className="flex-1" />

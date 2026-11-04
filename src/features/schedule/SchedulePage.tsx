@@ -156,42 +156,43 @@ function NextUp({ game, teamById, score, projection, onEditTime, onScore, locked
   const live = game.status === 'live' || game.status === 'halftime'
 
   return (
-    <section
-      aria-label="Next up"
-      className="rise relative isolate flex flex-col gap-4 overflow-hidden rounded-hero px-4 pt-5 pb-4"
-      style={{ '--i': 0 } as CSSProperties}
-    >
+    <div className="rise relative isolate overflow-hidden rounded-hero" style={{ '--i': 0 } as CSSProperties}>
       <StadiumBackdrop photo="field" team={home?.color_key} />
-      <p className="caps-label text-center text-accent">Next up{game.week !== null ? ` · Week ${game.week}` : ''}</p>
+      <section
+        aria-label="Next up"
+        className="glass-hero glass-appear relative flex flex-col gap-4 rounded-hero px-4 pt-5 pb-4"
+      >
+        <p className="caps-label text-center text-accent">Next up{game.week !== null ? ` · Week ${game.week}` : ''}</p>
 
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <HeroSide team={home} />
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+          <HeroSide team={home} />
+          <div className="flex flex-col items-center gap-1">
+            {live ? (
+              <>
+                <Badge variant="live">{game.status === 'live' ? 'Live' : 'Halftime'}</Badge>
+                {score && (
+                  <span className="numeral nums text-headline">
+                    {score.home_points}–{score.away_points}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="brand-type text-title text-text-3">VS</span>
+            )}
+          </div>
+          <HeroSide team={away} />
+        </div>
+
+        <Projection projection={projection} home={home} away={away} className="items-center" />
+
         <div className="flex flex-col items-center gap-1">
-          {live ? (
-            <>
-              <Badge variant="live">{game.status === 'live' ? 'Live' : 'Halftime'}</Badge>
-              {score && (
-                <span className="numeral nums text-headline">
-                  {score.home_points}–{score.away_points}
-                </span>
-              )}
-            </>
-          ) : (
-            <span className="brand-type text-title text-text-3">VS</span>
-          )}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <GameActions game={game} live={live} onScore={onScore} locked={locked} />
+          </div>
+          <TimeButton game={game} onEditTime={onEditTime} locked={locked} />
         </div>
-        <HeroSide team={away} />
-      </div>
-
-      <Projection projection={projection} home={home} away={away} className="items-center" />
-
-      <div className="flex flex-col items-center gap-1">
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <GameActions game={game} live={live} onScore={onScore} locked={locked} />
-        </div>
-        <TimeButton game={game} onEditTime={onEditTime} locked={locked} />
-      </div>
-    </section>
+      </section>
+    </div>
   )
 }
 

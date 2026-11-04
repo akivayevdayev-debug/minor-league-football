@@ -39,27 +39,29 @@ export default function MePage() {
 
   return (
     <section className="flex flex-col gap-5">
-      <header
-        className="rise relative isolate flex items-center gap-4 overflow-hidden rounded-hero p-4"
-        style={teamStyle(team?.color_key)}
-      >
+      <div className="rise relative isolate overflow-hidden rounded-hero">
         <StadiumBackdrop photo="sunset" team={team?.color_key} />
-        <PlayerBadge jersey={me?.jersey ?? null} team={team?.color_key} photo={me?.photo_path} size="md" />
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <h1 className="text-headline leading-none">{me ? displayName(me) : 'You'}</h1>
-          <p className="flex flex-wrap items-center gap-2 text-small text-text-2-strong">
-            {team && <TeamBadge team={team} size="sm" />}
-            <span>{team?.name ?? 'No team yet'}</span>
-          </p>
-          {member.isLeagueManager && (
-            <div>
-              <Badge variant="gold">
-                <Icon name="crown" size="xs" filled /> League manager
-              </Badge>
-            </div>
-          )}
-        </div>
-      </header>
+        <header
+          className="glass-hero glass-appear relative flex items-center gap-4 rounded-hero p-4"
+          style={teamStyle(team?.color_key)}
+        >
+          <PlayerBadge jersey={me?.jersey ?? null} team={team?.color_key} photo={me?.photo_path} size="md" />
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <h1 className="text-headline leading-none">{me ? displayName(me) : 'You'}</h1>
+            <p className="flex flex-wrap items-center gap-2 text-small text-text-2-strong">
+              {team && <TeamBadge team={team} size="sm" />}
+              <span>{team?.name ?? 'No team yet'}</span>
+            </p>
+            {member.isLeagueManager && (
+              <div>
+                <Badge variant="gold">
+                  <Icon name="crown" size="xs" filled /> League manager
+                </Badge>
+              </div>
+            )}
+          </div>
+        </header>
+      </div>
 
       {snap.myRow && (
         <dl className="rise glass-list grid grid-cols-3 gap-3 rounded-panel p-4" style={{ '--i': 1 } as CSSProperties}>

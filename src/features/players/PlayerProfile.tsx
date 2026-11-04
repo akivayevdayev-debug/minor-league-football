@@ -117,28 +117,30 @@ export default function PlayerProfile() {
         Team
       </Link>
 
-      <header
-        style={teamStyle(currentTeam?.color_key)}
-        className="rise relative isolate flex items-center gap-4 overflow-hidden rounded-hero p-4 pt-8"
-      >
+      <div className="rise relative isolate overflow-hidden rounded-hero">
         <StadiumBackdrop photo="sunset" team={currentTeam?.color_key} />
-        <PlayerBadge jersey={player.jersey} team={currentTeam?.color_key} photo={player.photo_path} size="xl" />
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <h1 className="text-headline leading-none break-words">{displayName(player)}</h1>
-          <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-small text-text-2-strong">
-            {currentTeam ? (
-              <span className="font-strong text-(--team-light)">
-                <TeamName name={currentTeam.name} color={currentTeam.color_key} />
-              </span>
-            ) : (
-              <span>{player.is_guest ? 'Guest' : 'No team'}</span>
-            )}
-            {player.positions.length > 0 && <span className="caps-label">{player.positions.join(' · ')}</span>}
-          </p>
-          {player.nickname && <p className="truncate text-small text-text-2">{player.full_name}</p>}
-          {facts && <p className="nums text-small text-text-2">{facts}</p>}
-        </div>
-      </header>
+        <header
+          style={teamStyle(currentTeam?.color_key)}
+          className="glass-hero glass-appear relative flex items-center gap-4 rounded-hero p-4 pt-8"
+        >
+          <PlayerBadge jersey={player.jersey} team={currentTeam?.color_key} photo={player.photo_path} size="xl" />
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <h1 className="text-headline leading-none break-words">{displayName(player)}</h1>
+            <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-small text-text-2-strong">
+              {currentTeam ? (
+                <span className="font-strong text-(--team-light)">
+                  <TeamName name={currentTeam.name} color={currentTeam.color_key} />
+                </span>
+              ) : (
+                <span>{player.is_guest ? 'Guest' : 'No team'}</span>
+              )}
+              {player.positions.length > 0 && <span className="caps-label">{player.positions.join(' · ')}</span>}
+            </p>
+            {player.nickname && <p className="truncate text-small text-text-2">{player.full_name}</p>}
+            {facts && <p className="nums text-small text-text-2">{facts}</p>}
+          </div>
+        </header>
+      </div>
 
       <div className="rise flex flex-wrap gap-2" style={rise(1)}>
         {(member.isOwner || player.id === member.playerId) && (

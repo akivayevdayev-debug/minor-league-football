@@ -138,7 +138,7 @@ function LeaderCard({ row, ctx }: { row: RaceRow; ctx: Ctx }) {
     <Link
       to={`/players/${p.id}`}
       style={{ ...teamStyle(team?.color_key), '--i': 1 } as CSSProperties}
-      className="rise lit pressable glass-list surface-accent-fade flex items-center gap-4 rounded-panel p-4"
+      className="rise lit pressable glass-hero glass-appear flex items-center gap-4 rounded-hero p-4"
     >
       <PlayerBadge jersey={p.jersey} team={team?.color_key} photo={p.photo_path} size="lg" />
       <span className="flex min-w-0 flex-1 flex-col gap-1">
@@ -152,7 +152,7 @@ function LeaderCard({ row, ctx }: { row: RaceRow; ctx: Ctx }) {
         </span>
       </span>
       <span className="flex flex-col items-end">
-        <span className="numeral text-stat text-gold nums">{one(row.perGame)}</span>
+        <span className="numeral-xl text-gold nums">{one(row.perGame)}</span>
         <span className="text-label text-text-2">per game</span>
       </span>
     </Link>

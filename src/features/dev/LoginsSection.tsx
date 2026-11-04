@@ -6,8 +6,8 @@ import { EmptyState } from '../../ui/EmptyState'
 import { Sheet } from '../../ui/Sheet'
 import { Skeleton } from '../../ui/Skeleton'
 import { PasswordOnce } from './TempPassword'
-import { AllResetSheet, SignOutEveryoneSheet } from './AccountSheets'
-import { useLogins, useNow, useSetPassword, type Login } from './devApi'
+import { AllResetSheet, CreateAccountsSheet, SignOutEveryoneSheet } from './AccountSheets'
+import { useLogins, useNow, useSetPassword, type Login, type MissingLogin } from './devApi'
 import { lastSignInText, resetProblemText } from './devLogic'
 
 /** Every login: who, when they last signed in, and a new temporary password for each (not the owner). */
@@ -18,6 +18,12 @@ export function LoginsSection() {
   const [setOpen, setSetOpen] = useState(false)
   const [resetOpen, setResetOpen] = useState(false)
   const [signOutOpen, setSignOutOpen] = useState(false)
+  const [toCreate, setToCreate] = useState<MissingLogin[]>([])
+  const [createOpen, setCreateOpen] = useState(false)
+  const openCreate = (players: MissingLogin[]) => {
+    setToCreate(players)
+    setCreateOpen(true)
+  }
 
   return (
     <section aria-labelledby="logins-title" className="flex flex-col gap-2">
@@ -30,7 +36,7 @@ export function LoginsSection() {
 
       {logins.data && (
         <ul className="glass-list flex flex-col overflow-hidden rounded-panel">
-          {logins.data.map((login) => (
+          {logins.data.logins.map((login) => (
             <li key={login.player_id} className="flex items-center gap-3 border-t border-divider px-3 py-2.5 first:border-t-0">
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <span className="truncate text-body font-medium">
@@ -59,6 +65,30 @@ export function LoginsSection() {
         </ul>
       )}
 
+      {logins.data && logins.data.withoutLogin.length > 0 && (
+        <div className="flex flex-col gap-2 pt-2">
+          <h3 className="caps-label px-3">No account yet</h3>
+          <ul className="glass-list flex flex-col overflow-hidden rounded-panel">
+            {logins.data.withoutLogin.map((p) => (
+              <li key={p.player_id} className="flex items-center gap-3 border-t border-divider px-3 py-2.5 first:border-t-0">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="truncate text-body font-medium">{p.full_name}</span>
+                  <span className="text-small text-text-2">Login name: {p.login_name}</span>
+                </div>
+                <Button size="sm" variant="secondary" onClick={() => openCreate([p])}>
+                  Create account
+                </Button>
+              </li>
+            ))}
+          </ul>
+          {logins.data.withoutLogin.length > 1 && (
+            <Button variant="primary" onClick={() => openCreate(logins.data.withoutLogin)}>
+              Create all {logins.data.withoutLogin.length} accounts
+            </Button>
+          )}
+        </div>
+      )}
+
       <div className="flex flex-col gap-2 pt-2">
         <Button variant="danger" onClick={() => setResetOpen(true)}>Reset everyone's password</Button>
         <Button variant="danger" onClick={() => setSignOutOpen(true)}>Sign everyone out</Button>
@@ -67,6 +97,7 @@ export function LoginsSection() {
       <SetPasswordSheet login={target} open={setOpen} onOpenChange={setSetOpen} />
       <AllResetSheet open={resetOpen} onOpenChange={setResetOpen} />
       <SignOutEveryoneSheet open={signOutOpen} onOpenChange={setSignOutOpen} />
+      <CreateAccountsSheet players={toCreate} open={createOpen} onOpenChange={setCreateOpen} />
     </section>
   )
 }

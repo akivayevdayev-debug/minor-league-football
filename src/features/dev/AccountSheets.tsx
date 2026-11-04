@@ -5,7 +5,7 @@ import { Field } from '../../ui/Field'
 import { Sheet } from '../../ui/Sheet'
 import { copyText } from './clipboard'
 import { CopyButton } from './TempPassword'
-import { useResetEveryone, useSignOutEveryone } from './devApi'
+import { useCreateLogins, useResetEveryone, useSignOutEveryone, type MissingLogin } from './devApi'
 import { formatCopyAll, isResetConfirmed, resetProblemText, type ResetResult } from './devLogic'
 
 /**
@@ -38,30 +38,7 @@ export function AllResetSheet({ open, onOpenChange }: { open: boolean; onOpenCha
   return (
     <Sheet open={open} onOpenChange={handleOpenChange} title="Reset everyone's password" description="Everyone except you gets a new temporary password.">
       {results ? (
-        <div className="flex flex-col gap-4">
-          <p role="alert" className="text-body font-strong text-danger">These show only once. Copy them now.</p>
-          <ul className="flex flex-col gap-2">
-            {results.map((r) => (
-              <li key={r.player_id} className="surface-inset flex flex-col gap-2 rounded-control p-3">
-                <span className="text-body font-medium">
-                  {r.full_name} <span className="text-text-2">({r.login_name})</span>
-                </span>
-                {r.ok && r.temp_password ? (
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="nums text-body font-strong break-all select-all">{r.temp_password}</span>
-                    <CopyButton text={r.temp_password} />
-                  </div>
-                ) : null}
-                {r.ok && resetProblemText(r.problem) && <span className="text-small text-warn">{resetProblemText(r.problem)}</span>}
-                {!(r.ok && r.temp_password) && (
-                  <span className="text-small text-danger">Failed, try Set a new password for this one.</span>
-                )}
-              </li>
-            ))}
-          </ul>
-          <Button variant="outline" onClick={() => void copyText(formatCopyAll(results))}>Copy all</Button>
-          <Button variant="secondary" onClick={() => handleOpenChange(false)}>Done</Button>
-        </div>
+        <PasswordResults results={results} onDone={() => handleOpenChange(false)} failedText="Failed, try Set a new password for this one." />
       ) : (
         <div className="flex flex-col gap-4">
           <p className="text-body text-text-2-strong">
@@ -123,6 +100,86 @@ export function SignOutEveryoneSheet({ open, onOpenChange }: { open: boolean; on
           </Button>
         </div>
       </div>
+    </Sheet>
+  )
+}
+
+/** New temporary passwords, shown once, with Copy for each and Copy all. */
+function PasswordResults({ results, onDone, failedText }: { results: ResetResult[]; onDone(): void; failedText: string }) {
+  return (
+    <div className="flex flex-col gap-4">
+      <p role="alert" className="text-body font-strong text-danger">These show only once. Copy them now.</p>
+      <ul className="flex flex-col gap-2">
+        {results.map((r) => (
+          <li key={r.player_id} className="surface-inset flex flex-col gap-2 rounded-control p-3">
+            <span className="text-body font-medium">
+              {r.full_name || 'Unknown player'} {r.login_name && <span className="text-text-2">({r.login_name})</span>}
+            </span>
+            {r.ok && r.temp_password ? (
+              <div className="flex items-center justify-between gap-2">
+                <span className="nums text-body font-strong break-all select-all">{r.temp_password}</span>
+                <CopyButton text={r.temp_password} />
+              </div>
+            ) : null}
+            {r.ok && resetProblemText(r.problem) && <span className="text-small text-warn">{resetProblemText(r.problem)}</span>}
+            {!(r.ok && r.temp_password) && <span className="text-small text-danger">{failedText}</span>}
+          </li>
+        ))}
+      </ul>
+      <Button variant="outline" onClick={() => void copyText(formatCopyAll(results))}>Copy all</Button>
+      <Button variant="secondary" onClick={onDone}>Done</Button>
+    </div>
+  )
+}
+
+/**
+ * Accounts for players who have none yet (one, or all of them). Each gets a temporary password, shown
+ * once here; they pick their own at first sign-in. The sheet stays open while the server is working.
+ */
+export function CreateAccountsSheet({ players, open, onOpenChange }: { players: MissingLogin[]; open: boolean; onOpenChange(open: boolean): void }) {
+  const create = useCreateLogins()
+  const [results, setResults] = useState<ResetResult[] | null>(null)
+  const one = players.length === 1 ? players[0] : undefined
+
+  function handleOpenChange(next: boolean) {
+    if (!next && create.isPending) return
+    if (!next) {
+      setResults(null)
+      create.reset()
+    }
+    onOpenChange(next)
+  }
+
+  async function run() {
+    try {
+      setResults(await create.mutateAsync(players.map((p) => p.player_id)))
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't reach the Developer tools. Try again.")
+    }
+  }
+
+  const title = one ? `Create an account for ${one.full_name}` : `Create ${players.length} accounts`
+  return (
+    <Sheet open={open} onOpenChange={handleOpenChange} title={title} description="Each new account gets a temporary password once.">
+      {results ? (
+        <PasswordResults results={results} onDone={() => handleOpenChange(false)} failedText="Couldn't create this account. Try again." />
+      ) : (
+        <div className="flex flex-col gap-4">
+          <p className="text-body text-text-2-strong">
+            {one
+              ? `${one.full_name} signs in with the login name "${one.login_name}" and a temporary password, then picks their own.`
+              : `Each player signs in with their login name and a temporary password, then picks their own: ${players.map((p) => p.full_name).join(', ')}.`}
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => handleOpenChange(false)} disabled={create.isPending}>
+              Cancel
+            </Button>
+            <Button variant="primary" className="flex-1" loading={create.isPending} disabled={players.length === 0} onClick={() => void run()}>
+              {one ? 'Create account' : 'Create accounts'}
+            </Button>
+          </div>
+        </div>
+      )}
     </Sheet>
   )
 }

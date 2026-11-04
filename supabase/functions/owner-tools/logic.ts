@@ -23,6 +23,7 @@ export type OwnerAction =
   | { action: 'set_password'; playerId: string }
   | { action: 'reset_everyone'; confirm: 'RESET' }
   | { action: 'sign_out_everyone'; confirm: 'SIGN OUT' }
+  | { action: 'create_logins'; playerIds: string[] }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -39,6 +40,13 @@ export function parseAction(body: unknown): OwnerAction | null {
       return b.confirm === 'RESET' ? { action: 'reset_everyone', confirm: 'RESET' } : null
     case 'sign_out_everyone':
       return b.confirm === 'SIGN OUT' ? { action: 'sign_out_everyone', confirm: 'SIGN OUT' } : null
+    case 'create_logins': {
+      if (!Array.isArray(b.playerIds)) return null
+      const ids = [...new Set(b.playerIds)]
+      if (ids.length < 1 || b.playerIds.length > 50) return null
+      if (!ids.every((id) => typeof id === 'string' && UUID.test(id))) return null
+      return { action: 'create_logins', playerIds: ids as string[] }
+    }
     default:
       return null
   }
@@ -51,4 +59,26 @@ export const KEEP_PASSWORD_LOGINS: string[] = []
 /** Whether "Reset everyone" gives this login a new password: never the owner, never a kept login. */
 export function isResetTarget(l: { is_owner: boolean; login_name: string }): boolean {
   return !l.is_owner && !KEEP_PASSWORD_LOGINS.includes(l.login_name.trim().toLowerCase())
+}
+
+/** The sign-in address behind a login name: "Aaron" → "aaron@mlf.invalid" (same as the app and database). */
+export function loginEmail(loginName: string): string {
+  return `${loginName.trim().toLowerCase()}@mlf.invalid`
+}
+
+export interface MissingLogin {
+  player_id: string
+  full_name: string
+  login_name: string
+}
+
+/** Players (already narrowed to this season's rosters) who have a login name but no account yet, by name. */
+export function missingLogins(
+  players: { id: string; full_name: string; login_name: string | null; is_guest: boolean }[],
+  withAccount: Set<string>,
+): MissingLogin[] {
+  return players
+    .filter((p) => !p.is_guest && (p.login_name ?? '').trim() !== '' && !withAccount.has(p.id))
+    .map((p) => ({ player_id: p.id, full_name: p.full_name, login_name: (p.login_name ?? '').trim().toLowerCase() }))
+    .sort((x, y) => x.full_name.localeCompare(y.full_name))
 }

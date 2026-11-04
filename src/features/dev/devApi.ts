@@ -59,10 +59,31 @@ export const devKeys = {
   dbCheck: ['dev', 'db-check'] as const,
 }
 
+/** A player on this season's roster who has a login name but no account yet. */
+export interface MissingLogin {
+  player_id: string
+  full_name: string
+  login_name: string
+}
+
 export function useLogins() {
   return useQuery({
     queryKey: devKeys.logins,
-    queryFn: async () => (await callOwnerTools<{ logins: Login[] }>({ action: 'list_logins' })).logins,
+    queryFn: async () => {
+      const reply = await callOwnerTools<{ logins: Login[]; without_login?: MissingLogin[] }>({ action: 'list_logins' })
+      return { logins: reply.logins, withoutLogin: reply.without_login ?? [] }
+    },
+  })
+}
+
+/** Makes accounts with temporary passwords. The results go to the caller only (never cached). */
+export function useCreateLogins() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    gcTime: 0,
+    mutationFn: async (playerIds: string[]) =>
+      (await callOwnerTools<{ results: ResetResult[] }>({ action: 'create_logins', playerIds })).results,
+    onSettled: () => queryClient.invalidateQueries({ queryKey: devKeys.logins }),
   })
 }
 

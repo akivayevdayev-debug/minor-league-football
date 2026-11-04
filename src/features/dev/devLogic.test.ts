@@ -8,6 +8,7 @@ import {
   isResetConfirmed,
   lastSignInText,
   parseEditedValue,
+  resetProblemText,
   rowLabel,
   tableLabel,
   toEditText,
@@ -161,5 +162,17 @@ describe('row labels in the record picker', () => {
     expect(rowLabel('roster_memberships', { id: 'r', player_id: 'p1', team_id: 't1', starts_on: '2026-11-01' }, names)).toBe(
       'Leo Cohen · Demons',
     )
+  })
+})
+
+describe('resetProblemText', () => {
+  it('says nothing when every step worked', () => {
+    expect(resetProblemText(undefined)).toBeNull()
+  })
+  it('warns when the sign-out failed', () => {
+    expect(resetProblemText('sign_out')).toMatch(/still be signed in/)
+  })
+  it('warns when the pick-your-own flag failed', () => {
+    expect(resetProblemText('flag')).toMatch(/won't be asked/)
   })
 })

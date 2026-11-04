@@ -11,6 +11,8 @@ export interface ResetResult {
   player_id: string
   ok: boolean
   temp_password?: string
+  /** The password changed, but a later step failed: 'flag' (not asked to pick their own) or 'sign_out' (still signed in). */
+  problem?: 'flag' | 'sign_out'
 }
 
 /** Tables the record editor and the history filter can work with, in menu order. */
@@ -181,4 +183,11 @@ export function rowLabel(table: string, row: Row, names: Map<string, string>): s
     default:
       return text('id')
   }
+}
+
+/** Plain words for a step that failed after the password changed, or null when everything worked. */
+export function resetProblemText(problem: ResetResult['problem']): string | null {
+  if (problem === 'sign_out') return 'Password changed, but they may still be signed in. Press Sign everyone out.'
+  if (problem === 'flag') return "Password changed, but they won't be asked to pick their own. Try Set a new password again."
+  return null
 }

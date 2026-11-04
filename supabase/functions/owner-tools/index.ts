@@ -27,6 +27,14 @@ const secretKey = (): string => {
 const randomBytes = (n: number) => crypto.getRandomValues(new Uint8Array(n))
 
 Deno.serve(async (req) => {
+  try {
+    return await handle(req)
+  } catch {
+    return reply(500, { error: 'Something went wrong on the server. Check the logins list before trying again.' })
+  }
+})
+
+async function handle(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   if (req.method !== 'POST') return reply(405, { error: 'Not allowed.' })
 
@@ -57,13 +65,31 @@ Deno.serve(async (req) => {
   }
 
   // Gives one login a temporary password, marks it "must choose a new one", and signs it out.
+  // Every step is checked. Once the password has changed, the reply always carries it (otherwise that
+  // player is locked out), with `problem` naming any later step that failed so Akiva can redo it.
   const resetOne = async (l: Login) => {
+    const base = { ...nameOf(l), player_id: l.player_id }
     const password = makeTempPassword(randomBytes)
-    const { error } = await admin.auth.admin.updateUserById(l.user_id, { password })
-    if (error) return { ...nameOf(l), player_id: l.player_id, ok: false as const }
-    await admin.from('member_logins').update({ must_change_password: true }).eq('user_id', l.user_id)
-    await admin.rpc('owner_end_sessions', { p_user_ids: [l.user_id] })
-    return { ...nameOf(l), player_id: l.player_id, ok: true as const, temp_password: password }
+    try {
+      const { error } = await admin.auth.admin.updateUserById(l.user_id, { password })
+      if (error) return { ...base, ok: false as const }
+    } catch {
+      return { ...base, ok: false as const }
+    }
+    let problem: 'flag' | 'sign_out' | undefined
+    try {
+      const { error } = await admin.from('member_logins').update({ must_change_password: true }).eq('user_id', l.user_id)
+      if (error) problem = 'flag'
+    } catch {
+      problem = 'flag'
+    }
+    try {
+      const { error } = await admin.rpc('owner_end_sessions', { p_user_ids: [l.user_id] })
+      if (error) problem ??= 'sign_out'
+    } catch {
+      problem ??= 'sign_out'
+    }
+    return { ...base, ok: true as const, temp_password: password, ...(problem ? { problem } : {}) }
   }
 
   switch (action.action) {
@@ -98,4 +124,4 @@ Deno.serve(async (req) => {
       return reply(200, { signed_out_sessions: data })
     }
   }
-})
+}

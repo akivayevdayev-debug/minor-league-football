@@ -8,7 +8,7 @@ import { Skeleton } from '../../ui/Skeleton'
 import { PasswordOnce } from './TempPassword'
 import { AllResetSheet, SignOutEveryoneSheet } from './AccountSheets'
 import { useLogins, useNow, useSetPassword, type Login } from './devApi'
-import { lastSignInText } from './devLogic'
+import { lastSignInText, resetProblemText } from './devLogic'
 
 /** Every login: who, when they last signed in, and a new temporary password for each (not the owner). */
 export function LoginsSection() {
@@ -96,6 +96,8 @@ function SetPasswordSheet({ login, open, onOpenChange }: { login: Login | null; 
       const result = await setPassword.mutateAsync(login.player_id)
       if (result.ok && result.temp_password) {
         setShown({ name: result.full_name, password: result.temp_password })
+        const problem = resetProblemText(result.problem)
+        if (problem) toast.warning(problem)
       } else {
         toast.error(`Couldn't set a new password for ${name}. Try again.`)
       }

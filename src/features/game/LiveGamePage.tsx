@@ -195,16 +195,28 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
       setKickoff(true)
       return
     }
+    // Kickoff lineups are saved once the game is live: before that only Akiva and Eddie may write them.
+    const kickoffLineups: { teamId: string; onField: string[] }[] = []
     if (kickoff) {
       for (const { team, roster } of needLineup) {
         const sits = benchPicks[team.id]
-        if (sits) saveLineup(team.id, roster.filter((p) => p.id !== sits).map((p) => p.id))
+        if (sits) kickoffLineups.push({ teamId: team.id, onField: roster.filter((p) => p.id !== sits).map((p) => p.id) })
       }
       setKickoff(false)
     }
     setClock.mutate(
       { clock: { running: true, started_at: serverNowIso(offset), seconds_left: leftNow(), half }, status: 'live', seen: c },
-      { onError: failClock },
+      {
+        onError: failClock,
+        onSuccess: (saved) => {
+          for (const l of kickoffLineups) {
+            setLineup.mutate(
+              { id: crypto.randomUUID(), team_id: l.teamId, on_field: l.onField, half: saved.half, clock_seconds: saved.seconds_left },
+              { onError: fail },
+            )
+          }
+        },
+      },
     )
   }
   /** Saves the quarterbacks, then carries straight on to the start that asked for them. */

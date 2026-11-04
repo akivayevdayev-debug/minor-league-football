@@ -88,14 +88,14 @@ export function TradesSection({ seasonId, teams, canDecide }: { seasonId: string
         Trades
       </h2>
       {pending.length > 0 && (
-        <ul className="glass-panel divide-y divide-(--glass-groove) overflow-hidden rounded-panel" aria-label="Pending trades">
+        <ul className="glass-list divide-y divide-(--glass-groove) overflow-hidden rounded-panel" aria-label="Pending trades">
           {pending.map(row)}
         </ul>
       )}
       {history.length > 0 && (
         <div className="flex flex-col gap-2">
           <h3 className="caps-label">History</h3>
-          <ul className="glass-panel divide-y divide-(--glass-groove) overflow-hidden rounded-panel" aria-label="Trade history">
+          <ul className="glass-list divide-y divide-(--glass-groove) overflow-hidden rounded-panel" aria-label="Trade history">
             {history.map(row)}
           </ul>
         </div>

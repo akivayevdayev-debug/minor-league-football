@@ -94,7 +94,7 @@ export function LeagueLeaders() {
                 aria-pressed={picked === stat.value}
                 onClick={() => setPicked(stat.value)}
                 style={teamStyle(team?.color_key)}
-                className="lit pressable lift glass-subtle flex w-40 flex-col gap-2 rounded-panel border-2 p-3 text-left aria-pressed:border-gold"
+                className="lit pressable lift glass-list flex w-40 flex-col gap-2 rounded-panel border-2 p-3 text-left aria-pressed:border-gold"
               >
                 {body}
               </button>

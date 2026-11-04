@@ -62,14 +62,14 @@ export default function MePage() {
       </header>
 
       {snap.myRow && (
-        <dl className="rise glass-panel grid grid-cols-3 gap-3 rounded-panel p-4" style={{ '--i': 1 } as CSSProperties}>
+        <dl className="rise glass-list grid grid-cols-3 gap-3 rounded-panel p-4" style={{ '--i': 1 } as CSSProperties}>
           <StatBox label="Record" value={recordText(snap.myRow)} />
           <StatBox label="Rank" value={ordinal(snap.myRow.rank)} accent={snap.myRow.rank === 1} />
           <StatBox label="PF" value={snap.myRow.points_for} count />
         </dl>
       )}
 
-      <ul className="rise glass-panel flex flex-col overflow-hidden rounded-panel" style={{ '--i': 2 } as CSSProperties}>
+      <ul className="rise glass-list flex flex-col overflow-hidden rounded-panel" style={{ '--i': 2 } as CSSProperties}>
         <Row icon="me" label="My profile" to={`/players/${member.playerId}`} />
         <Row icon="rules" label="Rulebook" hint="Every league rule, searchable" to="/rules" />
         <Row icon="lock" label="Change password" onClick={() => setPassword(true)} />
@@ -78,7 +78,7 @@ export default function MePage() {
         {member.isOwner && <Row icon="tools" label="Developer tools" hint="For Akiva only" to="/dev" />}
       </ul>
 
-      <ul className="rise glass-panel overflow-hidden rounded-panel" style={{ '--i': 3 } as CSSProperties}>
+      <ul className="rise glass-list overflow-hidden rounded-panel" style={{ '--i': 3 } as CSSProperties}>
         <li>
           <button
             type="button"
@@ -93,7 +93,7 @@ export default function MePage() {
 
       <section aria-labelledby="about-title" className="rise flex flex-col gap-2" style={{ '--i': 4 } as CSSProperties}>
         <h2 id="about-title" className="caps-label px-3">About</h2>
-        <ul className="glass-subtle flex flex-col overflow-hidden rounded-panel">
+        <ul className="glass-list flex flex-col overflow-hidden rounded-panel">
           <li className="flex min-h-(--tap-min) items-center gap-3 px-3 py-2.5">
             <Icon name="info" size="sm" className="text-text-3" />
             <span className="flex-1 text-body">Version</span>

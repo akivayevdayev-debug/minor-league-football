@@ -99,7 +99,7 @@ export default function MatchupPage() {
         <p className="caps-label text-center">{started ? 'Fantasy points · projected under each' : 'Projected fantasy points'}</p>
       </header>
 
-      <ul className="rise glass-panel divide-y divide-(--glass-groove) overflow-hidden rounded-panel" style={{ '--i': 1 } as CSSProperties}>
+      <ul className="rise glass-list divide-y divide-(--glass-groove) overflow-hidden rounded-panel" style={{ '--i': 1 } as CSSProperties}>
         {pairs.map(([h, a], i) => (
           <li key={`${h?.playerId ?? '-'}-${a?.playerId ?? '-'}-${i}`} className="grid grid-cols-[1fr_auto_1fr] items-stretch">
             <Side row={h} player={h ? playerById.get(h.playerId) : undefined} team={home} onPoints={setPointsFor} />

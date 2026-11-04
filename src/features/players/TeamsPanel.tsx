@@ -53,7 +53,7 @@ export function TeamsPanel() {
           <section
             key={team.id}
             style={{ ...teamStyle(team.color_key), '--i': Math.min(i, 8) } as CSSProperties}
-            className="rise glass-panel flex flex-col gap-3 rounded-panel p-3"
+            className="rise glass-list flex flex-col gap-3 rounded-panel p-3"
           >
             <header className="flex items-center gap-3">
               <TeamBadge team={team} size="md" />

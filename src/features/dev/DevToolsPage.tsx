@@ -58,7 +58,7 @@ function AppInfo() {
   return (
     <section aria-labelledby="info-title" className="flex flex-col gap-2">
       <h2 id="info-title" className="caps-label px-3">App info</h2>
-      <ul className="glass-subtle flex flex-col overflow-hidden rounded-panel">
+      <ul className="glass-list flex flex-col overflow-hidden rounded-panel">
         <AppInfoRow label="Version" value={__APP_VERSION__} />
         <AppInfoRow
           label="Database"

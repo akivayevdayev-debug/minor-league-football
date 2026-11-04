@@ -267,7 +267,7 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
 
   /** "Who scored?" after a score button, in either layout. */
   const whoScored = askScorer && status !== 'final' && (
-    <section aria-label="Who scored?" style={teamStyle(teamById.get(askScorer.team_id)?.color_key)} className="glass-subtle flex flex-col gap-3 rounded-panel p-3">
+    <section aria-label="Who scored?" style={teamStyle(teamById.get(askScorer.team_id)?.color_key)} className="surface-solid flex flex-col gap-3 rounded-panel p-3">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-body">
           Who scored the {TYPE_LABEL[askScorer.scoring_type_id]?.toLowerCase()} for {teamById.get(askScorer.team_id)?.short_name}?
@@ -437,7 +437,7 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
       </header>
 
       {/* Scoreboard */}
-      <section aria-label="Score" className="relative isolate overflow-hidden rounded-hero glass-panel px-4 pt-6 pb-5">
+      <section aria-label="Score" className="relative isolate overflow-hidden rounded-hero surface-solid px-4 pt-6 pb-5">
         <StadiumBackdrop photo="lights" />
         <div aria-hidden="true" style={teamStyle(home.color_key)} className="score-light left-0" />
         <div aria-hidden="true" style={{ ...teamStyle(away.color_key), '--light-x': '70%' } as CSSProperties} className="score-light right-0" />

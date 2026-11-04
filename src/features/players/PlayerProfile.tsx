@@ -169,7 +169,7 @@ export default function PlayerProfile() {
       )}
 
       {upcoming && (
-        <section className="rise glass-panel flex items-center justify-between gap-3 rounded-panel p-3" style={rise(2)}>
+        <section className="rise glass-list flex items-center justify-between gap-3 rounded-panel p-3" style={rise(2)}>
           <div className="flex min-w-0 flex-col gap-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-body-lg">Next game</h2>
@@ -200,7 +200,7 @@ export default function PlayerProfile() {
         ) : totals.games === 0 ? (
           <p className="text-small text-text-2">{career ? 'No games played yet.' : `No games played in ${scopeName} yet.`}</p>
         ) : (
-          <div className="glass-panel flex flex-col gap-3 rounded-panel p-3">
+          <div className="glass-list flex flex-col gap-3 rounded-panel p-3">
             <dl className="grid grid-cols-3 gap-2">
               <StatBox label="Fantasy pts" value={fmtPoints(Math.round(totals.points * 10) / 10)} accent title="Fantasy points from final games" />
               <StatBox label="Games" value={totals.games} count title="Final games played" />
@@ -256,7 +256,7 @@ export default function PlayerProfile() {
       {!career && played.seconds > 0 && (
         <section className="rise flex flex-col gap-2" style={rise(2)}>
           <h2 className="text-body-lg">Playing time</h2>
-          <dl className="glass-panel grid grid-cols-4 gap-x-2 gap-y-3 rounded-panel p-3">
+          <dl className="glass-list grid grid-cols-4 gap-x-2 gap-y-3 rounded-panel p-3">
             <StatBox label="MIN" value={Math.round(played.seconds / 60)} count title={`${minutesText(played.seconds)} on the field in ${played.gameIds.length} tracked ${played.gameIds.length === 1 ? 'game' : 'games'}`} />
             {(['rec', 'td', 'int'] as const).map((k) => (
               <StatBox

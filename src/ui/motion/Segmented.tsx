@@ -49,7 +49,7 @@ export function Segmented<T extends string>({ label, value, onChange, options, c
       <TabsPrimitive.List
         ref={listRef}
         aria-label={label}
-        className="glass-bar relative grid auto-cols-fr grid-flow-col gap-1 rounded-pill p-1"
+        className="glass-flat relative grid auto-cols-fr grid-flow-col gap-1 rounded-pill p-1"
       >
         {pill && (
           <motion.span

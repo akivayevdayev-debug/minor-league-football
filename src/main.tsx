@@ -14,6 +14,11 @@ if (!root) throw new Error('Missing #root element')
 installPointerEffects()
 installGlassLens()
 
+// Pause background motion while the app is hidden (see glass.css).
+const markHidden = () => document.documentElement.toggleAttribute('data-hidden', document.hidden)
+document.addEventListener('visibilitychange', markHidden)
+markHidden()
+
 createRoot(root).render(
   <StrictMode>
     <App />

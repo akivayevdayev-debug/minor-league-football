@@ -16,7 +16,7 @@ const buttonVariants = cva(
         primary:
           'pressable sheen rounded-pill bg-primary text-primary-ink shadow-glass hover-fine:brightness-95',
         team: 'pressable rounded-pill bg-(--team,var(--primary)) text-primary-ink shadow-glass hover-fine:brightness-110',
-        secondary: 'pressable lit glass-subtle rounded-control text-text hover-fine:border-border-strong',
+        secondary: 'pressable lit glass-flat rounded-control text-text hover-fine:border-border-strong',
         outline:
           'pressable rounded-control border border-border-strong bg-transparent text-text hover-fine:border-text-2 hover-fine:bg-(--row-hover)',
         ghost: 'pressable rounded-control bg-transparent text-text-2-strong hover-fine:bg-(--row-hover) hover-fine:text-text',

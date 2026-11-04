@@ -210,7 +210,7 @@ export default function TeamPage() {
       </nav>
 
       {/* Players: this week's QB on top, then the roster, with projected and actual points. */}
-      <section aria-labelledby="lineup-title" className="rise glass-panel overflow-hidden rounded-panel" style={{ '--i': 3 } as CSSProperties}>
+      <section aria-labelledby="lineup-title" className="rise glass-list overflow-hidden rounded-panel" style={{ '--i': 3 } as CSSProperties}>
         <header className="surface-accent-fade flex items-center gap-2 px-3 py-2">
           <h2 id="lineup-title" className="flex-1 text-body font-strong">
             Players <span className="text-text-2 nums">· {lineup.length}</span>
@@ -240,7 +240,7 @@ export default function TeamPage() {
       </section>
 
       {freeAgents.length > 0 && (
-        <section aria-labelledby="league-title" className="rise glass-panel overflow-hidden rounded-panel" style={{ '--i': 4 } as CSSProperties}>
+        <section aria-labelledby="league-title" className="rise glass-list overflow-hidden rounded-panel" style={{ '--i': 4 } as CSSProperties}>
           <header className="flex items-center gap-2 px-3 py-2">
             <h2 id="league-title" className="flex-1 text-body font-strong">
               QB official
@@ -267,7 +267,7 @@ export default function TeamPage() {
               Schedule
             </Link>
           </div>
-          <ul className="glass-panel divide-y divide-(--glass-groove) overflow-hidden rounded-panel">
+          <ul className="glass-list divide-y divide-(--glass-groove) overflow-hidden rounded-panel">
             {recent.map((g) => (
               <ResultRow key={g.id} game={g} teamId={teamId} teamById={snap.teamById} score={scores.data?.get(g.id)} />
             ))}

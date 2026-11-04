@@ -154,6 +154,26 @@
     .glass-list { background: var(--glass-fallback); }
   }
 
+  /* Small controls inside the page (secondary buttons, switchers): the glass-bar look with no blur.
+     Blur is kept for the top bar, tab bar and sheets, so a screen never has more than a few. */
+  .glass-flat {
+    background: var(--glass-sheen), var(--glass-bar-fill);
+    border: var(--border-width) solid var(--glass-border);
+    border-top-color: var(--glass-edge);
+    border-bottom-color: var(--glass-rim-dim);
+    box-shadow: var(--glass-specular);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .glass-flat { background: var(--glass-fallback); }
+  }
+
+  /* Background motion stops while the app is hidden (set in main.tsx), so it costs no battery. */
+  html[data-hidden] *,
+  html[data-hidden] *::before,
+  html[data-hidden] *::after {
+    animation-play-state: paused !important;
+  }
+
   /* Solid rows for long lists. */
   .surface-solid {
     background: var(--panel);

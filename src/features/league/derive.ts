@@ -67,12 +67,17 @@ export const STAT_LABELS = [
   ['target', 'Tgt', 'Targets'],
   ['drop', 'Drops', 'Drops'],
   ['td', 'TD', 'Touchdowns'],
+  ['pass_td', 'Pass TD', 'Passing touchdowns'],
+  ['completion', 'Cmp', 'Completions'],
+  ['qb_rush_td', 'Rush TD', 'QB rushing touchdowns'],
+  ['int_thrown', 'INT thr', 'Interceptions thrown'],
   ['fumble', 'Fum', 'Fumbles'],
   ['int', 'INT', 'Interceptions'],
   ['pick6', 'Pick 6', 'Pick 6'],
   ['conv1', '1-pt', '1-point conversions'],
   ['conv2', '2-pt', '2-point conversions'],
   ['block', 'Blk', 'Blocks'],
+  ['sack', 'Sack', 'Sacks'],
   ['conv_old', 'Conv', 'Conversions (old sheet)'],
 ] as const
 

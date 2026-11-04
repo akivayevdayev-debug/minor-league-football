@@ -11,3 +11,17 @@ export const tabs: { to: string; label: string; icon: IconName }[] = [
 export function activeTabIndex(pathname: string) {
   return tabs.findIndex((t) => pathname === t.to || pathname.startsWith(`${t.to}/`))
 }
+
+/** Sub-pages (not a tab) and the tab they belong to, for links opened straight from outside. */
+const PARENT: { prefix: string; tab: string }[] = [
+  { prefix: '/rules', tab: '/me' },
+  { prefix: '/dev', tab: '/me' },
+]
+
+/** The tab a page belongs to. Tab pages are themselves; team sub-pages and unknown pages go to Team. */
+export function parentTabIndex(pathname: string) {
+  const direct = activeTabIndex(pathname)
+  if (direct >= 0) return direct
+  const match = PARENT.find((p) => pathname === p.prefix || pathname.startsWith(`${p.prefix}/`))
+  return match ? tabs.findIndex((t) => t.to === match.tab) : 0
+}

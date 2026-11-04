@@ -1,5 +1,5 @@
 import { useMemo, useState, type CSSProperties } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { currentTeams, displayName, useGameScores, useGames, usePlayers, useRosters, useTeams } from '../league'
 import { useGame, useLiveGame } from '../game/api'
@@ -7,7 +7,6 @@ import { formatGameTime, ZONE_LABEL } from '../../lib/time'
 import type { Player, Team } from '../../types/db'
 import { EmptyState } from '../../ui/EmptyState'
 import { ErrorState } from '../../ui/ErrorState'
-import { Icon } from '../../ui/Icon'
 import { PlayerBadge } from '../../ui/PlayerBadge'
 import { Skeleton } from '../../ui/Skeleton'
 import { TeamBadge } from '../../ui/TeamBadge'
@@ -22,7 +21,6 @@ import { fmtPoints, pairByPosition, type WeekRow } from './week'
  */
 export default function MatchupPage() {
   const { id } = useParams()
-  const navigate = useNavigate()
   // The game is loaded on its own, so a link to any season's game works.
   const gameQuery = useGame(id)
   const game = gameQuery.data ?? null
@@ -61,15 +59,6 @@ export default function MatchupPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <button
-        type="button"
-        onClick={() => navigate(-1)}
-        className="pressable -ml-2 flex min-h-(--tap-min) w-fit items-center gap-1 bg-transparent px-2 caps-label hover-fine:text-accent"
-      >
-        <Icon name="back" size="xs" />
-        Back
-      </button>
-
       {/* Totals stay pinned under the app header while the player rows scroll. */}
       <header className="rise glass-hero sticky top-[calc(var(--header-top)+var(--header-height))] z-(--z-raised) flex flex-col gap-2 rounded-panel p-3">
         <div className="flex items-center gap-2">

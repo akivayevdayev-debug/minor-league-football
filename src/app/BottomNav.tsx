@@ -1,16 +1,15 @@
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { Icon } from '../ui/Icon'
 import { houseSpring } from '../ui/motion'
-import { activeTabIndex, tabs } from './tabs'
+import { tabs } from './tabs'
 
 /**
  * Floating liquid-glass tab bar (iOS 26 style): a clear capsule, and a brighter glass lens
  * that glides to the active tab. The active icon pops once when chosen.
+ * On a sub-page the tab it belongs to stays lit (`onTabPage` false).
  */
-export function BottomNav() {
-  const { pathname } = useLocation()
-  const activeIndex = activeTabIndex(pathname)
+export function BottomNav({ activeIndex, onTabPage }: { activeIndex: number; onTabPage: boolean }) {
 
   return (
     <nav aria-label="Main" className="pointer-events-none fixed inset-x-0 bottom-0 z-(--z-nav) px-(--nav-inset) pb-(--nav-gap)">
@@ -21,7 +20,7 @@ export function BottomNav() {
             <li key={tab.to} className="flex">
               <NavLink
                 to={tab.to}
-                aria-current={isActive ? 'page' : undefined}
+                aria-current={isActive ? (onTabPage ? 'page' : 'true') : undefined}
                 className={`pressable relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-pill text-label font-strong ${
                   isActive ? 'text-text' : 'text-text-2 hover-fine:text-text'
                 }`}

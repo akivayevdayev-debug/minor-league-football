@@ -3,8 +3,9 @@ import { Link, Outlet, useLocation } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
 import { BottomNav } from './BottomNav'
 import { PullToRefresh } from './PullToRefresh'
-import { activeTabIndex } from './tabs'
+import { activeTabIndex, parentTabIndex, tabs } from './tabs'
 import { useCurrentSeason } from '../features/league'
+import { BackButton } from '../ui/BackButton'
 import { BrandMark } from '../ui/BrandMark'
 import { durationToken, easeToken, numberToken } from '../ui/motion/spring'
 
@@ -22,6 +23,10 @@ export function AppShell() {
   if (nav.index !== index) setNav({ index, dir: index < 0 || nav.index < 0 ? 0 : index > nav.index ? 1 : -1 })
   const dir = nav.dir
   const slide = reduce ? 0 : numberToken('--slide') * dir
+  // On a sub-page the bar keeps the tab you came from lit (or the page's own tab when opened from a link).
+  const [lastTab, setLastTab] = useState(() => parentTabIndex(pathname))
+  if (index >= 0 && index !== lastTab) setLastTab(index)
+  const litTab = index >= 0 ? index : lastTab
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -62,12 +67,13 @@ export function AppShell() {
             animate={{ opacity: 1, transform: 'translateX(0px)' }}
             transition={{ duration: durationToken('--dur-drill'), ease: easeToken('--ease-out') }}
           >
+            {index < 0 && <div className="mb-2"><BackButton fallback={tabs[litTab]?.to ?? '/team'} /></div>}
             <Outlet />
           </motion.div>
         </main>
       </PullToRefresh>
 
-      <BottomNav />
+      <BottomNav activeIndex={litTab} onTabPage={index >= 0} />
     </div>
   )
 }

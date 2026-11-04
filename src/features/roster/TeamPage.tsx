@@ -36,9 +36,9 @@ import { TeamPhotosSheet } from './TeamPhotosSheet'
 import { TradeSheet } from './TradeSheet'
 import { TradesSection } from './TradesSection'
 import { useLiveGame } from '../game/api'
-import { PointsSheet, TeamPlayerRow } from '../team/WeekRows'
+import { TeamStatsTable } from '../team/TeamStatsTable'
 import { useGameWeek } from '../team/useTeamWeek'
-import { fmtPoints, weekGame, type WeekRow } from '../team/week'
+import { fmtPoints, opponentOf, weekGame } from '../team/week'
 import { canDecideTrades, canEditTeam, canMovePlayers, isCaptainOf } from './permissions'
 
 type Open = 'stats' | 'trade' | 'guest' | 'move' | 'score' | 'edit' | 'photos' | null
@@ -64,7 +64,6 @@ export default function TeamPage() {
   const [focus, setFocus] = useState<Player | null>(null)
   const [actionsFor, setActionsFor] = useState<Player | null>(null)
   const [sheetKey, setSheetKey] = useState(0)
-  const [pointsFor, setPointsFor] = useState<WeekRow | null>(null)
 
   const teamOf = useMemo(() => currentTeams(rosters.data ?? [], snap.teams), [rosters.data, snap.teams])
   const teamId = (picked && snap.teamById.has(picked) ? picked : null) ?? snap.myTeam?.id ?? snap.teams[0]?.id ?? ''
@@ -141,7 +140,7 @@ export default function TeamPage() {
       </header>
 
       {/* Hero: crest, record, points for and against, then this week's game with projected vs actual. */}
-      <section aria-label={`${team.name} summary`} className="rise relative isolate flex flex-col gap-3 overflow-hidden rounded-hero p-4" style={{ '--i': 1 } as CSSProperties}>
+      <section aria-label={`${team.name} summary`} className="rise glass-hero glass-appear relative isolate flex flex-col gap-3 overflow-hidden rounded-hero p-4" style={{ '--i': 1 } as CSSProperties}>
         <StadiumBackdrop photo="lights" team={team.color_key} src={teamPhoto} />
         <div className="flex items-center gap-3">
           <TeamBadge team={team} size="lg" />
@@ -209,33 +208,24 @@ export default function TeamPage() {
         ))}
       </nav>
 
-      {/* Players: this week's QB on top, then the roster, with projected and actual points. */}
-      <section aria-labelledby="lineup-title" className="rise glass-list overflow-hidden rounded-panel" style={{ '--i': 3 } as CSSProperties}>
-        <header className="surface-accent-fade flex items-center gap-2 px-3 py-2">
+      {/* Players: this week's QB on top, then the roster, with this week's or the season's stats. */}
+      <section aria-labelledby="lineup-title" className="rise flex flex-col gap-3" style={{ '--i': 3 } as CSSProperties}>
+        <header className="flex items-center gap-2 px-1">
           <h2 id="lineup-title" className="flex-1 text-body font-strong">
             Players <span className="text-text-2 nums">· {lineup.length}</span>
           </h2>
-          <span className="caps-label">{mine.actual !== null ? 'Pts · tap for how' : 'Projected pts'}</span>
         </header>
         {mine.rows.length === 0 ? (
-          <p className="px-3 py-4 text-small text-text-2">No one on this team yet. Use Move player to add someone.</p>
+          <p className="glass-list rounded-panel px-3 py-4 text-small text-text-2">No one on this team yet. Use Move player to add someone.</p>
         ) : (
-          <ul className="divide-y divide-(--glass-groove)">
-            {mine.rows.map((r) => {
-              const p = playerById.get(r.playerId)
-              return (
-                <TeamPlayerRow
-                  key={r.playerId}
-                  row={r}
-                  player={p}
-                  team={team}
-                  onField={mine.onField.has(r.playerId)}
-                  onOpen={() => p && setActionsFor(p)}
-                  onPoints={() => setPointsFor(r)}
-                />
-              )
-            })}
-          </ul>
+          <TeamStatsTable
+            side={mine}
+            team={team}
+            opponent={week ? snap.teamById.get(opponentOf(week, teamId) ?? '') : undefined}
+            seasonId={snap.season?.id}
+            playerById={playerById}
+            onOpenPlayer={(p) => setActionsFor(p)}
+          />
         )}
       </section>
 
@@ -274,13 +264,6 @@ export default function TeamPage() {
           </ul>
         </section>
       )}
-
-      <PointsSheet
-        row={pointsFor ? (mine.rows.find((r) => r.playerId === pointsFor.playerId) ?? pointsFor) : null}
-        player={pointsFor ? playerById.get(pointsFor.playerId) : undefined}
-        statPoints={gw.statPoints}
-        onClose={() => setPointsFor(null)}
-      />
 
       {/* Player actions */}
       <Sheet open={!!actionsFor} onOpenChange={(o) => !o && setActionsFor(null)} title={actionsFor ? displayName(actionsFor) : 'Player'}>

@@ -72,7 +72,7 @@ export default function MvpPage() {
   const ctx = { ...data, sub }
 
   return (
-    <section className="flex flex-col gap-6">
+    <section className="flex flex-col gap-8">
       <header className="rise flex items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
           <h1 className="text-headline leading-none">MVP race</h1>
@@ -83,7 +83,7 @@ export default function MvpPage() {
         {canPin && (
           <Button size="sm" variant="secondary" onClick={() => setPinning(true)}>
             <Icon name="pin" size="xs" />
-            Pin
+            Pin place
           </Button>
         )}
       </header>
@@ -171,7 +171,7 @@ function WeekStars({ stars, ctx }: { stars: WeekStar[]; ctx: Ctx }) {
         <Link to={`/players/${p.id}`} style={teamStyle(team?.color_key)} className="pressable glass-list flex items-center gap-3 rounded-panel p-3">
           <PlayerBadge jersey={p.jersey} team={team?.color_key} photo={p.photo_path} size="md" />
           <span className="flex min-w-0 flex-1 flex-col">
-            <span className="caps-label">Week {star.week}</span>
+            <span className="text-label text-text-2">Week {star.week}</span>
             <span className="truncate text-body font-strong">{displayName(p)}</span>
             <span className="truncate text-small text-text-2">{star.reason || ctx.sub(p)}</span>
           </span>
@@ -255,7 +255,7 @@ function RaceList({ rows, ctx }: { rows: RaceRow[]; ctx: Ctx }) {
 function Waiting({ rows, ctx }: { rows: { playerId: string; points: number; games: number; needed: number }[]; ctx: Ctx }) {
   return (
     <section aria-labelledby="mvp-waiting" className="flex flex-col gap-2">
-      <h2 id="mvp-waiting" className="caps-label">Not enough games yet</h2>
+      <h2 id="mvp-waiting" className="text-body-lg">Not enough games yet</h2>
       <ul className="glass-list divide-y divide-(--glass-groove) overflow-hidden rounded-panel">
         {rows.map((w) => {
           const p = ctx.playerById.get(w.playerId)
@@ -349,8 +349,8 @@ function PinSheet({
         </Select>
         {pins.length > 0 && (
           <section className="flex flex-col gap-2">
-            <h3 className="caps-label">Pinned now</h3>
-            <ul className="glass-list divide-y divide-(--glass-groove) overflow-hidden rounded-panel">
+            <h3 className="text-small font-strong text-text-2">Current pins</h3>
+            <ul className="glass-flat divide-y divide-(--glass-groove) overflow-hidden rounded-panel">
               {pins.map((p) => (
                 <li key={p.id} className="flex items-center gap-3 px-3 py-2">
                   <span className="numeral w-6 text-center nums">{p.place}</span>

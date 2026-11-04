@@ -74,7 +74,7 @@ export default function SchedulePage() {
   const statsTeams = statsFor ? teamsOf(statsFor, teamById) : null
 
   return (
-    <section className="flex flex-col gap-6">
+    <section className="flex flex-col gap-8">
       <SeasonSelect />
       <header className="rise flex flex-wrap items-end justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
@@ -102,7 +102,7 @@ export default function SchedulePage() {
             </h2>
             <ul className="glass-list divide-y divide-divider overflow-hidden rounded-panel">
               {list.map((g, i) => (
-                <li key={g.id} className="rise px-3 py-2" style={{ '--i': Math.min(i, 8) } as CSSProperties}>
+                <li key={g.id} className="rise px-3 py-3"style={{ '--i': Math.min(i, 8) } as CSSProperties}>
                   <GameRow {...rowProps(g)} />
                 </li>
               ))}
@@ -171,7 +171,7 @@ function NextUp({ game, teamById, score, projection, onEditTime, onScore, locked
               <>
                 <Badge variant="live">{game.status === 'live' ? 'Live' : 'Halftime'}</Badge>
                 {score && (
-                  <span className="numeral nums text-headline">
+                  <span className="numeral-xl nums">
                     {score.home_points}–{score.away_points}
                   </span>
                 )}
@@ -200,7 +200,7 @@ function HeroSide({ team }: { team: Team | undefined }) {
   return (
     <div className="flex min-w-0 flex-col items-center gap-2 text-center" style={teamStyle(team?.color_key)}>
       <TeamBadge team={team} size="md" />
-      <span className="w-full text-balance font-display text-title leading-tight font-bold uppercase">{team?.name ?? 'To be decided'}</span>
+      <span className="w-full truncate font-display text-title leading-tight font-bold uppercase">{team?.short_name ?? 'To be decided'}</span>
     </div>
   )
 }
@@ -229,7 +229,7 @@ function GameRow({ game, teamById, score, projection, onEditTime, onScore, onSta
             <button
               type="button"
               onClick={onScore}
-              aria-label="Fix the final score"
+              aria-label="Fix final score"
               className="pressable flex min-h-(--tap-min) flex-col items-center justify-center gap-0.5 rounded-control bg-transparent px-2 hover-fine:bg-(--row-hover)"
             >
               <span className="caps-label">Final</span>
@@ -248,7 +248,7 @@ function GameRow({ game, teamById, score, projection, onEditTime, onScore, onSta
         <div className="flex justify-center">
           <Button size="sm" variant="ghost" onClick={onStats}>
             <Icon name="edit" size="xs" />
-            Stats
+            View stats
           </Button>
         </div>
       )}
@@ -331,7 +331,7 @@ function TimeButton({ game, onEditTime, locked }: { game: Game; onEditTime(): vo
   const time = game.starts_at ? `${formatGameTime(game.starts_at)} ${ZONE_LABEL}` : 'Set time'
   if (locked)
     return (
-      <span className="flex min-h-(--tap-min) flex-col items-center justify-center gap-0.5 caps-label">
+      <span className="flex min-h-(--tap-min) flex-col items-center justify-center gap-0.5 text-small text-text-2">
         <span className="nums">{game.starts_at ? time : '–'}</span>
       </span>
     )
@@ -340,7 +340,7 @@ function TimeButton({ game, onEditTime, locked }: { game: Game; onEditTime(): vo
       type="button"
       onClick={onEditTime}
       aria-label={`Change time${game.starts_at ? `, now ${time}` : ''}`}
-      className="pressable flex min-h-(--tap-min) flex-col items-center justify-center gap-0.5 caps-label hover-fine:text-accent"
+      className="pressable flex min-h-(--tap-min) flex-col items-center justify-center gap-0.5 text-small text-text-2 hover-fine:text-accent"
     >
       <span className="nums">{time}</span>
       <Icon name="edit" size="xs" className="text-text-3" />

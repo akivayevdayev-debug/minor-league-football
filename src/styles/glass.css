@@ -120,7 +120,7 @@
 
   /* While the screen is dragged down to reload, panels skip their blur: re-blurring every card on
      each frame is what made the drag stutter. Set by PullToRefresh for the length of the drag. */
-  html[data-pulling] :is(.glass-subtle, .glass-panel, .glass-strong, .glass-bar) {
+  html[data-pulling] :is(.glass-subtle, .glass-panel, .glass-strong, .glass-bar, .glass-hero) {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
   }
@@ -144,7 +144,7 @@
   /* Long lists: the same clear fill, rim and highlight as glass, but no blur (cheap on long pages).
      The moving background lights are already soft, so they read as glass through it. */
   .glass-list {
-    background: var(--glass-sheen), var(--glass-panel-fill);
+    background: var(--glass-shine), var(--glass-sheen), var(--glass-panel-fill);
     border: var(--border-width) solid var(--glass-border);
     border-top-color: var(--glass-edge);
     border-bottom-color: var(--glass-rim-dim);
@@ -153,11 +153,14 @@
   @media (prefers-reduced-transparency: reduce) {
     .glass-list { background: var(--glass-fallback); }
   }
+  @media (prefers-contrast: more) {
+    .glass-list { background: var(--glass-fallback); border-color: var(--glass-border-strong); }
+  }
 
   /* Small controls inside the page (secondary buttons, switchers): the glass-bar look with no blur.
      Blur is kept for the top bar, tab bar and sheets, so a screen never has more than a few. */
   .glass-flat {
-    background: var(--glass-sheen), var(--glass-bar-fill);
+    background: var(--glass-shine), var(--glass-sheen), var(--glass-bar-fill);
     border: var(--border-width) solid var(--glass-border);
     border-top-color: var(--glass-edge);
     border-bottom-color: var(--glass-rim-dim);
@@ -165,6 +168,40 @@
   }
   @media (prefers-reduced-transparency: reduce) {
     .glass-flat { background: var(--glass-fallback); }
+  }
+  @media (prefers-contrast: more) {
+    .glass-flat { background: var(--glass-fallback); border-color: var(--glass-border-strong); }
+  }
+
+  /* Top highlight that stands in for the lens edge (no blur). glass-list, glass-flat and glass-hero
+     already include it; this class adds it to anything else. */
+  .glass-shine {
+    background-image: var(--glass-shine), var(--glass-sheen);
+  }
+
+  /* Hero glass: the big card at the top of Team, Schedule, MVP and Me. Five layers: a see-through fill,
+     a blur, a bright top rim, an inner top highlight and a soft drop. Blur is not animated.
+     Fallbacks: no backdrop-filter support = the solid base; reduced transparency and high contrast = solid. */
+  .glass-hero {
+    background-color: var(--glass-fallback);
+    background-image: var(--glass-shine), var(--glass-sheen);
+    border: var(--border-width) solid var(--glass-border);
+    border-top-color: var(--glass-rim);
+    border-bottom-color: var(--glass-rim-dim);
+    box-shadow: inset 0 1px 0 var(--glass-inset-highlight), var(--glass-drop);
+  }
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .glass-hero {
+      background-color: var(--glass-hero-fill);
+      -webkit-backdrop-filter: blur(var(--glass-hero-blur)) saturate(var(--glass-hero-saturate));
+      backdrop-filter: blur(var(--glass-hero-blur)) saturate(var(--glass-hero-saturate));
+    }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .glass-hero { background-color: var(--glass-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  }
+  @media (prefers-contrast: more) {
+    .glass-hero { background-color: var(--glass-fallback); border-color: var(--glass-border-strong); }
   }
 
   /* Background motion stops while the app is hidden (set in main.tsx), so it costs no battery. */

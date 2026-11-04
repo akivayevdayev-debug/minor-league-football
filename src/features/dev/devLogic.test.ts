@@ -176,3 +176,15 @@ describe('resetProblemText', () => {
     expect(resetProblemText('flag')).toMatch(/won't be asked/)
   })
 })
+
+describe('parseEditedValue on an empty column', () => {
+  it('keeps it empty when nothing is typed', () => {
+    expect(parseEditedValue(null, '')).toBeNull()
+  })
+  it('saves a typed object as real JSON, not as text', () => {
+    expect(parseEditedValue(null, '{"a":1}')).toEqual({ a: 1 })
+  })
+  it('saves ordinary words as text', () => {
+    expect(parseEditedValue(null, 'Ben')).toBe('Ben')
+  })
+})

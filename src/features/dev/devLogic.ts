@@ -119,7 +119,19 @@ export function parseEditedValue(original: unknown, text: string): unknown {
       throw new Error('That list is not in the right form.')
     }
   }
-  if (text === '' && (original === null || original === undefined)) return null
+  if (original === null || original === undefined) {
+    if (text === '') return null
+    // An empty column can't say its type. Text that looks like a list or object is saved as one,
+    // so a JSON column gets real JSON; numbers and true/false the database converts by itself.
+    const t = text.trim()
+    if (t.startsWith('{') || t.startsWith('[')) {
+      try {
+        return JSON.parse(t)
+      } catch {
+        throw new Error('That list is not in the right form.')
+      }
+    }
+  }
   return text
 }
 

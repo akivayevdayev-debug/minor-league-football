@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { Icon } from '../ui/Icon'
 import { houseSpring } from '../ui/motion'
@@ -18,7 +18,7 @@ export function BottomNav({ activeIndex, onTabPage }: { activeIndex: number; onT
           const isActive = i === activeIndex
           return (
             <li key={tab.to} className="flex">
-              <NavLink
+              <Link
                 to={tab.to}
                 aria-current={isActive ? (onTabPage ? 'page' : 'true') : undefined}
                 className={`pressable relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-pill text-label font-strong ${
@@ -37,7 +37,7 @@ export function BottomNav({ activeIndex, onTabPage }: { activeIndex: number; onT
                   <Icon name={tab.icon} filled={isActive} />
                 </span>
                 <span className="relative">{tab.label}</span>
-              </NavLink>
+              </Link>
             </li>
           )
         })}

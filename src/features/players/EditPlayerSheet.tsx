@@ -154,7 +154,7 @@ export function EditPlayerSheet({ player, open, onOpenChange }: Props) {
             className="w-full"
             onClick={async () => {
               if (await save({ voided_at: new Date().toISOString() }, `${player.full_name} removed. The owner can restore them.`)) {
-                navigate('/roster')
+                navigate('/team')
               }
             }}
           >

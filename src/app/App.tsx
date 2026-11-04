@@ -14,7 +14,8 @@ const queryClient = new QueryClient({
 })
 
 // Each screen loads when first opened (only the shell and login are in the first download).
-const RosterPage = lazy(() => import('../features/roster/RosterPage'))
+const TeamPage = lazy(() => import('../features/roster/TeamPage'))
+const MatchupPage = lazy(() => import('../features/team/MatchupPage'))
 const SchedulePage = lazy(() => import('../features/schedule/SchedulePage'))
 const StandingsPage = lazy(() => import('../features/standings/StandingsPage'))
 const GameTabPage = lazy(() => import('../features/game/GameTabPage'))
@@ -40,13 +41,15 @@ export function App() {
                 {/* Game night is full screen, outside the menu. */}
                 <Route path="game/:id" element={<Screen><LiveGamePage /></Screen>} />
                 <Route element={<AppShell />}>
-                  <Route index element={<Navigate to="/roster" replace />} />
-                  <Route path="roster" element={<Screen><RosterPage /></Screen>} />
-                  <Route path="home" element={<Navigate to="/roster" replace />} />
+                  <Route index element={<Navigate to="/team" replace />} />
+                  <Route path="team" element={<Screen><TeamPage /></Screen>} />
+                  <Route path="roster" element={<Navigate to="/team" replace />} />
+                  <Route path="matchup/:id" element={<Screen><MatchupPage /></Screen>} />
+                  <Route path="home" element={<Navigate to="/team" replace />} />
                   <Route path="schedule" element={<Screen><SchedulePage /></Screen>} />
                   <Route path="standings" element={<Screen><StandingsPage /></Screen>} />
                   <Route path="game" element={<Screen><GameTabPage /></Screen>} />
-                  <Route path="players" element={<Navigate to="/roster" replace />} />
+                  <Route path="players" element={<Navigate to="/team" replace />} />
                   <Route path="players/:id" element={<Screen><PlayerProfile /></Screen>} />
                   <Route path="mvp" element={<Screen><MvpPage /></Screen>} />
                   <Route path="me" element={<Screen><MePage /></Screen>} />

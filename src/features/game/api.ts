@@ -82,8 +82,11 @@ export function clockChangeMessage(shown: GameClock | null | undefined, next: Pa
   return next.seconds_left === 0 ? null : 'Clock paused on another phone'
 }
 
-/** Every open game screen hears score, clock and status changes the moment they happen. */
-export function useLiveGame(gameId: string | undefined, myUserId: string | null = null) {
+/**
+ * Every open game screen hears score, clock and status changes the moment they happen.
+ * Screens that only watch (Team tab, matchup) pass announceClock = false: no clock pop-ups there.
+ */
+export function useLiveGame(gameId: string | undefined, myUserId: string | null = null, announceClock = true) {
   const qc = useQueryClient()
   useEffect(() => {
     if (!gameId) return
@@ -106,7 +109,7 @@ export function useLiveGame(gameId: string | undefined, myUserId: string | null 
         const next = payload.new as Partial<GameClock> | undefined
         const shown = qc.getQueryData<GameClock | null>(gameKeys.clock(gameId))
         const message = clockChangeMessage(shown, next, myUserId)
-        if (message) toast(message)
+        if (announceClock && message) toast(message)
         void qc.invalidateQueries({ queryKey: gameKeys.clock(gameId) })
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` }, () => {
@@ -118,7 +121,7 @@ export function useLiveGame(gameId: string | undefined, myUserId: string | null 
     return () => {
       void supabase.removeChannel(channel)
     }
-  }, [gameId, qc, myUserId])
+  }, [gameId, qc, myUserId, announceClock])
 }
 
 /** One stat line logged during a game (the live stat pad and the box score read these). */

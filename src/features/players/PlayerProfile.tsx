@@ -78,9 +78,9 @@ export default function PlayerProfile() {
   return (
     <article className="flex flex-col gap-5">
       <SeasonSelect />
-      <Link to="/roster" className="pressable -ml-2 flex min-h-(--tap-min) w-fit items-center gap-1 px-2 caps-label hover-fine:text-accent">
+      <Link to="/team" className="pressable -ml-2 flex min-h-(--tap-min) w-fit items-center gap-1 px-2 caps-label hover-fine:text-accent">
         <Icon name="back" size="xs" />
-        Roster
+        Team
       </Link>
 
       <header

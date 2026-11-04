@@ -7,6 +7,8 @@ import { houseSpring } from './spring'
 interface Option<T extends string> {
   value: T
   label: string
+  /** A short note shown as a small accent dot (for example "your team"); screen readers hear it. */
+  mark?: string
 }
 
 interface SegmentedProps<T extends string> {
@@ -67,7 +69,15 @@ export function Segmented<T extends string>({ label, value, onChange, options, c
               o.value === value ? 'text-text' : 'hover-fine:text-text',
             )}
           >
-            <span className={cn('relative', o.value === value && 'text-text font-strong')}>{o.label}</span>
+            <span className={cn('relative inline-flex items-center gap-1', o.value === value && 'text-text font-strong')}>
+              {o.label}
+              {o.mark && (
+                <>
+                  <span aria-hidden="true" className="size-(--dot) shrink-0 rounded-pill bg-accent" />
+                  <span className="sr-only">, {o.mark}</span>
+                </>
+              )}
+            </span>
           </TabsPrimitive.Trigger>
         ))}
       </TabsPrimitive.List>

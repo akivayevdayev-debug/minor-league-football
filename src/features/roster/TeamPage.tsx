@@ -7,7 +7,6 @@ import {
   displayName,
   ordinal,
   recordText,
-  useGameProjections,
   useGameScores,
   usePlayerProjections,
   usePlayers,
@@ -17,7 +16,6 @@ import {
 import { formatGameTime, ZONE_LABEL } from '../../lib/time'
 import type { Game, Player, Team } from '../../types/db'
 import { Badge } from '@/components/ui/badge'
-import { SplitBar } from '../../ui/Bar'
 import { Button } from '../../ui/Button'
 import { EmptyState } from '../../ui/EmptyState'
 import { ErrorState } from '../../ui/ErrorState'
@@ -37,21 +35,25 @@ import { AddStatsSheet } from './AddStatsSheet'
 import { TeamPhotosSheet } from './TeamPhotosSheet'
 import { TradeSheet } from './TradeSheet'
 import { TradesSection } from './TradesSection'
+import { useLiveGame } from '../game/api'
+import { PointsSheet, TeamPlayerRow } from '../team/WeekRows'
+import { useGameWeek } from '../team/useTeamWeek'
+import { fmtPoints, weekGame, type WeekRow } from '../team/week'
 import { canDecideTrades, canEditTeam, canMovePlayers, isCaptainOf } from './permissions'
 
 type Open = 'stats' | 'trade' | 'guest' | 'move' | 'score' | 'edit' | 'photos' | null
 
 /**
- * Roster, fantasy style: pick a team (yours first), see its record, next game and lineup,
- * and do everything from here: enter a score, add stats, trade, add a guest, move or edit a player.
+ * Team tab, fantasy style: pick a team (yours first), see its record, this week's game with projected
+ * and actual points, and every player's points (live during games). Tap points to see how they were
+ * scored. Everything you can put in is here too: enter a score, add stats, trade, add a guest, move or edit.
  */
-export default function RosterPage() {
+export default function TeamPage() {
   const member = useMember()
   const snap = useSeasonSnapshot(member.playerId)
   const players = usePlayers()
   const rosters = useRosters()
   const projections = usePlayerProjections()
-  const gameProj = useGameProjections(snap.season?.id)
   const scores = useGameScores(snap.season?.id)
   const navigate = useNavigate()
 
@@ -60,6 +62,7 @@ export default function RosterPage() {
   const [focus, setFocus] = useState<Player | null>(null)
   const [actionsFor, setActionsFor] = useState<Player | null>(null)
   const [sheetKey, setSheetKey] = useState(0)
+  const [pointsFor, setPointsFor] = useState<WeekRow | null>(null)
 
   const teamOf = useMemo(() => currentTeams(rosters.data ?? [], snap.teams), [rosters.data, snap.teams])
   const teamId = picked ?? snap.myTeam?.id ?? snap.teams[0]?.id ?? ''
@@ -71,13 +74,19 @@ export default function RosterPage() {
     const ppg = (p: Player) => projections.data?.get(p.id)?.points_per_game ?? -1
     return list.sort((a, b) => ppg(b) - ppg(a) || displayName(a).localeCompare(displayName(b)))
   }, [players.data, teamOf, teamId, projections.data])
+  const playerById = useMemo(() => new Map((players.data ?? []).map((p) => [p.id, p])), [players.data])
   const freeAgents = useMemo(() => (players.data ?? []).filter((p) => !p.is_guest && !teamOf.get(p.id)), [players.data, teamOf])
 
   const teamGames = snap.games.filter((g) => g.home_team_id === teamId || g.away_team_id === teamId)
   const next = teamGames.find((g) => g.status !== 'final' && g.home_team_id && g.away_team_id)
+  // This week's game: being played now, else the next one, else the last one played.
+  const week = weekGame(teamId, snap.games)
+  const weekLive = week?.status === 'live' || week?.status === 'halftime'
+  useLiveGame(weekLive ? week.id : undefined, null, false)
+  const gw = useGameWeek({ game: week, seasonId: snap.season?.id, games: snap.games, players: players.data ?? [], teamOf })
+  const mine = gw.side(teamId)
   const recent = teamGames.filter((g) => g.status === 'final').slice(-3).reverse()
   const teamPhoto = usePhotoUrl(team?.photo_path)
-  const teamEstimate = lineup.reduce((n, p) => n + (projections.data?.get(p.id)?.points_per_game ?? 0), 0)
 
   if (snap.isPending || players.isPending) return <Skeleton rows={6} />
   if (snap.isError || players.isError) return <ErrorState what="the roster" onRetry={() => void (snap.refetch(), players.refetch())} />
@@ -91,6 +100,9 @@ export default function RosterPage() {
   }
   const nextTeams = next ? { home: snap.teamById.get(next.home_team_id!), away: snap.teamById.get(next.away_team_id!) } : null
   const nextScore = next ? scores.data?.get(next.id) : undefined
+  const weekTeams = week ? { home: snap.teamById.get(week.home_team_id!), away: snap.teamById.get(week.away_team_id!) } : null
+  const weekScore = week ? scores.data?.get(week.id) : undefined
+  const weekLabel = week?.status === 'final' ? 'Last game' : weekLive ? 'Now' : 'Next'
 
   // Who can do what. The database checks each action too; these only hide buttons.
   const me = players.data?.find((p) => p.id === member.playerId)
@@ -114,19 +126,19 @@ export default function RosterPage() {
       <header className="rise flex flex-col gap-3">
         <div className="flex flex-col gap-1">
           <p className="brand-type text-small text-accent">{team.id === snap.myTeam?.id ? 'Your team' : snap.season?.name}</p>
-          <h1 className="text-headline">Roster</h1>
+          <h1 className="text-headline">Team</h1>
         </div>
         {snap.teams.length > 1 && (
           <Segmented
             label="Team"
             value={teamId}
             onChange={(v) => setPicked(v)}
-            options={snap.teams.map((t) => ({ value: t.id, label: t.id === snap.myTeam?.id ? `${t.short_name} · You` : t.short_name }))}
+            options={snap.teams.map((t) => ({ value: t.id, label: t.short_name, mark: t.id === snap.myTeam?.id ? 'your team' : undefined }))}
           />
         )}
       </header>
 
-      {/* Hero: crest, record and rank over the stadium, then the next game with its estimate. */}
+      {/* Hero: crest, record, points for and against, then this week's game with projected vs actual. */}
       <section aria-label={`${team.name} summary`} className="rise relative isolate flex flex-col gap-3 overflow-hidden rounded-hero p-4" style={{ '--i': 1 } as CSSProperties}>
         <StadiumBackdrop photo="lights" team={team.color_key} src={teamPhoto} />
         <div className="flex items-center gap-3">
@@ -134,29 +146,53 @@ export default function RosterPage() {
           <div className="flex min-w-0 flex-1 flex-col">
             <h2 className="truncate font-display text-title font-bold uppercase leading-tight">{team.name}</h2>
             <p className="text-small text-text-2-strong nums">
-              {row ? `${ordinal(row.rank)} place · ${row.point_diff > 0 ? '+' : ''}${row.point_diff} diff` : 'No games yet'}
+              {row && row.games_played > 0 ? `${ordinal(row.rank)} place · ${row.points_for} PF · ${row.points_against} PA` : 'No games yet'}
             </p>
           </div>
           {row && <span className="numeral text-headline nums">{recordText(row)}</span>}
         </div>
 
-        {next && nextTeams && (
+        {week && weekTeams && (
           <div className="glass-on-photo surface-inset flex flex-col gap-2 rounded-panel p-3">
             <div className="flex items-center gap-2">
-              <span className="caps-label">Next{next.week !== null ? ` · Week ${next.week}` : ''}</span>
+              <span className="caps-label">
+                {weekLabel}
+                {week.week !== null ? ` · Week ${week.week}` : ''}
+              </span>
               <span className="flex-1" />
-              {next.status === 'live' || next.status === 'halftime' ? (
-                <Badge variant="live">{next.status === 'live' ? 'Live' : 'Half'}</Badge>
+              {weekLive ? (
+                <Badge variant="live">{week.status === 'live' ? 'Live' : 'Half'}</Badge>
+              ) : week.status === 'final' ? (
+                <span className="caps-label">Final</span>
               ) : (
-                <span className="caps-label nums">{next.starts_at ? `${formatGameTime(next.starts_at)} ${ZONE_LABEL}` : 'Time not set'}</span>
+                <span className="caps-label nums">{week.starts_at ? `${formatGameTime(week.starts_at)} ${ZONE_LABEL}` : 'Time not set'}</span>
               )}
             </div>
-            <NextLine game={next} home={nextTeams.home} away={nextTeams.away} score={nextScore} />
-            <WinChance game={next} home={nextTeams.home} away={nextTeams.away} proj={gameProj.data?.get(next.id)} />
-            <Button variant="primary" size="sm" className="self-start" onClick={() => navigate(`/game?id=${next.id}`)}>
-              <Icon name="live" size="xs" />
-              {next.status === 'scheduled' ? 'Start live game' : 'Open game'}
-            </Button>
+            <NextLine game={week} home={weekTeams.home} away={weekTeams.away} score={weekScore} />
+            <div className="flex items-end gap-4 nums">
+              <span className="flex flex-col leading-tight">
+                <span className="caps-label">Projected</span>
+                <span className="numeral text-title text-text-2-strong">{mine.projected > 0 ? mine.projected.toFixed(1) : '—'}</span>
+              </span>
+              <span className="flex flex-col leading-tight">
+                <span className="caps-label">Actual</span>
+                <span className="numeral text-title">{mine.actual !== null ? fmtPoints(mine.actual) : '—'}</span>
+              </span>
+              <span className="flex-1" />
+              <span className="caps-label pb-1">Fantasy pts</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" size="sm" onClick={() => navigate(`/matchup/${week.id}`)}>
+                <Icon name="trade" size="xs" />
+                Matchup
+              </Button>
+              {week.status !== 'final' && (
+                <Button variant="primary" size="sm" onClick={() => navigate(`/game?id=${week.id}`)}>
+                  <Icon name="live" size="xs" />
+                  {week.status === 'scheduled' ? 'Start live game' : 'Open game'}
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </section>
@@ -171,27 +207,32 @@ export default function RosterPage() {
         ))}
       </nav>
 
-      {/* Lineup */}
+      {/* Players: this week's QB on top, then the roster, with projected and actual points. */}
       <section aria-labelledby="lineup-title" className="rise glass-panel overflow-hidden rounded-panel" style={{ '--i': 3 } as CSSProperties}>
         <header className="surface-accent-fade flex items-center gap-2 px-3 py-2">
           <h2 id="lineup-title" className="flex-1 text-body font-strong">
-            Lineup <span className="text-text-2 nums">· {lineup.length}</span>
+            Players <span className="text-text-2 nums">· {lineup.length}</span>
           </h2>
-          {teamEstimate > 0 && (
-            <span className="flex items-center gap-2">
-              <Badge variant="estimate">Estimate</Badge>
-              <span className="numeral text-body-lg nums">{teamEstimate.toFixed(1)}</span>
-              <span className="caps-label">pts/gm</span>
-            </span>
-          )}
+          <span className="caps-label">{mine.actual !== null ? 'Pts · tap for how' : 'Projected pts'}</span>
         </header>
-        {lineup.length === 0 ? (
+        {mine.rows.length === 0 ? (
           <p className="px-3 py-4 text-small text-text-2">No one on this team yet. Use Move player to add someone.</p>
         ) : (
           <ul className="divide-y divide-(--glass-groove)">
-            {lineup.map((p) => (
-              <PlayerRow key={p.id} player={p} team={team} ppg={projections.data?.get(p.id)?.points_per_game} onOpen={() => setActionsFor(p)} />
-            ))}
+            {mine.rows.map((r) => {
+              const p = playerById.get(r.playerId)
+              return (
+                <TeamPlayerRow
+                  key={r.playerId}
+                  row={r}
+                  player={p}
+                  team={team}
+                  onField={mine.onField.has(r.playerId)}
+                  onOpen={() => p && setActionsFor(p)}
+                  onPoints={() => setPointsFor(r)}
+                />
+              )
+            })}
           </ul>
         )}
       </section>
@@ -231,6 +272,13 @@ export default function RosterPage() {
           </ul>
         </section>
       )}
+
+      <PointsSheet
+        row={pointsFor ? (mine.rows.find((r) => r.playerId === pointsFor.playerId) ?? pointsFor) : null}
+        player={pointsFor ? playerById.get(pointsFor.playerId) : undefined}
+        statPoints={gw.statPoints}
+        onClose={() => setPointsFor(null)}
+      />
 
       {/* Player actions */}
       <Sheet open={!!actionsFor} onOpenChange={(o) => !o && setActionsFor(null)} title={actionsFor ? displayName(actionsFor) : 'Player'}>
@@ -324,21 +372,6 @@ function NextLine({ game, home, away, score }: { game: Game; home?: Team; away?:
         <TeamBadge team={away} size="sm" />
         <span className="truncate font-display font-bold uppercase">{away?.short_name ?? 'TBD'}</span>
       </span>
-    </div>
-  )
-}
-
-function WinChance({ home, away, proj }: { game: Game; home?: Team; away?: Team; proj?: { home_win_chance: number; home_points: number; away_points: number } }) {
-  if (!proj || !home || !away) return null
-  const pct = Math.round(proj.home_win_chance * 100)
-  return (
-    <div className="flex items-center gap-2 text-small text-text-2 nums">
-      <Badge variant="estimate">Estimate</Badge>
-      <span className="w-8 text-right">{pct}%</span>
-      <div className="min-w-0 flex-1">
-        <SplitBar home={proj.home_win_chance} homeStyle={teamStyle(home.color_key)} awayStyle={teamStyle(away.color_key)} />
-      </div>
-      <span className="w-8">{100 - pct}%</span>
     </div>
   )
 }

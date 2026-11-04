@@ -2,7 +2,7 @@ import type { IconName } from '../ui/Icon'
 
 /** The five bottom tabs, in order. The order sets which way screens slide. */
 export const tabs: { to: string; label: string; icon: IconName }[] = [
-  { to: '/roster', label: 'Roster', icon: 'roster' },
+  { to: '/team', label: 'Team', icon: 'roster' },
   { to: '/schedule', label: 'Schedule', icon: 'schedule' },
   { to: '/standings', label: 'Standings', icon: 'standings' },
   { to: '/mvp', label: 'MVP', icon: 'trophy' },

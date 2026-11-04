@@ -42,7 +42,7 @@ export function AppShell() {
           <div aria-hidden className="glass-header pointer-events-none absolute inset-0 -z-1" />
           <header className="relative pt-(--header-top)">
             <div className="mx-auto flex h-(--header-height) max-w-(--content-max) items-center justify-between px-4">
-              <Link to="/roster" aria-label="MLF home" className="pressable flex h-full items-center">
+              <Link to="/team" aria-label="MLF home" className="pressable flex h-full items-center">
                 <BrandMark />
               </Link>
               {season.data && <span className="caps-label truncate">{season.data.name}</span>}

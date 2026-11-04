@@ -38,7 +38,7 @@ export default function MePage() {
   }
 
   return (
-    <section className="flex flex-col gap-5">
+    <section className="flex flex-col gap-6">
       <div className="rise relative isolate overflow-hidden rounded-hero">
         <StadiumBackdrop photo="sunset" team={team?.color_key} />
         <header

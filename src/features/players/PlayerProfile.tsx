@@ -1,5 +1,6 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { motion, useReducedMotion } from 'motion/react'
 import { useMember } from '../auth'
 import { approxAge, displayName, formatHeight, seasonRules, selectableSeasons, STAT_LABELS, useActiveSeason, useGames, usePlayerProjections, usePlayers, useRosters, useSeasons, useTeams, useViewedSeason } from '../league'
 import { minutesText, playerMinutes, useAllLineups, usePlayerStatsIn } from '../game/lineup'
@@ -19,6 +20,7 @@ import { EditPlayerSheet } from './EditPlayerSheet'
 import { MovePlayerSheet } from './MovePlayerSheet'
 import { canMovePlayers } from '../roster/permissions'
 import { Segmented } from '../../ui/motion'
+import { durationToken, easeToken } from '../../ui/motion/spring'
 import { TeamBadge } from '../../ui/TeamBadge'
 import { formatGameTime, ZONE_LABEL } from '../../lib/time'
 import { fmtPoints, weekGame } from '../team/week'
@@ -42,6 +44,7 @@ export default function PlayerProfile() {
   const projections = usePlayerProjections()
   const [editing, setEditing] = useState(false)
   const [moving, setMoving] = useState(false)
+  const reduce = useReducedMotion()
   const allLineups = useAllLineups()
   const member = useMember()
   // Stats, minutes and the half length all follow the viewed season (no fallback while seasons load).
@@ -111,12 +114,7 @@ export default function PlayerProfile() {
     .join(' · ')
 
   return (
-    <article className="flex flex-col gap-5">
-      <Link to="/team" className="pressable -ml-2 flex min-h-(--tap-min) w-fit items-center gap-1 px-2 caps-label hover-fine:text-accent">
-        <Icon name="back" size="xs" />
-        Team
-      </Link>
-
+    <article className="flex flex-col gap-6">
       <div className="rise relative isolate overflow-hidden rounded-hero">
         <StadiumBackdrop photo="sunset" team={currentTeam?.color_key} />
         <header
@@ -188,7 +186,7 @@ export default function PlayerProfile() {
           </div>
           <div className="flex shrink-0 flex-col items-end gap-0.5">
             <span className="numeral text-stat">{estimate != null ? estimate.toFixed(1) : '–'}</span>
-            <span className="caps-label">proj pts</span>
+            <span className="text-small text-text-2">proj pts</span>
           </div>
         </section>
       )}
@@ -200,18 +198,20 @@ export default function PlayerProfile() {
         ) : log.isError ? (
           <ErrorState what="their games" onRetry={() => log.refetch()} />
         ) : totals.games === 0 ? (
-          <p className="text-small text-text-2">{career ? 'No games played yet.' : `No games played in ${scopeName} yet.`}</p>
+          <p className="text-small text-text-2">
+            {career ? 'No final games yet. Totals show up when a game ends.' : `No final games in ${scopeName} yet. Totals show up when a game ends.`}
+          </p>
         ) : (
           <div className="glass-list flex flex-col gap-3 rounded-panel p-3">
-            <dl className="grid grid-cols-3 gap-2">
-              <StatBox label="Fantasy pts" value={fmtPoints(Math.round(totals.points * 10) / 10)} accent title="Fantasy points from final games" />
-              <StatBox label="Games" value={totals.games} count title="Final games played" />
+            <dl className="grid grid-cols-2 gap-2">
+              <StatBox label="Fantasy pts" value={fmtPoints(Math.round(totals.points * 10) / 10)} accent xl className="col-span-2" title="Fantasy points from final games" />
+              <StatBox label="Games" value={totals.games} count from="previous" title="Final games played" />
               <StatBox label="Pts/game" value={totals.perGame != null ? totals.perGame.toFixed(1) : '–'} title="Fantasy points per game" />
             </dl>
             {tiles.length > 0 && (
               <dl className="grid grid-cols-4 gap-x-2 gap-y-3 border-t border-divider pt-3 sm:grid-cols-6">
                 {tiles.map(([key, short, long]) => (
-                  <StatBox key={key} label={short} value={totals.stats[key] ?? 0} count title={long} />
+                  <StatBox key={key} label={short} value={totals.stats[key] ?? 0} count from="previous" title={long} />
                 ))}
               </dl>
             )}
@@ -222,7 +222,14 @@ export default function PlayerProfile() {
       {recent.length > 0 && (
         <section className="rise flex flex-col gap-2" style={rise(3)}>
           <h2 className="text-body-lg">{recent.length === 1 ? 'Last game' : `Last ${recent.length} games`}</h2>
-          <ul className="glass-list divide-y divide-divider overflow-hidden rounded-panel">
+          {/* Keyed by scope: switching season or career cross-fades the rows (opacity only, none under reduced motion). */}
+          <motion.ul
+            key={scopeId ?? 'career'}
+            className="glass-list divide-y divide-divider overflow-hidden rounded-panel"
+            initial={reduce ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: durationToken('--dur-base'), ease: easeToken('--ease-out') }}
+          >
             {recent.map((g) => {
               const opp = teamById.get(opponentIn(g, history) ?? '')
               const line = gameLine(g.stats)
@@ -244,13 +251,13 @@ export default function PlayerProfile() {
                     </span>
                     <span className="flex shrink-0 flex-col items-end leading-tight">
                       <span className={`numeral text-body-lg nums ${g.points < 0 ? 'text-danger' : ''}`}>{fmtPoints(g.points)}</span>
-                      <span className="caps-label">pts</span>
+                      <span className="text-small text-text-2">pts</span>
                     </span>
                   </Link>
                 </li>
               )
             })}
-          </ul>
+          </motion.ul>
         </section>
       )}
 
@@ -286,7 +293,7 @@ export default function PlayerProfile() {
       <section className="rise flex flex-col gap-2" style={rise(5)}>
         <h2 className="text-body-lg">Team history</h2>
         {history.length === 0 ? (
-          <p className="text-small text-text-2">No team yet.</p>
+          <p className="text-small text-text-2">No team yet. A league manager can add them to one.</p>
         ) : (
           <ol className="flex flex-col border-l border-divider pl-4">
             {history.map((r) => {

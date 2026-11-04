@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useMember } from '../auth'
 import { approxAge, displayName, formatHeight, SeasonSelect, seasonRules, STAT_LABELS, useGames, usePlayerProjections, usePlayers, useRosters, useSeasons, useSeasonStats, useTeams, useViewedSeason } from '../league'
 import { minutesText, playerMinutes, useAllLineups, usePlayerStatsIn } from '../game/lineup'
+import { usePlayerTypedMinutes } from '../game/subs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '../../ui/Button'
 import { EmptyState } from '../../ui/EmptyState'
@@ -38,6 +39,7 @@ export default function PlayerProfile() {
   const [season] = useViewedSeason()
   const seasonGames = useGames(season?.id)
   const seasonStats = useSeasonStats(id, season?.id)
+  const typedMinutes = usePlayerTypedMinutes(id)
   const [now] = useState(() => Date.now())
   const halfSeconds = season ? seasonRules(season).halfSeconds : null
   const played = useMemo(() => {
@@ -49,8 +51,10 @@ export default function PlayerProfile() {
       id,
       halfSeconds,
       now,
+      // Typed-in minutes (box score) replace the tracked time for that game.
+      new Map([...(typedMinutes.data ?? new Map<string, number>())].filter(([gameId]) => inSeason.has(gameId))),
     )
-  }, [allLineups.data, seasonGames.data, id, halfSeconds, now])
+  }, [allLineups.data, seasonGames.data, id, halfSeconds, now, typedMinutes.data])
   const trackedStats = usePlayerStatsIn(id, played.gameIds)
 
   const player = players.data?.find((p) => p.id === id)

@@ -83,23 +83,25 @@ export function useGameSubs(gameId: string | undefined) {
   })
 }
 
-/** Adds a sub for a team. The id is made on the phone, so a retry can never add the same sub twice. */
+/**
+ * Adds a sub for a team. The caller makes the id on the phone, so a retry can never add the same sub
+ * twice, and the row shown straight away has the same id as the saved one (so "Remove sub" works offline).
+ */
 export function useAddGameSub(game: Game | undefined) {
   const qc = useQueryClient()
   return useMutation({
     mutationKey: ['game-write', 'sub'],
-    mutationFn: async ({ teamId, playerId }: { teamId: string; playerId: string }) => {
+    mutationFn: async ({ id, teamId, playerId }: { id: string; teamId: string; playerId: string }) => {
       if (!game) throw new SubWriteError("Couldn't save that. Check your signal and try again.")
-      const id = crypto.randomUUID()
       const { error } = await supabase.from('game_subs').insert({ id, game_id: game.id, team_id: teamId, player_id: playerId })
       if (error) throw gameWriteError(error)
     },
-    onMutate: async ({ teamId, playerId }) => {
+    onMutate: async ({ id, teamId, playerId }) => {
       if (!game) return undefined
       const key = subKeys.subs(game.id)
       await qc.cancelQueries({ queryKey: key })
       const before = qc.getQueryData<GameSub[]>(key)
-      const row: GameSub = { id: crypto.randomUUID(), game_id: game.id, team_id: teamId, player_id: playerId, voided_at: null, created_at: new Date().toISOString() }
+      const row: GameSub = { id, game_id: game.id, team_id: teamId, player_id: playerId, voided_at: null, created_at: new Date().toISOString() }
       qc.setQueryData<GameSub[]>(key, [...(before ?? []), row])
       return { before }
     },
@@ -162,6 +164,19 @@ export function useGameMinutes(gameId: string | undefined) {
       rows<PlayerMinutes[]>(
         supabase.from('player_minutes').select('id, game_id, player_id, minutes, voided_at, created_at').eq('game_id', gameId!).is('voided_at', null),
       ),
+  })
+}
+
+/** One player's typed minutes in every game, as game id → minutes, for the profile's totals. */
+export function usePlayerTypedMinutes(playerId: string | undefined) {
+  return useQuery({
+    queryKey: ['player', playerId ?? '', 'typed-minutes'],
+    enabled: !!playerId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('player_minutes').select('game_id, minutes').eq('player_id', playerId!).is('voided_at', null)
+      if (error) throw error
+      return new Map((data ?? []).map((r) => [r.game_id as string, r.minutes as number]))
+    },
   })
 }
 

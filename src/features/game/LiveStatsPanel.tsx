@@ -331,7 +331,7 @@ export function LiveStatsPanel({
         onPick={(p) => {
           const team = subFor
           if (!team) return
-          addSub.mutate({ teamId: team.id, playerId: p.id }, { onError: fail })
+          addSub.mutate({ id: crypto.randomUUID(), teamId: team.id, playerId: p.id }, { onError: fail })
           setSubFor(null)
           setPadFor({ player: p, team })
         }}

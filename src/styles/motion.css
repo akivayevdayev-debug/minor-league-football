@@ -206,6 +206,53 @@
   .lights-on {
     animation: lights-on var(--dur-count) var(--ease-out) both;
   }
+
+  /* Final whistle (spec 5.5): the winning score lifts once and one light sweeps across it.
+     Set by LiveGamePage, once per game on each phone. Transform only. Reduced motion: opacity pulse (below). */
+  .final-shine {
+    position: relative;
+    overflow: hidden;
+    animation: final-shine var(--dur-shine) var(--ease-out) both;
+  }
+  .final-shine::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(105deg, transparent 30%, color-mix(in srgb, var(--sheen-gold) 40%, transparent) 50%, transparent 70%);
+    animation: final-sweep var(--dur-shine) var(--ease-out) both;
+  }
+}
+
+@keyframes final-shine {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes final-sweep {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(110%);
+  }
+}
+
+@keyframes final-fade {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
 }
 
 @keyframes spin {
@@ -304,6 +351,13 @@
     translate: none;
   }
   .sheen::after {
+    display: none;
+  }
+  .final-shine {
+    animation-name: final-fade;
+  }
+  .final-shine::after {
+    animation: none;
     display: none;
   }
   .lights-on,

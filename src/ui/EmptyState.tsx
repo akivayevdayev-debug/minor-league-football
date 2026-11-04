@@ -13,7 +13,7 @@ interface EmptyStateProps {
 export function EmptyState({ icon, title, body, action }: EmptyStateProps) {
   return (
     <section className="drill-in flex flex-col items-center gap-2 px-4 py-8 text-center">
-      <span className="flex size-(--badge-sm) items-center justify-center rounded-pill bg-accent-soft text-accent">
+      <span className="glass-flat flex size-(--badge-sm) items-center justify-center rounded-pill text-text-2">
         <Icon name={icon} size="sm" />
       </span>
       <h2 className="text-body font-strong">{title}</h2>

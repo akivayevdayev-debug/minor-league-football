@@ -21,7 +21,7 @@ export default function RulebookPage() {
   }
 
   return (
-    <section className="flex flex-col gap-5">
+    <section className="flex flex-col gap-6">
       <header className="rise flex flex-col gap-1">
         <h1 className="text-headline leading-none">Rulebook</h1>
         <p className="text-small text-text-2">Official two-hand touch rules. When something isn’t covered, the referee decides.</p>
@@ -56,7 +56,7 @@ export default function RulebookPage() {
       {sections.length === 0 ? (
         <EmptyState icon="search" title="No rule matches that" body="Try a shorter word, like “punt” or “sack”." />
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-6">
           {sections.map((s) => (
             <RuleSection key={s.id} section={s} />
           ))}

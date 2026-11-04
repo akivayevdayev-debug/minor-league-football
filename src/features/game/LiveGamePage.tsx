@@ -3,7 +3,7 @@
  * Hard rules: clock and score buttons get a press scale only (no ripple, no other motion),
  * every button here is at least 56 px tall. The .still wrapper switches off ripple, lean and sheen. The clock stores only state changes.
  */
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../auth'
 import { toast } from 'sonner'
@@ -35,6 +35,19 @@ import { LandscapeClock } from './LandscapeClock'
 import { useLandscape } from './landscape'
 import { currentLineup, useGameLineups, useSetLineup } from './lineup'
 import { useKeepAwake, useKeepAwakeSetting } from './wakeLock'
+import { shouldShine } from './finalShine'
+
+/** Games that have already shined on this phone during this visit (storage keeps it across reloads). */
+const shineSeen = new Set<string>()
+
+/** Storage can be blocked or throw (private mode): the shine then falls back to the in-memory set. */
+function safeStorage(): Storage | null {
+  try {
+    return window.localStorage
+  } catch {
+    return null
+  }
+}
 
 const SCORES = [
   { type: 'td', label: 'TD', points: 6 },
@@ -164,6 +177,19 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
     [onTeam, players.data],
   )
 
+  // Final whistle (spec 5.5): when this screen sees the game turn final from live or halftime, the winner's score shines once.
+  const gameId = g?.id
+  const liveStatus = g?.status
+  const lastStatus = useRef<string | undefined>(undefined)
+  const [shineGame, setShineGame] = useState<string | null>(null)
+  useEffect(() => {
+    const was = lastStatus.current
+    lastStatus.current = liveStatus
+    if (!gameId || liveStatus !== 'final' || (was !== 'live' && was !== 'halftime')) return
+    // Deferred one tick: the shine is a celebration, so it can land just after the final score paints.
+    if (shouldShine(gameId, safeStorage(), shineSeen)) queueMicrotask(() => setShineGame(gameId))
+  }, [gameId, liveStatus])
+
   // A clock that fails to load (e.g. change 003 not in the database yet) just means a fresh clock.
   if (game.isError) return <ErrorState what="this game" onRetry={() => void game.refetch()} />
   if (!g || teams.isPending || seasons.isPending || clock.isPending) return <div className="p-4"><Skeleton rows={5} /></div>
@@ -171,6 +197,8 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
     return <EmptyState icon="games" title="This game needs both teams first" body="Pick the two teams on the Schedule, then come back." />
 
   const status = g.status
+  // A tie gets no shine: only the team with more points.
+  const shineTeamId = shineGame === g.id && score.home !== score.away ? (score.home > score.away ? home.id : away.id) : null
   const half = c?.half ?? 1
   const busy = setClock.isPending || finish.isPending
   const fail = () => toast.error("Couldn't save that. Check your signal and try again.")
@@ -236,7 +264,7 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
     finish.mutate(leftNow(), {
       onSuccess: () => {
         setConfirmEnd(false)
-        toast.success(`Final: ${home.short_name} ${score.home}, ${away.short_name} ${score.away}`)
+        toast.success(`Game ended: ${home.short_name} ${score.home}, ${away.short_name} ${score.away}`)
       },
       onError: fail,
     })
@@ -447,7 +475,7 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
               <div key={i} style={teamStyle(side.t.color_key)} className="flex flex-col items-center gap-2 text-center">
                 <TeamBadge team={side.t} size="lg" />
                 <span className="display-caps text-body-lg text-(--team-light)">{side.t.name}</span>
-                <span className={`numeral text-score ${side.pts >= Math.max(score.home, score.away) ? `text-text ${side.pts > Math.min(score.home, score.away) ? 'score-lead' : ''}` : 'text-text-2'}`} aria-live="polite">{side.pts}</span>
+                <span className={`numeral text-score ${side.pts >= Math.max(score.home, score.away) ? `text-text ${side.pts > Math.min(score.home, score.away) ? 'score-lead' : ''}` : 'text-text-2'} ${shineTeamId === side.t.id ? 'final-shine' : ''}`} aria-live="polite">{side.pts}</span>
               </div>
             ) : (
               <div key={i} className="mt-6 flex flex-col items-center gap-1 rounded-control surface-inset px-3 py-2">
@@ -522,10 +550,10 @@ export function GameScreen({ id, embedded, picker }: { id: string | undefined; e
       ) : (
         <div className="flex flex-col gap-2">
           <Button size="xl" variant="primary" onClick={() => setTab('box')}>
-            <Icon name="stats" size="sm" /> Box score
+            <Icon name="stats" size="sm" /> Open box score
           </Button>
           <Button size="xl" variant="secondary" onClick={() => setTyping(true)}>
-            <Icon name="edit" size="sm" /> Fix the final score
+            <Icon name="edit" size="sm" /> Fix final score
           </Button>
         </div>
       )}

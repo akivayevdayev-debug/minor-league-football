@@ -34,7 +34,7 @@ export function LoginScreen() {
         <header className="rise flex flex-col items-center gap-2 text-center">
           <h1 className="sr-only">MLF, Minor League Football</h1>
           <BrandMark />
-          <p className="caps-label text-text-2-strong">Your league · Your friends · Your season</p>
+          <p className="text-small text-text-2-strong">Your league · Your friends · Your season</p>
         </header>
 
         <form onSubmit={submit} noValidate className="rise glass-strong lit flex w-full flex-col gap-4 rounded-hero p-5" style={{ '--i': 1 } as CSSProperties}>

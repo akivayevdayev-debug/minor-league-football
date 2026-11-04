@@ -15,7 +15,8 @@ interface SheetProps {
 export function Sheet({ open, onOpenChange, title, description, children, footer }: SheetProps) {
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent>
+      {/* Sheets keep their blur. glass-strong, sheet-glass (rim and lift) and glass-shine make the five layers; glass-appear on each open. */}
+      <DrawerContent className="glass-appear glass-shine">
         <div className="flex flex-col gap-1 border-b border-divider px-4 pt-3 pb-3">
           <DrawerTitle>{title}</DrawerTitle>
           <DrawerDescription className={description ? undefined : 'sr-only'}>{description ?? title}</DrawerDescription>

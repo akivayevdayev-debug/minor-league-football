@@ -66,7 +66,7 @@ export function LeagueLeaders() {
   if (totals.isError || players.isError) return <ErrorState what="the leaders" onRetry={() => void (totals.refetch(), players.refetch())} />
 
   return (
-    <section aria-labelledby="league-leaders" className="flex flex-col gap-3">
+    <section aria-labelledby="league-leaders" className="flex flex-col gap-4">
       <h2 id="league-leaders" className="text-body-lg">League leaders</h2>
       <ul className="no-scrollbar -mx-4 -my-2 flex snap-x gap-2 overflow-x-auto px-4 py-2">
         {leaders.map(({ stat, player, team, value }, i) => {
@@ -104,7 +104,7 @@ export function LeagueLeaders() {
       </ul>
 
       <div className="flex flex-col gap-2">
-        <h3 className="caps-label">{pickedLabel} ranking</h3>
+        <h3 className="text-small text-text-2">{pickedLabel} ranking</h3>
         {ranking.length === 0 ? (
           <p className="glass-list rounded-panel px-3 py-4 text-small text-text-2">No {pickedLabel.toLowerCase()} yet.</p>
         ) : (

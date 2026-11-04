@@ -301,7 +301,7 @@ function ChangeHistory({ gameId, playersById }: { gameId: string; playersById: M
       ) : history.isPending ? (
         <Skeleton rows={3} />
       ) : history.isError ? (
-        <p className="text-small text-text-2">Couldn't load the history.</p>
+        <p className="text-small text-text-2">Couldn't load the history. Check your signal and try again.</p>
       ) : (history.data ?? []).length === 0 ? (
         <p className="text-small text-text-2">No changes yet.</p>
       ) : (

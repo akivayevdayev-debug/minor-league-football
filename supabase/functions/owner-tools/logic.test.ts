@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { randomBytes } from 'node:crypto'
-import { TEMP_ALPHABET, makeTempPassword, parseAction } from './logic'
+import { KEEP_PASSWORD_LOGINS, TEMP_ALPHABET, isResetTarget, makeTempPassword, parseAction } from './logic'
 
 const realBytes = (n: number) => new Uint8Array(randomBytes(n))
 
@@ -48,5 +48,16 @@ describe('parseAction', () => {
     expect(parseAction('list_logins')).toBeNull()
     expect(parseAction({ action: 'delete_everything' })).toBeNull()
     expect(parseAction({ action: 'set_password', playerId: "1' or 1=1" })).toBeNull()
+  })
+})
+
+describe('isResetTarget', () => {
+  it('skips the owner and Leo, resets everyone else', () => {
+    expect(KEEP_PASSWORD_LOGINS).toEqual(['leo'])
+    expect(isResetTarget({ is_owner: true, login_name: 'akiva' })).toBe(false)
+    expect(isResetTarget({ is_owner: false, login_name: 'leo' })).toBe(false)
+    expect(isResetTarget({ is_owner: false, login_name: ' Leo ' })).toBe(false)
+    expect(isResetTarget({ is_owner: false, login_name: 'david' })).toBe(true)
+    expect(isResetTarget({ is_owner: false, login_name: 'leonard' })).toBe(true)
   })
 })

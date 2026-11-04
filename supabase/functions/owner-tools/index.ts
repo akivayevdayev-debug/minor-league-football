@@ -2,14 +2,14 @@
  * owner-tools: Akiva's Developer tools that need the login system's secret key.
  *   list_logins        every login with its player and last sign-in (no passwords; they can't be read)
  *   set_password       a new temporary password for one player; they must pick their own at next sign-in
- *   reset_everyone     the same for every login except the owner, plus sign-out (after the leak)
+ *   reset_everyone     the same for every login except the owner and Leo, plus sign-out (after the leak)
  *   sign_out_everyone  ends every session except the owner's
  * Only the owner's login may call it: the caller's token is checked, then member_logins.is_owner.
  * The secret key comes from Supabase's own environment (SUPABASE_SECRET_KEYS); it is never in the
  * app or in git. Temporary passwords are returned once, to the owner's screen, and never stored.
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { makeTempPassword, parseAction } from './logic.ts'
+import { isResetTarget, makeTempPassword, parseAction } from './logic.ts'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -114,7 +114,9 @@ async function handle(req: Request): Promise<Response> {
     }
     case 'reset_everyone': {
       const results = []
-      for (const l of logins.filter((l) => !l.is_owner)) results.push(await resetOne(l))
+      for (const l of logins.filter((l) => isResetTarget({ is_owner: l.is_owner, login_name: nameOf(l).login_name }))) {
+        results.push(await resetOne(l))
+      }
       return reply(200, { results })
     }
     case 'sign_out_everyone': {

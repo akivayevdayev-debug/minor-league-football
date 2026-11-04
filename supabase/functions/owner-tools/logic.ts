@@ -43,3 +43,11 @@ export function parseAction(body: unknown): OwnerAction | null {
       return null
   }
 }
+
+/** Logins that keep their password when Akiva resets everyone (Akiva, 2026-11-03: he and Leo keep theirs). */
+export const KEEP_PASSWORD_LOGINS = ['leo']
+
+/** Whether "Reset everyone" gives this login a new password: never the owner, never a kept login. */
+export function isResetTarget(l: { is_owner: boolean; login_name: string }): boolean {
+  return !l.is_owner && !KEEP_PASSWORD_LOGINS.includes(l.login_name.trim().toLowerCase())
+}

@@ -9,7 +9,7 @@ import { useResetEveryone, useSignOutEveryone } from './devApi'
 import { formatCopyAll, isResetConfirmed, resetProblemText, type ResetResult } from './devLogic'
 
 /**
- * Every login except the owner gets a temporary password at once. Passwords show here once; the sheet
+ * Every login except the owner's and Leo's gets a temporary password at once. Passwords show here once; the sheet
  * refuses to close while the server is working, so they can't be lost in the middle.
  */
 export function AllResetSheet({ open, onOpenChange }: { open: boolean; onOpenChange(open: boolean): void }) {
@@ -36,7 +36,7 @@ export function AllResetSheet({ open, onOpenChange }: { open: boolean; onOpenCha
   }
 
   return (
-    <Sheet open={open} onOpenChange={handleOpenChange} title="Reset everyone's password" description="Gives every login a new temporary password.">
+    <Sheet open={open} onOpenChange={handleOpenChange} title="Reset everyone's password" description="Everyone except you and Leo gets a new temporary password.">
       {results ? (
         <div className="flex flex-col gap-4">
           <p role="alert" className="text-body font-strong text-danger">These show only once. Copy them now.</p>
@@ -65,7 +65,7 @@ export function AllResetSheet({ open, onOpenChange }: { open: boolean; onOpenCha
       ) : (
         <div className="flex flex-col gap-4">
           <p className="text-body text-text-2-strong">
-            This gives every login except yours a new temporary password, and signs everyone else out. Their old passwords stop
+            This gives every login except yours and Leo's a new temporary password, and signs those people out. Their old passwords stop
             working. Use it only after a leak.
           </p>
           <Field

@@ -90,3 +90,23 @@ describe('create_logins', () => {
     ])
   })
 })
+
+describe('typed passwords', () => {
+  const id = '140c496e-833d-4e26-8c24-e5e5dd415b93'
+  const id2 = '5c17d1b0-0e15-45f7-be0f-c11d2997ab5a'
+  it('accepts a typed password for one login or one new account', () => {
+    expect(parseAction({ action: 'set_password', playerId: id, password: 'goodpass1' })).toEqual({ action: 'set_password', playerId: id, password: 'goodpass1' })
+    expect(parseAction({ action: 'create_logins', playerIds: [id], password: 'goodpass1' })).toEqual({ action: 'create_logins', playerIds: [id], password: 'goodpass1' })
+  })
+  it('still gives a temporary password when none is typed', () => {
+    expect(parseAction({ action: 'set_password', playerId: id })).toEqual({ action: 'set_password', playerId: id })
+  })
+  it('refuses short, long, padded or non-text passwords', () => {
+    for (const password of ['short', 'x'.repeat(73), ' goodpass1', 'goodpass1 ', 12345678]) {
+      expect(parseAction({ action: 'set_password', playerId: id, password })).toBeNull()
+    }
+  })
+  it('refuses one typed password for several new accounts', () => {
+    expect(parseAction({ action: 'create_logins', playerIds: [id, id2], password: 'goodpass1' })).toBeNull()
+  })
+})

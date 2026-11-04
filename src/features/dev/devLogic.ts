@@ -203,3 +203,22 @@ export function resetProblemText(problem: ResetResult['problem']): string | null
   if (problem === 'flag') return "Password changed, but they won't be asked to pick their own. Try Set a new password again."
   return null
 }
+
+/** Longest password the sign-in system reads (the server refuses anything longer). */
+export const TYPED_PASSWORD_MAX = 72
+
+/** What is wrong with a password Akiva typed for someone, or null when it is fine. Same rules as the server. */
+export function typedPasswordProblem(password: string, min: number): string | null {
+  if (password.length < min) return `Use at least ${min} characters.`
+  if (password.length > TYPED_PASSWORD_MAX) return `Use at most ${TYPED_PASSWORD_MAX} characters.`
+  if (password.trim() !== password) return 'Remove the space at the start or end.'
+  return null
+}
+
+/** Temporary (made by the server, shown once) or typed by Akiva (kept as theirs). */
+export type PasswordMode = 'temp' | 'typed'
+
+/** Whether a password sheet's main button can run: always for temporary, only a valid password when typed. */
+export function choiceReady(mode: PasswordMode, password: string, min: number): boolean {
+  return mode === 'temp' || typedPasswordProblem(password, min) === null
+}

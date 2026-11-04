@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildChanges,
+  choiceReady,
+  typedPasswordProblem,
   changedFields,
   editableFields,
   formatCopyAll,
@@ -186,5 +188,21 @@ describe('parseEditedValue on an empty column', () => {
   })
   it('saves ordinary words as text', () => {
     expect(parseEditedValue(null, 'Ben')).toBe('Ben')
+  })
+})
+
+describe('typed passwords', () => {
+  it('accepts 8 to 72 characters with no padding', () => {
+    expect(typedPasswordProblem('goodpass', 8)).toBeNull()
+    expect(choiceReady('typed', 'goodpass', 8)).toBe(true)
+  })
+  it('explains what is wrong', () => {
+    expect(typedPasswordProblem('short', 8)).toBe('Use at least 8 characters.')
+    expect(typedPasswordProblem('x'.repeat(73), 8)).toBe('Use at most 72 characters.')
+    expect(typedPasswordProblem(' goodpass', 8)).toBe('Remove the space at the start or end.')
+  })
+  it('temporary needs nothing typed', () => {
+    expect(choiceReady('temp', '', 8)).toBe(true)
+    expect(choiceReady('typed', '', 8)).toBe(false)
   })
 })

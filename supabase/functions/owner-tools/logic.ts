@@ -20,10 +20,21 @@ export function makeTempPassword(randomBytes: (n: number) => Uint8Array): string
 
 export type OwnerAction =
   | { action: 'list_logins' }
-  | { action: 'set_password'; playerId: string }
+  | { action: 'set_password'; playerId: string; password?: string }
   | { action: 'reset_everyone'; confirm: 'RESET' }
   | { action: 'sign_out_everyone'; confirm: 'SIGN OUT' }
-  | { action: 'create_logins'; playerIds: string[] }
+  | { action: 'create_logins'; playerIds: string[]; password?: string }
+
+/** Same floor as the app (MIN_PASSWORD_LENGTH); 72 is the most the sign-in system reads. */
+export const CHOSEN_MIN = 8
+export const CHOSEN_MAX = 72
+
+/** A password Akiva typed: undefined when none was sent, null when one was sent but is not allowed. */
+function chosenPassword(v: unknown): string | undefined | null {
+  if (v === undefined) return undefined
+  if (typeof v !== 'string') return null
+  return v.length >= CHOSEN_MIN && v.length <= CHOSEN_MAX && v.trim() === v ? v : null
+}
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -34,8 +45,12 @@ export function parseAction(body: unknown): OwnerAction | null {
   switch (b.action) {
     case 'list_logins':
       return { action: 'list_logins' }
-    case 'set_password':
-      return typeof b.playerId === 'string' && UUID.test(b.playerId) ? { action: 'set_password', playerId: b.playerId } : null
+    case 'set_password': {
+      if (typeof b.playerId !== 'string' || !UUID.test(b.playerId)) return null
+      const password = chosenPassword(b.password)
+      if (password === null) return null
+      return password === undefined ? { action: 'set_password', playerId: b.playerId } : { action: 'set_password', playerId: b.playerId, password }
+    }
     case 'reset_everyone':
       return b.confirm === 'RESET' ? { action: 'reset_everyone', confirm: 'RESET' } : null
     case 'sign_out_everyone':
@@ -45,7 +60,10 @@ export function parseAction(body: unknown): OwnerAction | null {
       const ids = [...new Set(b.playerIds)]
       if (ids.length < 1 || b.playerIds.length > 50) return null
       if (!ids.every((id) => typeof id === 'string' && UUID.test(id))) return null
-      return { action: 'create_logins', playerIds: ids as string[] }
+      const password = chosenPassword(b.password)
+      // A typed password is for one account at a time; several accounts always get their own temporary ones.
+      if (password === null || (password !== undefined && ids.length !== 1)) return null
+      return password === undefined ? { action: 'create_logins', playerIds: ids as string[] } : { action: 'create_logins', playerIds: ids as string[], password }
     }
     default:
       return null
@@ -72,7 +90,7 @@ export interface MissingLogin {
   login_name: string
 }
 
-/** Players (already narrowed to this season's rosters) who have a login name but no account yet, by name. */
+/** Players who have a login name but no account yet, by name (on a team or not: league QBs and backups too). */
 export function missingLogins(
   players: { id: string; full_name: string; login_name: string | null; is_guest: boolean }[],
   withAccount: Set<string>,

@@ -8,7 +8,9 @@ import { Skeleton } from '../../ui/Skeleton'
 import { PasswordOnce } from './TempPassword'
 import { AllResetSheet, CreateAccountsSheet, SignOutEveryoneSheet } from './AccountSheets'
 import { useLogins, useNow, useSetPassword, type Login, type MissingLogin } from './devApi'
-import { lastSignInText, resetProblemText } from './devLogic'
+import { PasswordChoice } from './PasswordChoice'
+import { MIN_PASSWORD_LENGTH } from '../auth/mustChange'
+import { lastSignInText, resetProblemText, choiceReady, type PasswordMode } from './devLogic'
 
 /** Every login: who, when they last signed in, and a new temporary password for each (not the owner). */
 export function LoginsSection() {
@@ -103,12 +105,14 @@ export function LoginsSection() {
 }
 
 /**
- * Confirm, then show the temporary password once. The password lives only in this component's state,
- * and is cleared the moment the sheet closes.
+ * Either a temporary password (shown once, they pick their own at sign-in) or one Akiva types (kept as
+ * theirs until it is reset). Passwords live only in this component's state and are cleared when it closes.
  */
 function SetPasswordSheet({ login, open, onOpenChange }: { login: Login | null; open: boolean; onOpenChange(open: boolean): void }) {
   const setPassword = useSetPassword()
   const [shown, setShown] = useState<{ name: string; password: string } | null>(null)
+  const [mode, setMode] = useState<PasswordMode>('temp')
+  const [typed, setTyped] = useState('')
   const name = login?.full_name ?? 'this player'
 
   function handleOpenChange(next: boolean) {
@@ -116,18 +120,24 @@ function SetPasswordSheet({ login, open, onOpenChange }: { login: Login | null; 
     if (!next && setPassword.isPending) return
     if (!next) {
       setShown(null)
+      setMode('temp')
+      setTyped('')
       setPassword.reset()
     }
     onOpenChange(next)
   }
 
   async function makePassword() {
-    if (!login) return
+    if (!login || !choiceReady(mode, typed, MIN_PASSWORD_LENGTH)) return
     try {
-      const result = await setPassword.mutateAsync(login.player_id)
-      if (result.ok && result.temp_password) {
+      const result = await setPassword.mutateAsync({ playerId: login.player_id, password: mode === 'typed' ? typed : undefined })
+      const problem = result.ok ? resetProblemText(result.problem) : null
+      if (result.ok && mode === 'typed') {
+        toast.success(`Password changed for ${name}. It stays until you reset it.`)
+        if (problem) toast.warning(problem)
+        handleOpenChange(false)
+      } else if (result.ok && result.temp_password) {
         setShown({ name: result.full_name, password: result.temp_password })
-        const problem = resetProblemText(result.problem)
         if (problem) toast.warning(problem)
       } else {
         toast.error(`Couldn't set a new password for ${name}. Try again.`)
@@ -138,7 +148,7 @@ function SetPasswordSheet({ login, open, onOpenChange }: { login: Login | null; 
   }
 
   return (
-    <Sheet open={open} onOpenChange={handleOpenChange} title={`Set a new password for ${name}`} description="Gives a temporary password once.">
+    <Sheet open={open} onOpenChange={handleOpenChange} title={`Set a new password for ${name}`} description="A temporary password, or one you type.">
       {shown ? (
         <div className="flex flex-col gap-4">
           <PasswordOnce name={shown.name} password={shown.password} />
@@ -146,15 +156,18 @@ function SetPasswordSheet({ login, open, onOpenChange }: { login: Login | null; 
         </div>
       ) : (
         <div className="flex flex-col gap-4">
+          <PasswordChoice name={name} mode={mode} onModeChange={setMode} password={typed} onPasswordChange={setTyped} />
           <p className="text-body text-text-2-strong">
-            Give {name} a new temporary password? Their old password stops working.
+            {mode === 'temp'
+              ? `${name} gets a temporary password and picks their own at sign-in. Their old password stops working.`
+              : `${name} signs in with the password you typed. Their old password stops working.`}
           </p>
           <div className="flex gap-2">
             <Button variant="outline" className="flex-1" onClick={() => handleOpenChange(false)} disabled={setPassword.isPending}>
               Cancel
             </Button>
-            <Button variant="primary" className="flex-1" loading={setPassword.isPending} onClick={() => void makePassword()}>
-              Make a new password
+            <Button variant="primary" className="flex-1" loading={setPassword.isPending} disabled={!choiceReady(mode, typed, MIN_PASSWORD_LENGTH)} onClick={() => void makePassword()}>
+              {mode === 'temp' ? 'Make a new password' : 'Save password'}
             </Button>
           </div>
         </div>

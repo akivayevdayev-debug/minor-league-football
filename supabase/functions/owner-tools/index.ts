@@ -1,10 +1,12 @@
 /*
  * owner-tools: Akiva's Developer tools that need the login system's secret key.
  *   list_logins        every login with its player and last sign-in (no passwords; they can't be read)
- *   set_password       a new temporary password for one player; they must pick their own at next sign-in
+ *   set_password       a new temporary password for one player (they must pick their own at next sign-in),
+ *                      or one Akiva typed (kept as their real password; nothing to change)
  *   reset_everyone     the same for every login except the owner, plus sign-out (after the leak)
  *   sign_out_everyone  ends every session except the owner's
- *   create_logins      accounts for rostered players who have none yet, each with a temporary password
+ *   create_logins      accounts for players who have none yet, each with a temporary password
+ *                      (or, for a single account, a password Akiva typed)
  * Only the owner's login may call it: the caller's token is checked, then member_logins.is_owner.
  * The secret key comes from Supabase's own environment (SUPABASE_SECRET_KEYS); it is never in the
  * app or in git. Temporary passwords are returned once, to the owner's screen, and never stored.
@@ -68,9 +70,10 @@ async function handle(req: Request): Promise<Response> {
   // Gives one login a temporary password, marks it "must choose a new one", and signs it out.
   // Every step is checked. Once the password has changed, the reply always carries it (otherwise that
   // player is locked out), with `problem` naming any later step that failed so Akiva can redo it.
-  const resetOne = async (l: Login) => {
+  // With a typed password it is kept as theirs: not flagged, and not sent back (Akiva already knows it).
+  const resetOne = async (l: Login, chosen?: string) => {
     const base = { ...nameOf(l), player_id: l.player_id }
-    const password = makeTempPassword(randomBytes)
+    const password = chosen ?? makeTempPassword(randomBytes)
     try {
       const { error } = await admin.auth.admin.updateUserById(l.user_id, { password })
       if (error) return { ...base, ok: false as const }
@@ -79,7 +82,7 @@ async function handle(req: Request): Promise<Response> {
     }
     let problem: 'flag' | 'sign_out' | undefined
     try {
-      const { error } = await admin.from('member_logins').update({ must_change_password: true }).eq('user_id', l.user_id)
+      const { error } = await admin.from('member_logins').update({ must_change_password: !chosen }).eq('user_id', l.user_id)
       if (error) problem = 'flag'
     } catch {
       problem = 'flag'
@@ -90,37 +93,21 @@ async function handle(req: Request): Promise<Response> {
     } catch {
       problem ??= 'sign_out'
     }
-    return { ...base, ok: true as const, temp_password: password, ...(problem ? { problem } : {}) }
+    return { ...base, ok: true as const, ...(chosen ? {} : { temp_password: password }), ...(problem ? { problem } : {}) }
   }
 
-  // This season's rostered players who have a login name but no account yet.
+  // Players with a login name but no account yet: on a team, league QBs and backups alike.
+  // (Season 2's teams start before the season does, so a roster-only list missed new players.)
   const findMissing = async (): Promise<MissingLogin[]> => {
-    const { data: season } = await admin.from('current_season').select('id').maybeSingle()
-    if (!season) return []
-    const { data: teams } = await admin.from('teams').select('id').eq('season_id', season.id).is('voided_at', null)
-    const teamIds = (teams ?? []).map((t) => t.id)
-    if (teamIds.length === 0) return []
-    const { data: lines } = await admin
-      .from('roster_memberships')
-      .select('player_id')
-      .in('team_id', teamIds)
-      .is('ends_on', null)
-      .is('voided_at', null)
-    const ids = [...new Set((lines ?? []).map((l) => l.player_id))]
-    if (ids.length === 0) return []
-    const { data: players } = await admin
-      .from('players')
-      .select('id, full_name, login_name, is_guest')
-      .in('id', ids)
-      .is('voided_at', null)
+    const { data: players } = await admin.from('players').select('id, full_name, login_name, is_guest').not('login_name', 'is', null).is('voided_at', null)
     return missingLogins(players ?? [], new Set(logins.map((l) => l.player_id)))
   }
 
   // Makes one account with a temporary password, links it to the player, and marks "must choose a new one".
   // If an unlinked sign-in already exists for that login name, it is taken over with the new password.
-  const createOne = async (m: MissingLogin, existing: { id: string; email?: string }[]) => {
+  const createOne = async (m: MissingLogin, existing: { id: string; email?: string }[], chosen?: string) => {
     const base = { full_name: m.full_name, login_name: m.login_name, player_id: m.player_id }
-    const password = makeTempPassword(randomBytes)
+    const password = chosen ?? makeTempPassword(randomBytes)
     const email = loginEmail(m.login_name)
     let userId: string | undefined
     try {
@@ -143,8 +130,8 @@ async function handle(req: Request): Promise<Response> {
     await admin.from('member_logins').upsert({ user_id: userId, player_id: m.player_id }, { onConflict: 'user_id', ignoreDuplicates: true })
     const { data: linked } = await admin.from('member_logins').select('player_id').eq('user_id', userId).maybeSingle()
     if (linked?.player_id !== m.player_id) return { ...base, ok: false as const }
-    const { error: flagError } = await admin.from('member_logins').update({ must_change_password: true }).eq('user_id', userId)
-    return { ...base, ok: true as const, temp_password: password, ...(flagError ? { problem: 'flag' as const } : {}) }
+    const { error: flagError } = await admin.from('member_logins').update({ must_change_password: !chosen }).eq('user_id', userId)
+    return { ...base, ok: true as const, ...(chosen ? {} : { temp_password: password }), ...(flagError ? { problem: 'flag' as const } : {}) }
   }
 
   switch (action.action) {
@@ -166,7 +153,7 @@ async function handle(req: Request): Promise<Response> {
       const login = logins.find((l) => l.player_id === action.playerId)
       if (!login) return reply(404, { error: 'That player has no login yet.' })
       if (login.is_owner) return reply(400, { error: 'Change your own password from the Me page.' })
-      return reply(200, { result: await resetOne(login) })
+      return reply(200, { result: await resetOne(login, action.password) })
     }
     case 'reset_everyone': {
       const results = []
@@ -185,7 +172,7 @@ async function handle(req: Request): Promise<Response> {
           results.push({ full_name: '', login_name: '', player_id: id, ok: false as const })
           continue
         }
-        results.push(await createOne(m, users?.users ?? []))
+        results.push(await createOne(m, users?.users ?? [], action.password))
       }
       return reply(200, { results })
     }

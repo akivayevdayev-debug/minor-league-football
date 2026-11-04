@@ -22,12 +22,16 @@ export function Button({ variant = 'secondary', size = 'md', loading = false, di
       {...rest}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={cn(className)}
+      className={cn('relative', className)}
     >
+      {/* While busy, the label keeps its space (hidden) and a spinner sits centred on top, so the button
+          never changes size or shifts its text. */}
+      <span className={cn('inline-flex items-center justify-center gap-2', loading && 'invisible')}>{children}</span>
       {loading && (
-        <span aria-hidden="true" className="size-(--icon-xs) animate-spin rounded-pill border-2 border-current border-r-transparent motion-reduce:animate-none" />
+        <span aria-hidden="true" className="absolute inset-0 flex items-center justify-center">
+          <span className="size-(--icon-xs) animate-spin rounded-pill border-2 border-current border-r-transparent motion-reduce:animate-none" />
+        </span>
       )}
-      {children}
     </ShadButton>
   )
 }

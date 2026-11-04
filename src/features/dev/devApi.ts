@@ -76,24 +76,24 @@ export function useLogins() {
   })
 }
 
-/** Makes accounts with temporary passwords. The results go to the caller only (never cached). */
+/** Makes accounts with temporary passwords, or (one account) with a password Akiva typed. The results go to the caller only (never cached). */
 export function useCreateLogins() {
   const queryClient = useQueryClient()
   return useMutation({
     gcTime: 0,
-    mutationFn: async (playerIds: string[]) =>
-      (await callOwnerTools<{ results: ResetResult[] }>({ action: 'create_logins', playerIds })).results,
+    mutationFn: async ({ playerIds, password }: { playerIds: string[]; password?: string }) =>
+      (await callOwnerTools<{ results: ResetResult[] }>({ action: 'create_logins', playerIds, ...(password ? { password } : {}) })).results,
     onSettled: () => queryClient.invalidateQueries({ queryKey: devKeys.logins }),
   })
 }
 
-/** Gives one player a temporary password. The result is returned to the caller only (never cached). */
+/** Gives one player a temporary password, or one Akiva typed (kept as theirs). The result is returned to the caller only (never cached). */
 export function useSetPassword() {
   const queryClient = useQueryClient()
   return useMutation({
     gcTime: 0,
-    mutationFn: async (playerId: string) =>
-      (await callOwnerTools<{ result: ResetResult }>({ action: 'set_password', playerId })).result,
+    mutationFn: async ({ playerId, password }: { playerId: string; password?: string }) =>
+      (await callOwnerTools<{ result: ResetResult }>({ action: 'set_password', playerId, ...(password ? { password } : {}) })).result,
     onSettled: () => queryClient.invalidateQueries({ queryKey: devKeys.logins }),
   })
 }

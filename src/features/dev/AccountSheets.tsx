@@ -6,7 +6,9 @@ import { Sheet } from '../../ui/Sheet'
 import { copyText } from './clipboard'
 import { CopyButton } from './TempPassword'
 import { useCreateLogins, useResetEveryone, useSignOutEveryone, type MissingLogin } from './devApi'
-import { formatCopyAll, isResetConfirmed, resetProblemText, type ResetResult } from './devLogic'
+import { choiceReady, formatCopyAll, isResetConfirmed, resetProblemText, type PasswordMode, type ResetResult } from './devLogic'
+import { PasswordChoice } from './PasswordChoice'
+import { MIN_PASSWORD_LENGTH } from '../auth/mustChange'
 
 /**
  * Every login except the owner's gets a temporary password at once. Passwords show here once; the sheet
@@ -134,25 +136,44 @@ function PasswordResults({ results, onDone, failedText }: { results: ResetResult
 
 /**
  * Accounts for players who have none yet (one, or all of them). Each gets a temporary password, shown
- * once here; they pick their own at first sign-in. The sheet stays open while the server is working.
+ * once here, and picks their own at first sign-in. A single account can instead get a password Akiva
+ * types, kept as theirs. The sheet stays open while the server is working.
  */
 export function CreateAccountsSheet({ players, open, onOpenChange }: { players: MissingLogin[]; open: boolean; onOpenChange(open: boolean): void }) {
   const create = useCreateLogins()
   const [results, setResults] = useState<ResetResult[] | null>(null)
+  const [mode, setMode] = useState<PasswordMode>('temp')
+  const [typed, setTyped] = useState('')
   const one = players.length === 1 ? players[0] : undefined
+  const typing = !!one && mode === 'typed'
 
   function handleOpenChange(next: boolean) {
     if (!next && create.isPending) return
     if (!next) {
       setResults(null)
+      setMode('temp')
+      setTyped('')
       create.reset()
     }
     onOpenChange(next)
   }
 
   async function run() {
+    if (typing && !choiceReady(mode, typed, MIN_PASSWORD_LENGTH)) return
     try {
-      setResults(await create.mutateAsync(players.map((p) => p.player_id)))
+      const made = await create.mutateAsync({ playerIds: players.map((p) => p.player_id), password: typing ? typed : undefined })
+      if (typing && one) {
+        if (made[0]?.ok) {
+          toast.success(`Account made. ${one.full_name} signs in with "${one.login_name}" and the password you typed.`)
+          const problem = resetProblemText(made[0].problem)
+          if (problem) toast.warning(problem)
+          handleOpenChange(false)
+        } else {
+          toast.error("Couldn't create this account. Try again.")
+        }
+        return
+      }
+      setResults(made)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't reach the Developer tools. Try again.")
     }
@@ -160,21 +181,24 @@ export function CreateAccountsSheet({ players, open, onOpenChange }: { players: 
 
   const title = one ? `Create an account for ${one.full_name}` : `Create ${players.length} accounts`
   return (
-    <Sheet open={open} onOpenChange={handleOpenChange} title={title} description="Each new account gets a temporary password once.">
+    <Sheet open={open} onOpenChange={handleOpenChange} title={title} description={one ? 'A temporary password, or one you type.' : 'Each new account gets a temporary password once.'}>
       {results ? (
         <PasswordResults results={results} onDone={() => handleOpenChange(false)} failedText="Couldn't create this account. Try again." />
       ) : (
         <div className="flex flex-col gap-4">
+          {one && <PasswordChoice name={one.full_name} mode={mode} onModeChange={setMode} password={typed} onPasswordChange={setTyped} />}
           <p className="text-body text-text-2-strong">
             {one
-              ? `${one.full_name} signs in with the login name "${one.login_name}" and a temporary password, then picks their own.`
+              ? typing
+                ? `${one.full_name} signs in with the login name "${one.login_name}" and the password you typed.`
+                : `${one.full_name} signs in with the login name "${one.login_name}" and a temporary password, then picks their own.`
               : `Each player signs in with their login name and a temporary password, then picks their own: ${players.map((p) => p.full_name).join(', ')}.`}
           </p>
           <div className="flex gap-2">
             <Button variant="outline" className="flex-1" onClick={() => handleOpenChange(false)} disabled={create.isPending}>
               Cancel
             </Button>
-            <Button variant="primary" className="flex-1" loading={create.isPending} disabled={players.length === 0} onClick={() => void run()}>
+            <Button variant="primary" className="flex-1" loading={create.isPending} disabled={players.length === 0 || (typing && !choiceReady(mode, typed, MIN_PASSWORD_LENGTH))} onClick={() => void run()}>
               {one ? 'Create account' : 'Create accounts'}
             </Button>
           </div>

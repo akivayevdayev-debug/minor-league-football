@@ -32,7 +32,7 @@ export function HistorySection() {
   return (
     <section aria-labelledby="history-title" className="flex flex-col gap-2">
       <h2 id="history-title" className="caps-label px-3">Edit history</h2>
-      <div className="glass-panel flex flex-col gap-3 rounded-panel p-3">
+      <div className="glass-list flex flex-col gap-3 rounded-panel p-3">
         <Select label="Show" value={table} onChange={(e) => setTable(e.target.value)}>
           <option value="">All tables</option>
           {EDITABLE_TABLES.map((t) => (

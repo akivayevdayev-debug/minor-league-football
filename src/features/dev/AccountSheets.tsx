@@ -42,7 +42,7 @@ export function AllResetSheet({ open, onOpenChange }: { open: boolean; onOpenCha
           <p role="alert" className="text-body font-strong text-danger">These show only once. Copy them now.</p>
           <ul className="flex flex-col gap-2">
             {results.map((r) => (
-              <li key={r.player_id} className="glass-subtle flex flex-col gap-2 rounded-control p-3">
+              <li key={r.player_id} className="surface-inset flex flex-col gap-2 rounded-control p-3">
                 <span className="text-body font-medium">
                   {r.full_name} <span className="text-text-2">({r.login_name})</span>
                 </span>

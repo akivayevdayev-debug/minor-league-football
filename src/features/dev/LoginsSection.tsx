@@ -29,7 +29,7 @@ export function LoginsSection() {
       )}
 
       {logins.data && (
-        <ul className="glass-panel flex flex-col overflow-hidden rounded-panel">
+        <ul className="glass-list flex flex-col overflow-hidden rounded-panel">
           {logins.data.map((login) => (
             <li key={login.player_id} className="flex items-center gap-3 border-t border-divider px-3 py-2.5 first:border-t-0">
               <div className="flex min-w-0 flex-1 flex-col gap-1">

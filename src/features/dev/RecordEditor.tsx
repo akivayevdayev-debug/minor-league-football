@@ -29,7 +29,7 @@ export function RecordEditor() {
   return (
     <section aria-labelledby="record-title" className="flex flex-col gap-2">
       <h2 id="record-title" className="caps-label px-3">Edit a record</h2>
-      <div className="glass-panel flex flex-col gap-3 rounded-panel p-3">
+      <div className="glass-list flex flex-col gap-3 rounded-panel p-3">
         <Select
           label="Table"
           value={table}
@@ -103,7 +103,7 @@ function RecordForm({ table, row, onClose }: { table: string; row: Row; onClose(
   }
 
   return (
-    <div className="glass-subtle flex flex-col gap-3 rounded-panel p-3">
+    <div className="surface-inset flex flex-col gap-3 rounded-panel p-3">
       <p className="text-small text-text-2">Editing {tableLabel(table).toLowerCase()} · {String(row.id)}</p>
       {fields.map((f) => (
         <Field

@@ -640,6 +640,23 @@ export const RULEBOOK: Section[] = [
         points: ['Points and touchdowns.', 'Passing and rushing yards.', 'First downs.', 'Turnovers.', 'Penalties.', 'Sacks allowed.', 'Kickoff and punt return yards.'],
       },
       {
+        id: 'fantasy-points',
+        title: 'Points for the MVP race',
+        lead: 'Each stat is worth points. The MVP race ranks players by points per game. Stats not listed here are worth 0.',
+        points: [
+          'Touchdown (receiving or return): +6.',
+          'QB rushing touchdown: +6.',
+          'Passing touchdown: +4.',
+          'Interception: +3.',
+          'Pick six: +3.',
+          'Catch: +1.',
+          'Successful block: +1.',
+          'Drop: −1.',
+          'Interception thrown: −2.',
+          'Fumble: −2.',
+        ],
+      },
+      {
         id: 'statistician',
         title: 'Keeping stats',
         points: [

@@ -62,6 +62,8 @@ beforeAll(async () => {
   await db.exec(sql('009_per_game_estimates.sql'))
   await db.exec(sql('010_mvp.sql'))
   await db.exec(sql('010_mvp.sql')) // safe to run twice
+  await db.exec(sql('011_qb_points.sql'))
+  await db.exec(sql('011_qb_points.sql'))
   season2 = (await db.query<{ id: string }>(`select id from public.seasons where name = 'Season 2'`)).rows[0]!.id
   await db.exec(`
     insert into public.teams (id, season_id, name, short_name, color_key) values
@@ -113,6 +115,24 @@ describe('points per game', () => {
 
   it('is hidden from logged-out visitors', async () => {
     await expect(as('anon', `select * from public.player_game_points`)).rejects.toThrow(/permission denied/)
+  })
+})
+
+describe('QB points (011)', () => {
+  it('scores passing TDs +4, QB rushing TDs +6 and interceptions thrown -2; fumble lost stays 0', async () => {
+    const rows = (
+      await db.query<{ id: string; fantasy_points: string }>(
+        `select id, fantasy_points from public.stat_types where id in ('pass_td', 'qb_rush_td', 'int_thrown', 'fumble_lost', 'fumble', 'completion')`,
+      )
+    ).rows
+    expect(Object.fromEntries(rows.map((r) => [r.id, Number(r.fantasy_points)]))).toEqual({
+      pass_td: 4,
+      qb_rush_td: 6,
+      int_thrown: -2,
+      fumble_lost: 0,
+      fumble: -2,
+      completion: 0,
+    })
   })
 })
 

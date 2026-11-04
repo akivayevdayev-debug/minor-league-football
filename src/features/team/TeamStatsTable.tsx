@@ -99,7 +99,7 @@ export function TeamStatsTable({ side, team, seasonId, playerById, onOpenPlayer 
           <caption className="sr-only">{view === 'week' ? 'This week’s stats' : 'Season stats'}</caption>
           <thead>
             <tr className="caps-label">
-              <th scope="col" className="w-14 py-2 pl-3 pr-2 font-strong">
+              <th scope="col" className="w-16 py-2 pl-3 pr-2 font-strong">
                 <abbr title="Position" className="no-underline">
                   Pos
                 </abbr>
@@ -247,12 +247,14 @@ function PlayerRows({
   closeT: Transition
 }) {
   const cellClass = `${CELL_BASE} pr-2 text-right`
+  // Everything else this player plays, shortened ("Right guard" → "RG"), under their name.
+  const otherPositions = (player?.positions ?? []).filter((pos) => pos.trim().toUpperCase() !== row.position.trim().toUpperCase()).map(shortPosition)
   return (
     <>
       {/* The whole row opens the player (the name button is the same action for keyboards and screen readers). */}
       <tr onClick={onOpenPlayer} className="cursor-pointer transition-colors duration-(--dur-fast) hover-fine:bg-(--row-hover) active:bg-(--press-fill)">
-        <td className={`${CELL_BASE} w-14 pl-3 pr-2 text-left`}>
-          <span className={`inline-block w-10 rounded-chip py-0.5 text-center caps-label ${row.isQb ? 'bg-gold-soft text-gold' : 'bg-(--press-fill) text-text'}`}>
+        <td className={`${CELL_BASE} w-16 pl-3 pr-2 text-left`}>
+          <span className={`inline-block min-w-10 whitespace-nowrap rounded-chip px-1.5 py-0.5 text-center caps-label ${row.isQb ? 'bg-gold-soft text-gold' : 'bg-(--press-fill) text-text'}`}>
             {row.position}
           </span>
         </td>
@@ -270,6 +272,7 @@ function PlayerRows({
                 <span className="truncate font-strong">{name}</span>
                 {captain && <span className="caps-label text-gold">C</span>}
               </span>
+              {otherPositions.length > 0 && <span className="max-w-full truncate caps-label">{otherPositions.join(' · ')}</span>}
               {onField && <Badge variant="live">On field</Badge>}
             </span>
           </button>
@@ -349,5 +352,10 @@ function PlayerRows({
 
 /** Every body cell: one tap-height row with a dark groove line on top. */
 const CELL_BASE = 'h-(--tap-min) border-t border-(--glass-groove) py-2 align-middle'
+
+/** "Right guard" → "RG": long position names shortened so a row never cuts off. */
+function shortPosition(p: string): string {
+  return p.trim().includes(' ') ? p.trim().split(/\s+/).map((w) => w[0]).join('').toUpperCase() : p
+}
 
 type Transition = { duration: number; ease: [number, number, number, number] }

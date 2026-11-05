@@ -5,6 +5,8 @@ import { MotionConfig } from 'motion/react'
 import { Toaster } from 'sonner'
 import { AuthGate, AuthProvider } from '../features/auth'
 import { AppShell } from './AppShell'
+import { ScreenBoundary } from './ScreenBoundary'
+import { reloadOnceForOldFile } from './screenErrors'
 import { UpdatePrompt } from './UpdatePrompt'
 import { EmptyState } from '../ui/EmptyState'
 import { Skeleton } from '../ui/Skeleton'
@@ -40,8 +42,14 @@ const MvpPage = lazy(() => import('../features/mvp/MvpPage'))
 const RulebookPage = lazy(() => import('../features/rules/RulebookPage'))
 
 function Screen({ children }: { children: ReactNode }) {
-  return <Suspense fallback={<Skeleton rows={4} />}>{children}</Suspense>
+  return (
+    <ScreenBoundary>
+      <Suspense fallback={<Skeleton rows={4} />}>{children}</Suspense>
+    </ScreenBoundary>
+  )
 }
+// Vite reports a screen file that failed to download (usually an old version's file after an update).
+if (typeof window !== 'undefined') window.addEventListener('vite:preloadError', () => reloadOnceForOldFile())
 
 export function App() {
   return (

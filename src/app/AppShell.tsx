@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
 import { BottomNav } from './BottomNav'
 import { PullToRefresh } from './PullToRefresh'
-import { activeTabIndex, parentTabIndex, tabs } from './tabs'
+import { activeTabIndex, rememberTab, startingTab, tabs } from './tabs'
 import { useCurrentSeason } from '../features/league'
 import { BackButton } from '../ui/BackButton'
 import { BrandMark } from '../ui/BrandMark'
@@ -24,8 +24,12 @@ export function AppShell() {
   const dir = nav.dir
   const slide = reduce ? 0 : numberToken('--slide') * dir
   // On a sub-page the bar keeps the tab you came from lit (or the page's own tab when opened from a link).
-  const [lastTab, setLastTab] = useState(() => parentTabIndex(pathname))
+  // Saved on the phone too, so after a reload Back still goes to the tab you came from.
+  const [lastTab, setLastTab] = useState(() => startingTab(pathname))
   if (index >= 0 && index !== lastTab) setLastTab(index)
+  useEffect(() => {
+    if (index >= 0) rememberTab(index)
+  }, [index])
   const litTab = index >= 0 ? index : lastTab
 
   return (

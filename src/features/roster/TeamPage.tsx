@@ -45,7 +45,7 @@ import { TeamStatsTable } from '../team/TeamStatsTable'
 import { useGameWeek, type TeamSide } from '../team/useTeamWeek'
 import { fmtPoints, opponentOf, weekGame } from '../team/week'
 import { remainingShare, winChance } from '../team/winChance'
-import { canDecideTrades, canEditTeam, canMovePlayers, isCaptainOf } from './permissions'
+import { canDecideTrades, canEditPlayer, canEditTeam, canMovePlayers, isCaptainOf } from './permissions'
 
 /** How often the win chance catches up with the running clock. */
 const WIN_CHANCE_REFRESH_MS = 30_000
@@ -320,7 +320,7 @@ export default function TeamPage() {
           <ul className="surface-inset divide-y divide-divider overflow-hidden rounded-panel">
             <ActionRow icon="me" label="View profile" onClick={() => navigate(`/players/${actionsFor.id}`)} />
             <ActionRow icon="stats" label="Add stats" onClick={() => show('stats', actionsFor)} />
-            <ActionRow icon="edit" label="Edit details" onClick={() => show('edit', actionsFor)} />
+            {canEditPlayer(member, actionsFor.id) && <ActionRow icon="edit" label="Edit details" onClick={() => show('edit', actionsFor)} />}
             {!actionsFor.is_guest && canMove && <ActionRow icon="players" label="Move to another team" onClick={() => show('move', actionsFor)} />}
           </ul>
         )}

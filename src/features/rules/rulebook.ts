@@ -641,8 +641,8 @@ export const RULEBOOK: Section[] = [
       },
       {
         id: 'fantasy-points',
-        title: 'Points for the MVP race',
-        lead: 'Each stat is worth points. The MVP race ranks players by points per game. Stats not listed here are worth 0.',
+        title: 'Stat points',
+        lead: 'Each stat is worth stat points. The MVP race ranks players by stat points per game. Stats not listed here are worth 0.',
         points: [
           'Touchdown (receiving or return): +6.',
           'QB rushing touchdown: +6.',

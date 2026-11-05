@@ -85,7 +85,7 @@ export default function MatchupPage() {
           </span>
           <TeamTotal team={away} projected={right.projected} actual={right.actual} alignEnd />
         </div>
-        <p className="caps-label text-center">{started ? 'Fantasy points · projected under each' : 'Projected fantasy points'}</p>
+        <p className="caps-label text-center">{started ? 'Stat points · projected under each' : 'Projected stat points'}</p>
       </header>
 
       <ul className="rise glass-list divide-y divide-(--glass-groove) overflow-hidden rounded-panel" style={{ '--i': 1 } as CSSProperties}>

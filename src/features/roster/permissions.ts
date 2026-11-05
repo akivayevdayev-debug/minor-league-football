@@ -28,3 +28,8 @@ export function canPinMvp(member: Member): boolean {
 export function canEditTeam(member: Member, team: Pick<Team, 'captain_player_id' | 'co_captain_player_id'>): boolean {
   return member.isOwner || isCaptainOf(team, member.playerId)
 }
+
+/** Your own details, or anyone's for the owner and Eddie (the database checks this too). */
+export function canEditPlayer(member: Member, playerId: string): boolean {
+  return member.isOwner || member.isLeagueManager || member.playerId === playerId
+}

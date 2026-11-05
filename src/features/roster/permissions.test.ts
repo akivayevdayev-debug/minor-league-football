@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Member } from '../auth/auth-context'
 import type { Player, Team } from '../../types/db'
-import { canDecideTrades, canEditTeam, canMovePlayers, isCaptainOf } from './permissions'
+import { canDecideTrades, canEditPlayer, canEditTeam, canMovePlayers, isCaptainOf } from './permissions'
 
 const member = (over: Partial<Member> = {}): Member => ({
   playerId: 'me',
@@ -85,5 +85,17 @@ describe('canEditTeam', () => {
 
   it('refuses a captain of a different team', () => {
     expect(canEditTeam(member({ playerId: 'other' }), t)).toBe(false)
+  })
+})
+
+describe('canEditPlayer', () => {
+  it('lets a player edit only their own details', () => {
+    expect(canEditPlayer(member(), 'me')).toBe(true)
+    expect(canEditPlayer(member(), 'someone')).toBe(false)
+  })
+
+  it('lets the owner and Eddie edit anyone', () => {
+    expect(canEditPlayer(member({ isOwner: true }), 'someone')).toBe(true)
+    expect(canEditPlayer(member({ isLeagueManager: true }), 'someone')).toBe(true)
   })
 })

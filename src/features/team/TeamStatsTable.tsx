@@ -122,7 +122,7 @@ export function TeamStatsTable({ side, team, seasonId, playerById, onOpenPlayer 
                 </abbr>
               </th>
               <th scope="col" className="py-2 pr-2 text-right font-strong">
-                <abbr title="Fantasy points" className="no-underline">
+                <abbr title="Stat points" className="no-underline">
                   Pts
                 </abbr>
               </th>

@@ -26,13 +26,14 @@ import { formatGameTime, ZONE_LABEL } from '../../lib/time'
 import { fmtPoints, weekGame } from '../team/week'
 import { cardTotals, gameLine, nextAsQb, opponentIn, recentGames } from './card'
 import { useGameLog } from './useGameLog'
+import { canEditPlayer } from '../roster/permissions'
 
 const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 const formatDay = (d: string) => dateFmt.format(new Date(`${d}T00:00:00Z`))
 const rise = (i: number) => ({ '--i': i }) as CSSProperties
 
 /**
- * Player card: photo hero, a Season 1 / Season 2 / Career switch, totals and fantasy points, the last
+ * Player card: photo hero, a Season 1 / Season 2 / Career switch, totals and stat points, the last
  * nine games, next game's estimate, achievements and team history.
  */
 export default function PlayerProfile() {
@@ -141,7 +142,7 @@ export default function PlayerProfile() {
       </div>
 
       <div className="rise flex flex-wrap gap-2" style={rise(1)}>
-        {(member.isOwner || player.id === member.playerId) && (
+        {canEditPlayer(member, player.id) && (
           <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
             <Icon name="edit" size="xs" />
             Edit
@@ -204,9 +205,9 @@ export default function PlayerProfile() {
         ) : (
           <div className="glass-list flex flex-col gap-3 rounded-panel p-3">
             <dl className="grid grid-cols-2 gap-2">
-              <StatBox label="Fantasy pts" value={fmtPoints(Math.round(totals.points * 10) / 10)} accent xl className="col-span-2" title="Fantasy points from final games" />
+              <StatBox label="Stat pts" value={fmtPoints(Math.round(totals.points * 10) / 10)} accent xl className="col-span-2" title="Stat points from final games" />
               <StatBox label="Games" value={totals.games} count from="previous" title="Final games played" />
-              <StatBox label="Pts/game" value={totals.perGame != null ? totals.perGame.toFixed(1) : '–'} title="Fantasy points per game" />
+              <StatBox label="Pts/game" value={totals.perGame != null ? totals.perGame.toFixed(1) : '–'} title="Stat points per game" />
             </dl>
             {tiles.length > 0 && (
               <dl className="grid grid-cols-4 gap-x-2 gap-y-3 border-t border-divider pt-3 sm:grid-cols-6">

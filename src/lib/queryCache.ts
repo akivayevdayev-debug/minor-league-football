@@ -6,7 +6,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
 const STORAGE_KEY = 'mlf-saved-data'
 
 /** Bump when the shape of saved data changes, so old copies are thrown away. */
-const SAVED_DATA_VERSION = '1'
+const SAVED_DATA_VERSION = '2' // 2: dropped copies of Maps that came back broken
 
 export const queryClient = new QueryClient({
   // gcTime must be at least maxAge, or saved data is dropped before it can be reused.
@@ -28,13 +28,26 @@ function safeStorage(): Storage | undefined {
 
 const persister = createSyncStoragePersister({ storage: safeStorage(), key: STORAGE_KEY, throttleTime: 1000 })
 
+/**
+ * Whether data comes back the same after being saved as text: only plain lists, plain objects,
+ * text, numbers, true/false and empty. A Map, Set or Date would come back as a plain object
+ * and break the screen that reads it, so data holding one is not saved.
+ */
+export function savesCleanly(value: unknown): boolean {
+  if (value === null || typeof value !== 'object') return typeof value !== 'function' && typeof value !== 'bigint'
+  if (Array.isArray(value)) return value.every(savesCleanly)
+  const proto: unknown = Object.getPrototypeOf(value)
+  if (proto !== Object.prototype && proto !== null) return false
+  return Object.values(value).every(savesCleanly)
+}
+
 /** Photo links expire and the live clock must always come fresh, so neither is saved. */
 export function shouldSave(query: Query): boolean {
   if (query.state.status !== 'success') return false
   const key = query.queryKey
   if (key[0] === 'photo-url') return false
   if (key[key.length - 1] === 'clock') return false
-  return true
+  return savesCleanly(query.state.data)
 }
 
 export const persistOptions: Omit<PersistQueryClientOptions, 'queryClient'> = {

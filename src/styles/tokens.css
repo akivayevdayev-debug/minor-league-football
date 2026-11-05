@@ -208,6 +208,11 @@
   --measure-narrow: 34ch;
   --measure-form: 400px;
   --sheet-max: 92dvh;
+  /* While the phone keyboard is up, useKeyboardInset sets these: how far the keyboard covers the screen bottom,
+     and the height left above it. The sheet sits on the keyboard and fits in that space, leaving --sheet-keyboard-gap at the top. */
+  --keyboard-inset: 0px;
+  --visible-height: 100dvh;
+  --sheet-keyboard-gap: 12px;
   --icon-xs: 16px;
   --icon-sm: 18px;
   --icon-md: 22px;

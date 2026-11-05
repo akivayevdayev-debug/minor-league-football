@@ -18,7 +18,7 @@ function DrawerContent({ className, children, ...props }: React.ComponentProps<t
       <DrawerPrimitive.Content
         data-slot="drawer-content"
         className={cn(
-          'glass-strong sheet-glass safe-bottom fixed inset-x-0 bottom-0 z-(--z-sheet) mx-auto flex max-h-(--sheet-max) max-w-(--content-max) flex-col rounded-t-hero border-b-0 outline-none md:bottom-(--nav-inset) md:rounded-hero md:border-b',
+          'glass-strong sheet-glass safe-bottom fixed inset-x-0 bottom-(--keyboard-inset) z-(--z-sheet) mx-auto flex max-h-[min(var(--sheet-max),calc(var(--visible-height)-var(--sheet-keyboard-gap)))] max-w-(--content-max) flex-col rounded-t-hero border-b-0 outline-none md:bottom-(--nav-inset) md:rounded-hero md:border-b',
           className,
         )}
         {...props}

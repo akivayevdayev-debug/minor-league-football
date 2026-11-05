@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from '@/components/ui/drawer'
+import { useKeyboardInset } from './useKeyboardInset'
 
 interface SheetProps {
   open: boolean
@@ -13,8 +14,10 @@ interface SheetProps {
 
 /** Bottom sheet (shadcn Drawer on vaul): strong glass, drag handle, drag to close, sticky footer. */
 export function Sheet({ open, onOpenChange, title, description, children, footer }: SheetProps) {
+  useKeyboardInset(open)
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
+    // repositionInputs off: vaul's own keyboard move adds to the phone's and threw the sheet off the top. useKeyboardInset does it instead.
+    <Drawer open={open} onOpenChange={onOpenChange} repositionInputs={false}>
       {/* Sheets keep their blur. glass-strong and sheet-glass (rim and lift) come from DrawerContent, glass-shine adds the highlight.
           glass-appear sits on an inner wrapper, not on DrawerContent: vaul moves DrawerContent with its own transform. */}
       <DrawerContent className="glass-shine">

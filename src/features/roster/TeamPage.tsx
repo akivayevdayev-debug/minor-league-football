@@ -346,6 +346,7 @@ export default function TeamPage() {
           initialTeamId={teamId}
           lockedTeamId={member.isOwner ? undefined : captainTeam?.id}
           canTradeNow={member.isOwner}
+          teams={snap.teams}
         />
       )}
       <MovePlayerSheet key={`move-${sheetKey}`} open={open === 'move'} onOpenChange={(o) => !o && setOpen(null)} initialPlayerId={focus?.id} />

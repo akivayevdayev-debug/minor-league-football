@@ -1,6 +1,6 @@
 import { useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import { toast } from 'sonner'
-import { currentTeams, displayName, useMakeTrade, usePlayers, useProposeTrade, useRosters, useTeams } from '../league'
+import { currentTeams, displayName, useMakeTrade, usePlayers, useProposeTrade, useRosters } from '../league'
 import { cn } from '../../lib/utils'
 import { LEAGUE_ZONE } from '../../lib/time'
 import { Button } from '../../ui/Button'
@@ -71,6 +71,7 @@ function PickList({
  * Swap players between two teams.
  * A captain (`lockedTeamId` = their own team) offers the trade for approval; Eddie or Maurice answers it.
  * The owner (`canTradeNow`) can also trade now, with no approval. Remount (key) to change the locked team.
+ * `teams` is the season's teams only, so last season's teams never show up.
  */
 export function TradeSheet({
   open,
@@ -78,15 +79,16 @@ export function TradeSheet({
   initialTeamId = '',
   lockedTeamId,
   canTradeNow = false,
+  teams: teamList,
 }: {
   open: boolean
   onOpenChange(open: boolean): void
   initialTeamId?: string
   lockedTeamId?: string
   canTradeNow?: boolean
+  teams: Team[]
 }) {
   const players = usePlayers()
-  const teams = useTeams()
   const rosters = useRosters()
   const propose = useProposeTrade()
   const tradeNow = useMakeTrade()
@@ -97,12 +99,9 @@ export function TradeSheet({
   const [on, setOn] = useState(today)
   const [note, setNote] = useState('')
 
-  const teamList = teams.data ?? []
   const teamA = lockedTeamId ?? teamPick
   const giving = teamList.find((t) => t.id === teamA)
-  // Trades stay inside one season, so the other side only offers teams from the giving team's season.
-  const sameSeason = (t: Team) => !giving || t.season_id === giving.season_id
-  const otherTeams = teamList.filter((t) => t.id !== teamA && sameSeason(t))
+  const otherTeams = teamList.filter((t) => t.id !== teamA)
   // The other side defaults to the first team that is not the giving team.
   const effB = teamB && teamB !== teamA && otherTeams.some((t) => t.id === teamB) ? teamB : (otherTeams[0]?.id ?? '')
   const receiving = teamList.find((t) => t.id === effB)
